@@ -1,0 +1,1 @@
+{"Name":"魔法灯","Type":"StaticObjectClass","Components":[{"Type":"Transform","Properties":{}},{"Type":"SpriteRenderer","Properties":{"spriteColor":"#7B68EE","opacity":"0.9"}}]}

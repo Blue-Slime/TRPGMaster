@@ -1,0 +1,260 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:msg="using:MasterClient.Chat.Messages"
+             xmlns:panels="using:MasterClient.Chat.Panels"
+             mc:Ignorable="d" d:DesignWidth="640"
+             x:Class="MasterClient.Chat.Messages.MessageItemView"
+             x:DataType="msg:MessageItemViewModel">
+
+    <UserControl.Styles>
+        <!-- 消息淡入+轻微上移（对标 Discord 新消息进入）。控件创建时播放一次；
+             切频道时消息控件重建，会对整列重放 → 顺带实现频道切换过渡。 -->
+        <Style Selector="Border#Row">
+            <Style.Animations>
+                <Animation Duration="0:0:0.18" FillMode="Forward" Easing="CubicEaseOut">
+                    <KeyFrame Cue="0%">
+                        <Setter Property="Opacity" Value="0"/>
+                        <Setter Property="TranslateTransform.Y" Value="8"/>
+                    </KeyFrame>
+                    <KeyFrame Cue="100%">
+                        <Setter Property="Opacity" Value="1"/>
+                        <Setter Property="TranslateTransform.Y" Value="0"/>
+                    </KeyFrame>
+                </Animation>
+            </Style.Animations>
+        </Style>
+        <!-- 操作条/悬停时间的初始态放样式里（不写成元素本地值，否则本地值会压过 :pointerover）-->
+        <Style Selector="Border#ActionBar">
+            <Setter Property="Opacity" Value="0"/>
+            <Setter Property="IsHitTestVisible" Value="False"/>
+        </Style>
+        <Style Selector="TextBlock#HoverTime">
+            <Setter Property="Opacity" Value="0"/>
+        </Style>
+        <!-- 悬停整条：底色浮现 -->
+        <Style Selector="Border#Row:pointerover">
+            <Setter Property="Background" Value="{DynamicResource BgMessageHover}"/>
+        </Style>
+        <!-- 悬停整条：右上操作条淡入并可点击 -->
+        <Style Selector="Border#Row:pointerover Border#ActionBar">
+            <Setter Property="Opacity" Value="1"/>
+            <Setter Property="IsHitTestVisible" Value="True"/>
+        </Style>
+        <!-- 悬停整条：折叠消息左侧时间淡入 -->
+        <Style Selector="Border#Row:pointerover TextBlock#HoverTime">
+            <Setter Property="Opacity" Value="1"/>
+        </Style>
+        <!-- 搜索跳转定位：目标消息高亮（左侧色条 + 淡黄底），由 IsHighlighted 触发。
+             背景过渡已在元素上定义，取消高亮时会平滑淡出。 -->
+        <Style Selector="Border#Row.highlighted">
+            <Setter Property="Background" Value="{DynamicResource BgMessageHighlight}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource BrandNormal}"/>
+            <Setter Property="BorderThickness" Value="2,0,0,0"/>
+        </Style>
+    </UserControl.Styles>
+
+    <!-- 整条消息：悬停时底色浮现 + 右上角操作条淡入（对标 Discord） -->
+    <Border Name="Row"
+            Background="Transparent"
+            Classes.highlighted="{Binding IsHighlighted}"
+            Margin="{Binding TopMargin}"
+            Padding="16,2,48,2"
+            CornerRadius="{DynamicResource RadiusXs}">
+        <Border.Transitions>
+            <Transitions>
+                <BrushTransition Property="Background" Duration="0:0:0.08"/>
+            </Transitions>
+        </Border.Transitions>
+
+        <Grid ColumnDefinitions="56,*">
+            <!-- 左列：头像（成组消息隐藏，悬停时露出时间） -->
+            <Panel Grid.Column="0" VerticalAlignment="Top">
+                <!-- 圆头像（仅消息头显示） -->
+                <Border Width="40" Height="40" CornerRadius="{DynamicResource RadiusFull}"
+                        Background="{Binding AvatarColor}"
+                        IsVisible="{Binding ShowHeader}"
+                        VerticalAlignment="Top" HorizontalAlignment="Left"
+                        Margin="0,2,0,0">
+                    <TextBlock Text="{Binding AvatarInitial}" Foreground="White"
+                               FontSize="16" FontWeight="SemiBold"
+                               HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                </Border>
+                <!-- 折叠消息：悬停才显示的左侧灰色时间 -->
+                <TextBlock Name="HoverTime"
+                           Text="{Binding ShortTimeString}"
+                           Foreground="{DynamicResource TextFaint}"
+                           FontSize="10"
+                           IsVisible="{Binding IsGrouped}"
+                           HorizontalAlignment="Right" VerticalAlignment="Top"
+                           Margin="0,4,8,0">
+                    <TextBlock.Transitions>
+                        <Transitions>
+                            <DoubleTransition Property="Opacity" Duration="0:0:0.08"/>
+                        </Transitions>
+                    </TextBlock.Transitions>
+                </TextBlock>
+            </Panel>
+
+            <!-- 右列：头 + 内容 -->
+            <StackPanel Grid.Column="1" Spacing="2">
+                <!-- 消息头：名字 + 角色名徽章 + 时间 -->
+                <StackPanel Orientation="Horizontal" Spacing="8"
+                            IsVisible="{Binding ShowHeader}">
+                    <TextBlock Text="{Binding SenderName}"
+                               Foreground="{DynamicResource TextHeader}"
+                               FontWeight="SemiBold" FontSize="{DynamicResource FontMd}"/>
+                    <Border Background="{DynamicResource BrandNormal}"
+                            CornerRadius="{DynamicResource RadiusXs}" Padding="5,1"
+                            VerticalAlignment="Center"
+                            IsVisible="{Binding HasCharacterName}">
+                        <TextBlock Text="{Binding CharacterName}" Foreground="White"
+                                   FontSize="10" FontWeight="SemiBold"/>
+                    </Border>
+                    <TextBlock Text="{Binding TimeString}"
+                               Foreground="{DynamicResource TextMuted}"
+                               FontSize="{DynamicResource FontXs}" VerticalAlignment="Center"/>
+                </StackPanel>
+
+                <!-- 回复引用条（对标 Discord：正文上方一条被引用消息摘要） -->
+                <Border IsVisible="{Binding HasQuote}"
+                        Background="{DynamicResource BgSecondary}"
+                        CornerRadius="{DynamicResource RadiusXs}"
+                        Padding="8,3" Margin="0,0,0,2" HorizontalAlignment="Left">
+                    <TextBlock Text="{Binding QuotedContent}"
+                               Foreground="{DynamicResource TextMuted}"
+                               FontSize="{DynamicResource FontXs}"
+                               TextTrimming="CharacterEllipsis" MaxWidth="420"/>
+                </Border>
+
+                <!-- 撤回提示 -->
+                <TextBlock Text="此消息已被撤回"
+                           Foreground="{DynamicResource TextMuted}"
+                           FontStyle="Italic" FontSize="13"
+                           IsVisible="{Binding IsRecalled}"/>
+
+                <!-- 文本 + 已编辑标记 -->
+                <TextBlock IsVisible="{Binding IsTextMessage}"
+                           Foreground="{DynamicResource TextNormal}"
+                           FontSize="{DynamicResource FontMd}" TextWrapping="Wrap"
+                           LineHeight="20">
+                    <Run Text="{Binding Content}"/><Run Text="{Binding EditedSuffix}"
+                        Foreground="{DynamicResource TextFaint}" FontSize="10"/>
+                </TextBlock>
+
+                <!-- 图片消息 -->
+                <Border IsVisible="{Binding IsImageMessage}"
+                        CornerRadius="{DynamicResource RadiusMd}"
+                        ClipToBounds="True"
+                        HorizontalAlignment="Left" MaxWidth="460">
+                    <Image Source="{Binding ImageBitmap}" Stretch="Uniform" MaxHeight="320"/>
+                </Border>
+
+                <!-- 文件消息 -->
+                <Border Background="{DynamicResource BgSecondary}"
+                        CornerRadius="{DynamicResource RadiusMd}" Padding="12,10"
+                        IsVisible="{Binding IsFileMessage}" HorizontalAlignment="Left" MaxWidth="340">
+                    <Grid ColumnDefinitions="36,*">
+                        <Border Grid.Column="0" Width="36" Height="36"
+                                Background="{DynamicResource BrandNormal}"
+                                CornerRadius="{DynamicResource RadiusSm}">
+                            <TextBlock Text="📄" FontSize="18"
+                                       HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <StackPanel Grid.Column="1" Margin="10,0,0,0" VerticalAlignment="Center" Spacing="2">
+                            <TextBlock Text="{Binding FileName}"
+                                       Foreground="{DynamicResource TextNormal}"
+                                       FontWeight="SemiBold" FontSize="13"
+                                       TextTrimming="CharacterEllipsis"/>
+                            <TextBlock Text="{Binding FileSize}"
+                                       Foreground="{DynamicResource TextMuted}"
+                                       FontSize="{DynamicResource FontXs}"/>
+                        </StackPanel>
+                    </Grid>
+                </Border>
+
+                <!-- 骰子 -->
+                <Border Background="{DynamicResource BgSecondary}"
+                        CornerRadius="{DynamicResource RadiusMd}" Padding="12,8"
+                        IsVisible="{Binding IsDiceRoll}" HorizontalAlignment="Left">
+                    <StackPanel Spacing="2">
+                        <TextBlock Text="{Binding DiceExpression, StringFormat='🎲 {0}'}"
+                                   Foreground="{DynamicResource DiceGold}" FontWeight="Bold"/>
+                        <TextBlock Text="{Binding DiceResultDisplay}"
+                                   Foreground="{DynamicResource TextNormal}" FontSize="16"/>
+                    </StackPanel>
+                </Border>
+
+                <!-- Reaction 气泡排（对标 Discord：正文下方一排 emoji 计数，点击 toggle）-->
+                <ItemsControl ItemsSource="{Binding Reactions}" IsVisible="{Binding HasReactions}"
+                              Margin="0,4,0,0">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <WrapPanel Orientation="Horizontal"/>
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="msg:ReactionChipViewModel">
+                            <Button Classes="reactionChip" Classes.mine="{Binding Mine}" Margin="0,0,6,0"
+                                    Command="{Binding $parent[ItemsControl].((msg:MessageItemViewModel)DataContext).ToggleReactionCommand}"
+                                    CommandParameter="{Binding Emoji}">
+                                <StackPanel Orientation="Horizontal" Spacing="4">
+                                    <TextBlock Text="{Binding Emoji}" FontSize="13"/>
+                                    <TextBlock Text="{Binding Count}" FontSize="12"
+                                               Foreground="{DynamicResource TextMuted}"/>
+                                </StackPanel>
+                            </Button>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </StackPanel>
+
+            <!-- 悬停操作条（右上角浮出：表情/回复/编辑/更多），对标 Discord -->
+            <Border Name="ActionBar" Grid.Column="1"
+                    HorizontalAlignment="Right" VerticalAlignment="Top"
+                    Margin="0,-8,0,0"
+                    Background="{DynamicResource BgFloating}"
+                    CornerRadius="{DynamicResource RadiusMd}"
+                    BorderBrush="{DynamicResource Divider}" BorderThickness="1">
+                <Border.Transitions>
+                    <Transitions>
+                        <DoubleTransition Property="Opacity" Duration="0:0:0.08"/>
+                    </Transitions>
+                </Border.Transitions>
+                <StackPanel Orientation="Horizontal">
+                    <!-- 加表情：点开常用 emoji 快捷面板 -->
+                    <Button Name="ReactButton" Classes="icon" Content="😀" ToolTip.Tip="添加反应">
+                        <Button.Flyout>
+                            <Flyout Placement="Bottom">
+                                <ItemsControl>
+                                    <ItemsControl.ItemsPanel>
+                                        <ItemsPanelTemplate>
+                                            <WrapPanel MaxWidth="200"/>
+                                        </ItemsPanelTemplate>
+                                    </ItemsControl.ItemsPanel>
+                                    <Button Classes="emojiPick" Content="👍" Command="{Binding ToggleReactionCommand}" CommandParameter="👍"/>
+                                    <Button Classes="emojiPick" Content="❤" Command="{Binding ToggleReactionCommand}" CommandParameter="❤"/>
+                                    <Button Classes="emojiPick" Content="😂" Command="{Binding ToggleReactionCommand}" CommandParameter="😂"/>
+                                    <Button Classes="emojiPick" Content="😮" Command="{Binding ToggleReactionCommand}" CommandParameter="😮"/>
+                                    <Button Classes="emojiPick" Content="😢" Command="{Binding ToggleReactionCommand}" CommandParameter="😢"/>
+                                    <Button Classes="emojiPick" Content="🎉" Command="{Binding ToggleReactionCommand}" CommandParameter="🎉"/>
+                                    <Button Classes="emojiPick" Content="🔥" Command="{Binding ToggleReactionCommand}" CommandParameter="🔥"/>
+                                    <Button Classes="emojiPick" Content="🎲" Command="{Binding ToggleReactionCommand}" CommandParameter="🎲"/>
+                                </ItemsControl>
+                            </Flyout>
+                        </Button.Flyout>
+                    </Button>
+                    <Button Classes="icon" Content="↩" ToolTip.Tip="回复"
+                            Command="{Binding ReplyCommand}"/>
+                    <Button Classes="icon" Content="✎" ToolTip.Tip="编辑" IsVisible="{Binding IsCurrentUser}"
+                            Command="{Binding EditCommand}"/>
+                    <Button Classes="icon" Content="🗑" ToolTip.Tip="撤回" IsVisible="{Binding IsCurrentUser}"
+                            Command="{Binding RevokeCommand}"/>
+                    <Button Classes="icon" Content="📌" ToolTip.Tip="{Binding PinTooltip}"
+                            Command="{Binding PinCommand}" Opacity="{Binding PinOpacity}"/>
+                </StackPanel>
+            </Border>
+        </Grid>
+    </Border>
+</UserControl>

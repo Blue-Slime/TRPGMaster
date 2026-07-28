@@ -1,0 +1,16 @@
+{
+  "Name": "\u793A\u4F8B\u9759\u6001\u5BF9\u8C61",
+  "Type": "StaticObjectClass",
+  "Components": [
+    {
+      "Type": "Transform",
+      "Properties": {}
+    },
+    {
+      "Type": "SpriteRenderer",
+      "Properties": {
+        "sprite": "example.png"
+      }
+    }
+  ]
+}

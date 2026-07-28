@@ -1,0 +1,50 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:pins="using:MasterClient.Chat.Pins"
+        mc:Ignorable="d" d:DesignWidth="420" d:DesignHeight="520"
+        x:Class="MasterClient.Chat.Pins.PinnedPanelWindow"
+        x:DataType="pins:PinnedPanelViewModel"
+        Title="置顶消息"
+        Width="420" Height="520"
+        WindowStartupLocation="CenterOwner"
+        Background="#313338">
+
+    <Grid RowDefinitions="Auto,*,Auto" Margin="16">
+        <TextBlock Grid.Row="0" Text="📌 置顶消息" Foreground="White"
+                   FontSize="16" FontWeight="Bold" Margin="0,0,0,12"/>
+
+        <Border Grid.Row="1" Background="#2b2d31" CornerRadius="8">
+            <ListBox ItemsSource="{Binding Items}" Background="Transparent"
+                     ScrollViewer.VerticalScrollBarVisibility="Auto">
+                <ListBox.ItemTemplate>
+                    <DataTemplate x:DataType="pins:PinnedItem">
+                        <Border Padding="12,8" DoubleTapped="OnItemDoubleTapped" Background="Transparent">
+                            <Grid ColumnDefinitions="*,Auto">
+                                <StackPanel Grid.Column="0" Spacing="3">
+                                    <Grid ColumnDefinitions="*,Auto">
+                                        <TextBlock Grid.Column="0" Text="{Binding SenderName}"
+                                                   Foreground="#f2f3f5" FontWeight="SemiBold" FontSize="13"/>
+                                        <TextBlock Grid.Column="1" Text="{Binding TimeText}"
+                                                   Foreground="#949ba4" FontSize="11" VerticalAlignment="Center"/>
+                                    </Grid>
+                                    <TextBlock Text="{Binding Preview}" Foreground="#dbdee1" FontSize="13"
+                                               TextWrapping="Wrap" MaxLines="2" TextTrimming="CharacterEllipsis"/>
+                                </StackPanel>
+                                <Button Grid.Column="1" Content="✕" ToolTip.Tip="取消置顶"
+                                        VerticalAlignment="Top" Margin="8,0,0,0"
+                                        Background="Transparent" Foreground="#949ba4"
+                                        Command="{Binding $parent[Window].((pins:PinnedPanelViewModel)DataContext).UnpinCommand}"
+                                        CommandParameter="{Binding}"/>
+                            </Grid>
+                        </Border>
+                    </DataTemplate>
+                </ListBox.ItemTemplate>
+            </ListBox>
+        </Border>
+
+        <TextBlock Grid.Row="2" Margin="2,10,0,0" Text="{Binding StatusText}"
+                   Foreground="#949ba4" FontSize="12"/>
+    </Grid>
+</Window>

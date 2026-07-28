@@ -1,0 +1,155 @@
+<Styles xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!-- ============================================================
+         Discord 控件样式（对标 Discord 的 SCSS Module）。
+         引用 DiscordColors.axaml 中定义的令牌。
+         ============================================================ -->
+
+    <!-- 频道列表项（channelList 内的所有 ListBoxItem 自动套用） -->
+    <Style Selector="ListBox.channelList ListBoxItem">
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="Padding" Value="8,5"/>
+        <Setter Property="Margin" Value="0,1"/>
+        <Setter Property="CornerRadius" Value="{DynamicResource RadiusSm}"/>
+        <Setter Property="Transitions">
+            <Transitions>
+                <BrushTransition Property="Background" Duration="0:0:0.1"/>
+            </Transitions>
+        </Setter>
+        <Setter Property="Template">
+            <ControlTemplate>
+                <Border Background="{TemplateBinding Background}"
+                        CornerRadius="{DynamicResource RadiusSm}"
+                        Padding="{TemplateBinding Padding}">
+                    <ContentPresenter Content="{TemplateBinding Content}"
+                                      ContentTemplate="{TemplateBinding ContentTemplate}"/>
+                </Border>
+            </ControlTemplate>
+        </Setter>
+    </Style>
+    <Style Selector="ListBox.channelList ListBoxItem:pointerover">
+        <Setter Property="Background" Value="{DynamicResource BgModifierHover}"/>
+    </Style>
+    <Style Selector="ListBox.channelList ListBoxItem:selected">
+        <Setter Property="Background" Value="{DynamicResource BgModifierSelected}"/>
+    </Style>
+    <Style Selector="ListBox.channelList ListBoxItem:selected /template/ ContentPresenter TextBlock.channelName">
+        <Setter Property="Foreground" Value="{DynamicResource TextHeader}"/>
+    </Style>
+
+    <!-- 工具栏图标按钮（消息区顶部 / 悬停条） -->
+    <Style Selector="Button.icon">
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="Foreground" Value="{DynamicResource InteractiveNormal}"/>
+        <Setter Property="BorderThickness" Value="0"/>
+        <Setter Property="CornerRadius" Value="{DynamicResource RadiusXs}"/>
+        <Setter Property="Padding" Value="6"/>
+        <Setter Property="MinWidth" Value="32"/>
+        <Setter Property="MinHeight" Value="32"/>
+        <Setter Property="Cursor" Value="Hand"/>
+        <Setter Property="Transitions">
+            <Transitions>
+                <BrushTransition Property="Background" Duration="0:0:0.1"/>
+                <BrushTransition Property="Foreground" Duration="0:0:0.1"/>
+            </Transitions>
+        </Setter>
+    </Style>
+    <Style Selector="Button.icon:pointerover">
+        <Setter Property="Background" Value="{DynamicResource BgModifierHover}"/>
+        <Setter Property="Foreground" Value="{DynamicResource InteractiveHover}"/>
+    </Style>
+    <Style Selector="Button.icon:pressed">
+        <Setter Property="Foreground" Value="{DynamicResource InteractiveActive}"/>
+    </Style>
+
+    <!-- 发送按钮（品牌色） -->
+    <Style Selector="Button.send">
+        <Setter Property="Background" Value="{DynamicResource BrandNormal}"/>
+        <Setter Property="Foreground" Value="White"/>
+        <Setter Property="BorderThickness" Value="0"/>
+        <Setter Property="CornerRadius" Value="{DynamicResource RadiusSm}"/>
+        <Setter Property="Padding" Value="12,8"/>
+        <Setter Property="Cursor" Value="Hand"/>
+        <Setter Property="Transitions">
+            <Transitions>
+                <BrushTransition Property="Background" Duration="0:0:0.12"/>
+            </Transitions>
+        </Setter>
+    </Style>
+    <Style Selector="Button.send:pointerover">
+        <Setter Property="Background" Value="{DynamicResource BrandHover}"/>
+    </Style>
+    <Style Selector="Button.send:pressed">
+        <Setter Property="RenderTransform" Value="scale(0.97)"/>
+    </Style>
+
+    <!-- 危险按钮（删除频道等） -->
+    <Style Selector="Button.danger">
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="Foreground" Value="{DynamicResource DangerNormal}"/>
+        <Setter Property="BorderThickness" Value="0"/>
+        <Setter Property="CornerRadius" Value="{DynamicResource RadiusSm}"/>
+        <Setter Property="Padding" Value="8,6"/>
+        <Setter Property="Cursor" Value="Hand"/>
+        <Setter Property="Transitions">
+            <Transitions>
+                <BrushTransition Property="Background" Duration="0:0:0.1"/>
+            </Transitions>
+        </Setter>
+    </Style>
+    <Style Selector="Button.danger:pointerover">
+        <Setter Property="Background" Value="{DynamicResource DangerNormal}"/>
+        <Setter Property="Foreground" Value="White"/>
+    </Style>
+
+    <!-- 聊天输入框 -->
+    <Style Selector="TextBox.chatInput">
+        <Setter Property="Background" Value="{DynamicResource BgInputArea}"/>
+        <Setter Property="Foreground" Value="{DynamicResource TextNormal}"/>
+        <Setter Property="CaretBrush" Value="{DynamicResource TextHeader}"/>
+        <Setter Property="SelectionBrush" Value="{DynamicResource BrandNormal}"/>
+        <Setter Property="BorderThickness" Value="0"/>
+        <Setter Property="CornerRadius" Value="{DynamicResource RadiusMd}"/>
+        <Setter Property="Padding" Value="12,10"/>
+        <Setter Property="FontSize" Value="{DynamicResource FontMd}"/>
+    </Style>
+
+    <!-- 分割线 -->
+    <Style Selector="Border.divider">
+        <Setter Property="Background" Value="{DynamicResource Divider}"/>
+        <Setter Property="Height" Value="1"/>
+    </Style>
+
+    <!-- Reaction 气泡（对标 Discord：emoji + 计数的小胶囊，我参与时高亮描边）-->
+    <Style Selector="Button.reactionChip">
+        <Setter Property="Background" Value="{DynamicResource BgSecondary}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource Divider}"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="CornerRadius" Value="10"/>
+        <Setter Property="Padding" Value="7,2"/>
+        <Setter Property="MinHeight" Value="0"/>
+    </Style>
+    <Style Selector="Button.reactionChip:pointerover">
+        <Setter Property="BorderBrush" Value="{DynamicResource BrandNormal}"/>
+    </Style>
+    <!-- 我已参与该反应：高亮描边 + 品牌淡底（Mine=true 时加 .mine 类）-->
+    <Style Selector="Button.reactionChip.mine">
+        <Setter Property="BorderBrush" Value="{DynamicResource BrandNormal}"/>
+        <Setter Property="Background" Value="{DynamicResource BgMessageHighlight}"/>
+    </Style>
+
+    <!-- emoji 选择器里的单个 emoji 按钮 -->
+    <Style Selector="Button.emojiPick">
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="BorderThickness" Value="0"/>
+        <Setter Property="CornerRadius" Value="{DynamicResource RadiusSm}"/>
+        <Setter Property="Padding" Value="6"/>
+        <Setter Property="FontSize" Value="18"/>
+        <Setter Property="MinHeight" Value="0"/>
+    </Style>
+    <Style Selector="Button.emojiPick:pointerover">
+        <Setter Property="Background" Value="{DynamicResource BgModifierHover}"/>
+    </Style>
+
+</Styles>

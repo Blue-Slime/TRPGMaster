@@ -1,0 +1,1112 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:MapEngine.Avalonia.ViewModels"
+             xmlns:controls="using:MapEngine.Avalonia.Controls"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d"
+             d:DesignWidth="1400"
+             d:DesignHeight="860"
+             x:Class="MapEngine.Avalonia.Views.MapEditorView"
+             x:DataType="vm:MainWindowViewModel"
+             x:CompileBindings="False"
+             x:Name="Root"
+             Background="#2D2D30">
+
+    <Design.DataContext>
+        <vm:MainWindowViewModel/>
+    </Design.DataContext>
+
+    <UserControl.DataTemplates>
+        <TreeDataTemplate DataType="vm:HierarchyItemViewModel" ItemsSource="{Binding Children}">
+            <TextBlock Text="{Binding DisplayName}"
+                       DragDrop.AllowDrop="True"
+                       DragDrop.DragOver="HierarchyItem_DragOver"
+                       DragDrop.Drop="HierarchyItem_Drop">
+                <TextBlock.ContextMenu>
+                    <ContextMenu>
+                        <MenuItem Header="新建空对象"
+                                  Click="AddHierarchyChild_Click"
+                                  CommandParameter="{Binding .}"/>
+                        <MenuItem Header="新建墙壁 🧱"
+                                  Click="AddWallObject_Click"
+                                  CommandParameter="{Binding .}"/>
+                        <Separator/>
+                        <MenuItem Header="复制"
+                                  Click="CopyHierarchyItem_Click"
+                                  CommandParameter="{Binding .}"/>
+                        <MenuItem Header="粘贴为子对象"
+                                  Click="PasteHierarchyItem_Click"
+                                  CommandParameter="{Binding .}"/>
+                        <MenuItem Header="复制副本"
+                                  Click="DuplicateHierarchyItem_Click"
+                                  CommandParameter="{Binding .}"/>
+                        <Separator/>
+                        <MenuItem Header="上移"
+                                  Click="MoveHierarchyItemUp_Click"
+                                  CommandParameter="{Binding .}"/>
+                        <MenuItem Header="下移"
+                                  Click="MoveHierarchyItemDown_Click"
+                                  CommandParameter="{Binding .}"/>
+                        <MenuItem Header="提升层级（移出父对象）"
+                                  Click="PromoteHierarchyItem_Click"
+                                  CommandParameter="{Binding .}"/>
+                        <MenuItem Header="降低层级（移入上方兄弟）"
+                                  Click="DemoteHierarchyItem_Click"
+                                  CommandParameter="{Binding .}"/>
+                        <Separator/>
+                        <MenuItem Header="重命名"
+                                  Click="RenameHierarchyItem_Click"
+                                  CommandParameter="{Binding .}"/>
+                        <Separator/>
+                        <MenuItem Header="删除"
+                                  Click="DeleteHierarchyItem_Click"
+                                  CommandParameter="{Binding .}"/>
+                    </ContextMenu>
+                </TextBlock.ContextMenu>
+            </TextBlock>
+        </TreeDataTemplate>
+        <TreeDataTemplate DataType="vm:AssetFolderViewModel" ItemsSource="{Binding Children}">
+            <TextBlock Text="{Binding DisplayName}">
+                <TextBlock.ContextMenu>
+                    <ContextMenu>
+                        <MenuItem Header="新增文件夹"
+                                  Click="AddAssetFolder_Click"
+                                  CommandParameter="{Binding .}"/>
+                        <MenuItem Header="新增静态对象类"
+                                  Click="AddAssetItem_Click"
+                                  CommandParameter="{Binding .}"/>
+                        <Separator/>
+                        <MenuItem Header="复制"
+                                  Click="CopyAssetFolder_Click"
+                                  CommandParameter="{Binding .}"/>
+                        <MenuItem Header="粘贴文件夹"
+                                  Click="PasteAssetFolder_Click"
+                                  CommandParameter="{Binding .}"/>
+                        <MenuItem Header="粘贴对象类"
+                                  Click="PasteAssetItemIntoFolder_Click"
+                                  CommandParameter="{Binding .}"/>
+                        <MenuItem Header="复制副本"
+                                  Click="DuplicateAssetFolder_Click"
+                                  CommandParameter="{Binding .}"/>
+                        <Separator/>
+                        <MenuItem Header="重命名"
+                                  Click="RenameAssetFolder_Click"
+                                  CommandParameter="{Binding .}"/>
+                        <MenuItem Header="删除"
+                                  Click="DeleteAssetFolder_Click"
+                                  CommandParameter="{Binding .}"/>
+                    </ContextMenu>
+                </TextBlock.ContextMenu>
+            </TextBlock>
+        </TreeDataTemplate>
+        <DataTemplate DataType="vm:AssetItemViewModel">
+            <Border Width="{Binding #Root.DataContext.AssetTileWidth}"
+                    Margin="5"
+                    Padding="8"
+                    Background="#2A2A2A"
+                    BorderBrush="#3F3F46"
+                    BorderThickness="1"
+                    CornerRadius="6"
+                    PointerPressed="AssetCard_PointerPressed">
+                <Border.ContextMenu>
+                    <ContextMenu>
+                        <MenuItem Header="复制"
+                                  Click="CopyAssetItem_Click"
+                                  CommandParameter="{Binding .}"/>
+                        <MenuItem Header="复制副本"
+                                  Click="DuplicateAssetItem_Click"
+                                  CommandParameter="{Binding .}"/>
+                        <Separator/>
+                        <MenuItem Header="重命名"
+                                  Click="RenameAssetItem_Click"
+                                  CommandParameter="{Binding .}"/>
+                        <MenuItem Header="删除"
+                                  Click="DeleteAssetItem_Click"
+                                  CommandParameter="{Binding .}"/>
+                    </ContextMenu>
+                </Border.ContextMenu>
+                <StackPanel Spacing="6">
+                    <Border Height="{Binding #Root.DataContext.AssetThumbnailSize}"
+                            Background="#35353A"
+                            CornerRadius="4">
+                        <TextBlock Text="{Binding Icon}"
+                                   FontSize="28"
+                                   HorizontalAlignment="Center"
+                                   VerticalAlignment="Center"/>
+                    </Border>
+                    <TextBlock Text="{Binding Name}"
+                               Foreground="#DCDCDC"
+                               TextAlignment="Center"
+                               TextTrimming="CharacterEllipsis"/>
+                    <TextBlock Text="{Binding Kind}"
+                               Foreground="#8D8D93"
+                               FontSize="11"
+                               HorizontalAlignment="Center"/>
+                </StackPanel>
+            </Border>
+        </DataTemplate>
+        <DataTemplate DataType="vm:ToolActionViewModel">
+            <Border Width="36"
+                    Height="36"
+                    Background="{Binding Background}"
+                    BorderBrush="#00000000"
+                    BorderThickness="0"
+                    CornerRadius="8">
+                <TextBlock Text="{Binding Icon}"
+                           Foreground="{Binding Foreground}"
+                           FontSize="16"
+                           FontWeight="Bold"
+                           HorizontalAlignment="Center"
+                           VerticalAlignment="Center"/>
+            </Border>
+        </DataTemplate>
+    </UserControl.DataTemplates>
+
+    <Grid x:Name="RootColumnsGrid">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="260" MinWidth="40"/>
+            <ColumnDefinition Width="4"/>
+            <ColumnDefinition Width="*"/>
+            <ColumnDefinition Width="4"/>
+            <ColumnDefinition Width="320" MinWidth="40"/>
+        </Grid.ColumnDefinitions>
+        <Border Grid.Column="0"
+                x:Name="LeftPanel"
+                ClipToBounds="True"
+                Background="#252526"
+                BorderBrush="#3F3F46"
+                BorderThickness="0,0,1,0">
+            <Grid RowDefinitions="Auto,*,Auto">
+                <DockPanel Background="#333333" LastChildFill="True">
+                    <Button DockPanel.Dock="Left"
+                            x:Name="LeftCollapseButton"
+                            Content="◀"
+                            ToolTip.Tip="折叠/展开左栏"
+                            Click="LeftCollapseButton_Click"
+                            Background="Transparent" Foreground="#CCCCCC"
+                            BorderThickness="0" Padding="6,4"/>
+                    <Button DockPanel.Dock="Right"
+                            x:Name="LeftSettingsButton"
+                            Content="⚙"
+                            ToolTip.Tip="全局设置"
+                            Command="{Binding OpenSettingsCommand}"
+                            Background="Transparent"
+                            Foreground="#CCCCCC"
+                            BorderThickness="0"
+                            Padding="6,4"/>
+                    <Button DockPanel.Dock="Right"
+                            x:Name="LeftSaveButton"
+                            Content="💾"
+                            ToolTip.Tip="保存场景 (Ctrl+S)"
+                            Command="{Binding SaveSceneCommand}"
+                            Background="Transparent"
+                            Foreground="#CCCCCC"
+                            BorderThickness="0"
+                            Padding="6,4"/>
+                    <TextBlock x:Name="LeftPackageName"
+                               Text="{Binding PackageName}"
+                               Foreground="#CCCCCC"
+                               Padding="10"
+                               FontWeight="Bold"
+                               VerticalAlignment="Center"/>
+                </DockPanel>
+
+                <ScrollViewer Grid.Row="1"
+                              x:Name="LeftTreeScroll"
+                              HorizontalScrollBarVisibility="Auto"
+                              VerticalScrollBarVisibility="Auto">
+                    <TreeView x:Name="HierarchyTreeView"
+                              Margin="20,10,10,10"
+                              ItemsSource="{Binding HierarchyRoots}"
+                              SelectedItem="{Binding SelectedHierarchyItem, Mode=TwoWay}"
+                              Background="Transparent"
+                              Foreground="#CCCCCC"
+                              DragDrop.AllowDrop="True"
+                              DragDrop.DragOver="HierarchyRoot_DragOver"
+                              DragDrop.Drop="HierarchyRoot_Drop">
+                        <TreeView.ContextMenu>
+                            <ContextMenu>
+                                <MenuItem Header="新建空对象"
+                                          Click="AddRootEmptyObject_Click"/>
+                                <MenuItem Header="新建墙壁 🧱"
+                                          Click="AddRootWallObject_Click"/>
+                                <Separator/>
+                                <MenuItem Header="粘贴"
+                                          Click="PasteHierarchyToRoot_Click"/>
+                            </ContextMenu>
+                        </TreeView.ContextMenu>
+                    </TreeView>
+                </ScrollViewer>
+
+                <Border Grid.Row="2"
+                        x:Name="LeftSelectionInfo"
+                        Background="#2B2B2E"
+                        BorderBrush="#3F3F46"
+                        BorderThickness="0,1,0,0"
+                        Padding="10,8">
+                    <StackPanel Spacing="6">
+                        <TextBlock Text="当前选中"
+                                   Foreground="#959595"
+                                   FontSize="11"/>
+                        <TextBlock Text="{Binding CurrentSelectionDisplayName}"
+                                   Foreground="#E0E0E0"
+                                   FontWeight="SemiBold"/>
+                        <TextBlock Text="{Binding CurrentSelectionType}"
+                                   Foreground="#8D8D93"
+                                   FontSize="11"/>
+                        <TextBlock Text="{Binding CurrentSelectionHint}"
+                                   Foreground="#7F7F86"
+                                   FontSize="11"
+                                   TextWrapping="Wrap"/>
+        <Button Content="导航到位置"
+                                Command="{Binding NavigateToSelectionCommand}"
+                                Background="#3A3A3E"
+                                BorderBrush="#4A4A50"
+                                BorderThickness="1"
+                                Foreground="#E6E6E6"
+                                CornerRadius="4"
+                                Padding="8,4"/>
+                    </StackPanel>
+                </Border>
+
+                <!-- 折叠态专用：底部单个"导航到位置"按钮（细条里仍可用），展开时隐藏 -->
+                <Button Grid.Row="2"
+                        x:Name="LeftCollapsedNavButton"
+                        Content="🎯"
+                        ToolTip.Tip="导航到位置"
+                        Command="{Binding NavigateToSelectionCommand}"
+                        IsVisible="False"
+                        Background="#3A3A3E"
+                        BorderBrush="#4A4A50"
+                        BorderThickness="1"
+                        Foreground="#E6E6E6"
+                        CornerRadius="4"
+                        Margin="4,8"
+                        Padding="0,6"
+                        HorizontalAlignment="Stretch"
+                        VerticalAlignment="Bottom"/>
+            </Grid>
+        </Border>
+
+        <GridSplitter Grid.Column="1"
+                      x:Name="LeftSplitter"
+                      Background="#3F3F46"
+                      Width="4"
+                      HorizontalAlignment="Center"
+                      VerticalAlignment="Stretch"
+                      Cursor="SizeWestEast"/>
+
+        <Grid Grid.Column="2"
+              x:Name="CenterColumnGrid"
+              Background="#1E1E1E">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="*" MinHeight="120"/>
+                <RowDefinition Height="4"/>
+                <RowDefinition Height="250" MinHeight="32"/>
+            </Grid.RowDefinitions>
+            <Grid Grid.Row="0"
+                  x:Name="MapViewportHost"
+                  Background="Transparent"
+                  SizeChanged="MapViewportHost_SizeChanged">
+                <Border x:Name="MapViewportSurface"
+                        Background="Transparent"
+                        ClipToBounds="True"
+                        DragDrop.AllowDrop="True"
+                        DragDrop.DragOver="MapDropTarget_DragOver"
+                        DragDrop.DragLeave="MapDropTarget_DragLeave"
+                        DragDrop.Drop="MapDropTarget_Drop">
+                    <controls:SilkMapCanvas x:Name="MapSilkCanvas"
+                                            IsHitTestVisible="False"
+                                            HorizontalAlignment="Stretch"
+                                            VerticalAlignment="Stretch"/>
+                </Border>
+
+                <Border HorizontalAlignment="Left"
+                        VerticalAlignment="Top"
+                        Margin="12,12,0,0"
+                        Background="#2F2F31"
+                        CornerRadius="10"
+                        BorderBrush="#4A4A4D"
+                        BorderThickness="1"
+                        Padding="3"
+                        BoxShadow="0 4 12 0 #66000000">
+                    <ListBox ItemsSource="{Binding PrimaryTools}"
+                             SelectedItem="{Binding SelectedPrimaryTool, Mode=TwoWay}"
+                             Background="Transparent"
+                             BorderThickness="0"
+                             Padding="0"
+                             HorizontalAlignment="Stretch">
+                        <ListBox.Styles>
+                            <Style Selector="ListBoxItem">
+                                <Setter Property="Margin" Value="0,0,0,2"/>
+                                <Setter Property="Padding" Value="0"/>
+                                <Setter Property="MinHeight" Value="0"/>
+                                <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+                            </Style>
+                            <Style Selector="ListBoxItem:last-child">
+                                <Setter Property="Margin" Value="0"/>
+                            </Style>
+                            <Style Selector="ListBoxItem /template/ ContentPresenter">
+                                <Setter Property="Padding" Value="0"/>
+                                <Setter Property="Margin" Value="0"/>
+                                <Setter Property="Background" Value="Transparent"/>
+                            </Style>
+                            <Style Selector="ListBoxItem:pointerover /template/ ContentPresenter">
+                                <Setter Property="Background" Value="#3B3B3E"/>
+                            </Style>
+                            <Style Selector="ListBoxItem:selected /template/ ContentPresenter">
+                                <Setter Property="Background" Value="Transparent"/>
+                            </Style>
+                        </ListBox.Styles>
+                    </ListBox>
+                </Border>
+
+                <Border HorizontalAlignment="Right"
+                        VerticalAlignment="Top"
+                        Margin="0,12,12,0"
+                        Background="#2F2F31"
+                        CornerRadius="10"
+                        BorderBrush="#4A4A4D"
+                        BorderThickness="1"
+                        Padding="3"
+                        BoxShadow="0 4 12 0 #66000000">
+                    <ListBox ItemsSource="{Binding QuickActions}"
+                             SelectedItem="{Binding SelectedQuickAction, Mode=TwoWay}"
+                             Background="Transparent"
+                             BorderThickness="0"
+                             Padding="0"
+                             HorizontalAlignment="Stretch">
+                        <ListBox.Styles>
+                            <Style Selector="ListBoxItem">
+                                <Setter Property="Margin" Value="0,0,0,2"/>
+                                <Setter Property="Padding" Value="0"/>
+                                <Setter Property="MinHeight" Value="0"/>
+                                <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+                            </Style>
+                            <Style Selector="ListBoxItem:last-child">
+                                <Setter Property="Margin" Value="0"/>
+                            </Style>
+                            <Style Selector="ListBoxItem /template/ ContentPresenter">
+                                <Setter Property="Padding" Value="0"/>
+                                <Setter Property="Margin" Value="0"/>
+                                <Setter Property="Background" Value="Transparent"/>
+                            </Style>
+                            <Style Selector="ListBoxItem:pointerover /template/ ContentPresenter">
+                                <Setter Property="Background" Value="#3B3B3E"/>
+                            </Style>
+                            <Style Selector="ListBoxItem:selected /template/ ContentPresenter">
+                                <Setter Property="Background" Value="Transparent"/>
+                            </Style>
+                        </ListBox.Styles>
+                    </ListBox>
+                </Border>
+
+                <Border HorizontalAlignment="Left"
+                        VerticalAlignment="Bottom"
+                        Margin="15,0,0,15"
+                        Padding="10,6"
+                        Background="#2A2A2ACC"
+                        CornerRadius="6">
+                    <StackPanel Spacing="2">
+                        <TextBlock Text="{Binding StatusMessage}"
+                                   Foreground="#E6E6E6"
+                                   FontSize="12"/>
+                        <TextBlock Text="{Binding MapViewportSummary}"
+                                   Foreground="#9DB0CC"
+                                   FontSize="11"/>
+                        <TextBlock Text="{Binding GraphicsRuntimeSummary}"
+                                   Foreground="#C9D7A4"
+                                   FontSize="11"/>
+                        <TextBlock Text="{Binding GraphicsRuntimeHint}"
+                                   Foreground="#8D8D93"
+                                   FontSize="11"
+                                   TextWrapping="Wrap"/>
+                    </StackPanel>
+                </Border>
+
+                <Border HorizontalAlignment="Right"
+                        VerticalAlignment="Bottom"
+                        Margin="0,0,15,15"
+                        Background="#383838"
+                        CornerRadius="20"
+                        BorderBrush="#555"
+                        BorderThickness="1"
+                        BoxShadow="0 4 15 0 #80000000"
+                        Padding="8,4">
+                    <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                        <Button Background="Transparent"
+                                BorderThickness="0"
+                                CornerRadius="15"
+                                Padding="8,4"
+                                ToolTip.Tip="切换网格 (G)"
+                                Command="{Binding ToggleGridCommand}">
+                            <StackPanel Orientation="Horizontal" Spacing="4">
+                                <TextBlock Text="▦"
+                                           VerticalAlignment="Center"
+                                           FontSize="16"
+                                           Foreground="#AAAAAA"/>
+                            </StackPanel>
+                        </Button>
+
+                        <Separator Background="#555" Width="1" Height="16"/>
+
+                        <Button Background="Transparent"
+                                BorderThickness="0"
+                                CornerRadius="15"
+                                Padding="8,4"
+                                ToolTip.Tip="设置地图比例尺"
+                                Command="{Binding CycleScaleCommand}">
+                            <StackPanel Orientation="Horizontal" Spacing="4">
+                                <TextBlock Text="1 格 ="
+                                           VerticalAlignment="Center"
+                                           Foreground="#AAAAAA"
+                                           FontSize="12"/>
+                                <TextBlock Text="{Binding ScaleText}"
+                                           VerticalAlignment="Center"
+                                           Foreground="White"
+                                           FontWeight="Bold"
+                                           FontSize="12"/>
+                            </StackPanel>
+                        </Button>
+
+                        <Separator Background="#555" Width="1" Height="16"/>
+
+                        <StackPanel Orientation="Horizontal" Spacing="2">
+                            <Button Width="28"
+                                    Height="28"
+                                    Padding="0"
+                                    Background="Transparent"
+                                    BorderThickness="0"
+                                    CornerRadius="14"
+                                    ToolTip.Tip="缩小 (-)"
+                                    Command="{Binding ZoomOutCommand}">
+                                <TextBlock Text="-"
+                                           HorizontalAlignment="Center"
+                                           VerticalAlignment="Center"
+                                           FontSize="18"
+                                           Foreground="White"/>
+                            </Button>
+                            <Button Background="Transparent"
+                                    BorderThickness="0"
+                                    CornerRadius="15"
+                                    Padding="8,0"
+                                    ToolTip.Tip="重置缩放 (0)"
+                                    Command="{Binding ResetZoomCommand}">
+                                <TextBlock Text="{Binding ZoomText}"
+                                           VerticalAlignment="Center"
+                                           Foreground="White"
+                                           FontSize="12"/>
+                            </Button>
+                            <Button Width="28"
+                                    Height="28"
+                                    Padding="0"
+                                    Background="Transparent"
+                                    BorderThickness="0"
+                                    CornerRadius="14"
+                                    ToolTip.Tip="放大 (+)"
+                                    Command="{Binding ZoomInCommand}">
+                                <TextBlock Text="+"
+                                           HorizontalAlignment="Center"
+                                           VerticalAlignment="Center"
+                                           FontSize="16"
+                                           Foreground="White"/>
+                            </Button>
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+            </Grid>
+
+            <!-- 拖拽调节素材库高度：作用于第2行(AssetLibraryRow)。折叠时禁用。 -->
+            <GridSplitter Grid.Row="1"
+                          x:Name="AssetSplitter"
+                          Height="4"
+                          Background="#3F3F46"
+                          ResizeDirection="Rows"
+                          HorizontalAlignment="Stretch"
+                          VerticalAlignment="Center"/>
+
+            <!-- 素材库面板：标题栏(可折叠) + 内容。折叠由 code-behind 切换行高。 -->
+            <Grid Grid.Row="2" Background="#252526" RowDefinitions="Auto,*">
+                <!-- 标题栏：📂 + 折叠按钮 -->
+                <Grid Grid.Row="0" Background="#2D2D30" ColumnDefinitions="*,Auto" Height="28">
+                    <TextBlock Text="📂 素材库 (Project Assets)"
+                               Foreground="#CCCCCC" FontWeight="Bold"
+                               VerticalAlignment="Center" Margin="8,0,0,0"/>
+                    <Button Grid.Column="1"
+                            x:Name="AssetCollapseButton"
+                            Content="▼"
+                            Background="Transparent" Foreground="#CCCCCC"
+                            BorderThickness="0" Padding="10,0"
+                            Click="AssetCollapseButton_Click"
+                            ToolTip.Tip="折叠/展开素材库"/>
+                </Grid>
+
+                <Grid Grid.Row="1" x:Name="AssetContent" ColumnDefinitions="200,Auto,*">
+                    <TreeView Grid.Column="0"
+                              ItemsSource="{Binding AssetRoots}"
+                              SelectedItem="{Binding SelectedAssetFolder, Mode=TwoWay}"
+                              Background="Transparent"
+                              Foreground="#CCCCCC"
+                              Margin="5"/>
+
+                    <GridSplitter Grid.Column="1"
+                                  Width="2"
+                                  Background="#3F3F46"
+                                  HorizontalAlignment="Center"
+                                  VerticalAlignment="Stretch"/>
+
+                    <Grid Grid.Column="2" RowDefinitions="Auto,*">
+                        <Border Grid.Row="0"
+                                BorderBrush="#3F3F46"
+                                BorderThickness="0,0,0,1"
+                                Background="#2D2D30"
+                                Padding="8,4">
+                            <Grid ColumnDefinitions="*,Auto">
+                                <TextBlock Text="{Binding AssetBreadcrumb}"
+                                           Foreground="#FFFFFF"
+                                           FontWeight="Bold"
+                                           VerticalAlignment="Center"/>
+                                <StackPanel Grid.Column="1"
+                                            Orientation="Horizontal"
+                                            Spacing="10">
+                                    <TextBlock Text="🔍" VerticalAlignment="Center" Foreground="#AAAAAA"/>
+                                    <TextBox Width="180"
+                                             Height="24"
+                                             Background="#1E1E1E"
+                                             Foreground="White"
+                                             BorderThickness="1"
+                                             BorderBrush="#3F3F46"
+                                             Watermark="搜索..."
+                                             Text="{Binding AssetSearchText, Mode=TwoWay}"/>
+                                    <Slider Width="90"
+                                            Minimum="48"
+                                            Maximum="120"
+                                            Value="{Binding AssetThumbnailSize, Mode=TwoWay}"
+                                            VerticalAlignment="Center"
+                                            Margin="10,0,0,0"/>
+                                </StackPanel>
+                            </Grid>
+                        </Border>
+
+                        <ListBox x:Name="AssetItemsListBox"
+                                 Grid.Row="1"
+                                 ItemsSource="{Binding VisibleAssetItems}"
+                                 SelectedItem="{Binding SelectedAssetItem, Mode=TwoWay}"
+                                 Background="#1E1E1E"
+                                 BorderThickness="0"
+                                 Padding="10"
+                                 DragDrop.AllowDrop="True"
+                                 DragDrop.Drop="AssetLibrary_Drop">
+                            <ListBox.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <WrapPanel/>
+                                </ItemsPanelTemplate>
+                            </ListBox.ItemsPanel>
+                        </ListBox>
+                    </Grid>
+                </Grid>
+            </Grid>
+        </Grid>
+
+        <GridSplitter Grid.Column="3"
+                      x:Name="RightSplitter"
+                      Background="#3F3F46"
+                      Width="4"
+                      HorizontalAlignment="Center"
+                      VerticalAlignment="Stretch"
+                      Cursor="SizeWestEast"/>
+
+        <Border Grid.Column="4"
+                x:Name="RightPanel"
+                ClipToBounds="True"
+                Background="#2D2D2D"
+                BorderBrush="#1A1A1A"
+                BorderThickness="1,0,0,0">
+            <Grid RowDefinitions="Auto,*">
+                <Border Grid.Row="0"
+                        Background="#3C3C3C"
+                        BorderBrush="#1A1A1A"
+                        BorderThickness="0,0,0,1"
+                        Padding="10,6">
+                    <Grid ColumnDefinitions="Auto,*,Auto">
+                        <Button Grid.Column="0"
+                                x:Name="RightCollapseButton"
+                                Content="▶"
+                                ToolTip.Tip="折叠/展开右栏"
+                                Click="RightCollapseButton_Click"
+                                Background="Transparent" Foreground="#CCCCCC"
+                                BorderThickness="0" Padding="6,4" Margin="0,0,6,0"/>
+                        <StackPanel Grid.Column="1" x:Name="RightHeaderText" Spacing="2">
+                            <TextBlock Text="Inspector"
+                                       Foreground="#DCDCDC"
+                                       VerticalAlignment="Center"
+                                       FontWeight="SemiBold"
+                                       FontSize="12"/>
+                            <TextBlock Text="{Binding SelectedAssetItem.Description, TargetNullValue='未选中素材'}"
+                                       Foreground="#8D8D93"
+                                       FontSize="11"/>
+                        </StackPanel>
+                        <Button Grid.Column="2"
+                                x:Name="RightMenuButton"
+                                Background="Transparent"
+                                BorderThickness="0"
+                                Padding="4"
+                                ToolTip.Tip="更多选项"
+                                Command="{Binding ShowInspectorMenuCommand}">
+                            <TextBlock Text="⋮" Foreground="#AAAAAA"/>
+                        </Button>
+                    </Grid>
+                </Border>
+
+                <ScrollViewer Grid.Row="1" x:Name="RightContentScroll">
+                    <StackPanel Spacing="0">
+                        <Border Background="#383838"
+                                Padding="12,12,12,10"
+                                BorderBrush="#1A1A1A"
+                                BorderThickness="0,0,0,1">
+                            <StackPanel Spacing="8">
+                                <Grid ColumnDefinitions="28,*,24">
+                                    <Button Grid.Column="0"
+                                            Width="22"
+                                            Height="22"
+                                            Background="#454545"
+                                            BorderBrush="#1A1A1A"
+                                            BorderThickness="1"
+                                            CornerRadius="3"
+                                            Padding="0">
+                                        <TextBlock Text="{Binding SelectedHierarchyItem.Icon}"
+                                                   HorizontalAlignment="Center"
+                                                   VerticalAlignment="Center"
+                                                   FontSize="12"/>
+                                    </Button>
+                                    <TextBox Grid.Column="1"
+                                             Text="{Binding SelectedHierarchyItem.Name, Mode=TwoWay}"
+                                             Margin="8,0"
+                                             Background="#2A2A2A"
+                                             Foreground="#E0E0E0"
+                                             BorderBrush="#1A1A1A"
+                                             BorderThickness="1"
+                                             Padding="6,3"
+                                             FontWeight="Bold"
+                                             FontSize="13"
+                                             VerticalAlignment="Center"
+                                             CornerRadius="3"/>
+                                    <CheckBox Grid.Column="2"
+                                              IsChecked="{Binding SelectedHierarchyItem.IsActive, Mode=TwoWay}"
+                                              VerticalAlignment="Center"
+                                              HorizontalAlignment="Right"
+                                              ToolTip.Tip="激活状态"/>
+                                </Grid>
+
+                                <Grid ColumnDefinitions="60,*,Auto">
+                                    <TextBlock Text="Instance"
+                                               Foreground="#959595"
+                                               VerticalAlignment="Center"
+                                               FontSize="11"/>
+                                    <TextBox Grid.Column="1"
+                                             Text="{Binding SelectedHierarchyItem.InstanceId, Mode=TwoWay}"
+                                             IsReadOnly="True"
+                                             Background="Transparent"
+                                             Foreground="#707070"
+                                             BorderThickness="0"
+                                             Padding="0"
+                                             FontSize="11"
+                                             VerticalAlignment="Center"
+                                             FontWeight="SemiBold"/>
+                                    <StackPanel Grid.Column="2"
+                                                Orientation="Horizontal"
+                                                VerticalAlignment="Center">
+                                        <CheckBox IsChecked="{Binding SelectedHierarchyItem.IsLocked, Mode=TwoWay}"
+                                                  Margin="0,0,4,0"/>
+                                        <TextBlock Text="Locked"
+                                                   Foreground="#959595"
+                                                   VerticalAlignment="Center"
+                                                   FontSize="11"/>
+                                    </StackPanel>
+                                </Grid>
+
+                                <Grid ColumnDefinitions="60,*,40,70">
+                                    <TextBlock Text="Type"
+                                               Foreground="#959595"
+                                               VerticalAlignment="Center"
+                                               FontSize="11"/>
+                                    <ComboBox Grid.Column="1"
+                                              ItemsSource="{Binding ObjectTypes}"
+                                              SelectedItem="{Binding SelectedHierarchyItem.ObjectType, Mode=TwoWay}"
+                                              Background="#2A2A2A"
+                                              BorderBrush="#1A1A1A"
+                                              Foreground="#DCDCDC"
+                                              BorderThickness="1"
+                                              HorizontalAlignment="Stretch"
+                                              Padding="6,2"
+                                              FontSize="11"
+                                              Height="24"
+                                              CornerRadius="3"
+                                              Margin="0,0,10,0"/>
+                                    <TextBlock Grid.Column="2"
+                                               Text="Order"
+                                               Foreground="#959595"
+                                               VerticalAlignment="Center"
+                                               FontSize="11"/>
+                                    <NumericUpDown Grid.Column="3"
+                                                   Value="{Binding SelectedHierarchyItem.SortOrder, Mode=TwoWay}"
+                                                   Minimum="-99"
+                                                   Maximum="99"
+                                                   Background="#2A2A2A"
+                                                   BorderBrush="#1A1A1A"
+                                                   Foreground="#DCDCDC"
+                                                   BorderThickness="1"
+                                                   Padding="2"
+                                                   FontSize="11"
+                                                   Height="24"
+                                                   ShowButtonSpinner="False"
+                                                   CornerRadius="3"/>
+                                </Grid>
+                            </StackPanel>
+                        </Border>
+
+                        <StackPanel Spacing="1" Background="#1A1A1A">
+                            <Expander Header="Tags"
+                                      IsExpanded="True"
+                                      HorizontalAlignment="Stretch"
+                                      Foreground="#DCDCDC"
+                                      Background="#383838"
+                                      BorderThickness="0"
+                                      CornerRadius="0">
+                                <StackPanel Margin="0,4,0,4" Spacing="6">
+                                    <Border Background="#252525"
+                                            BorderBrush="#1A1A1A"
+                                            BorderThickness="1"
+                                            CornerRadius="4"
+                                            Margin="4,0">
+                                        <ScrollViewer MaxHeight="100" VerticalScrollBarVisibility="Auto">
+                                            <ItemsControl ItemsSource="{Binding SelectedHierarchyItem.Tags}">
+                                                <ItemsControl.ItemTemplate>
+                                                    <DataTemplate>
+                                                        <Border Background="#3E3E3E" Padding="8,4" Margin="1">
+                                                            <Grid ColumnDefinitions="*,Auto">
+                                                                <TextBlock Text="{Binding .}"
+                                                                           Foreground="#DCDCDC"
+                                                                           FontSize="11"
+                                                                           VerticalAlignment="Center"/>
+                                                                <Button Grid.Column="1"
+                                                                        Content="✕"
+                                                                        Background="Transparent"
+                                                                        BorderThickness="0"
+                                                                        Foreground="#666"
+                                                                        FontSize="9"
+                                                                        Padding="4,0"
+                                                                        Command="{Binding #Root.DataContext.RemoveTagCommand}"
+                                                                        CommandParameter="{Binding .}"/>
+                                                            </Grid>
+                                                        </Border>
+                                                    </DataTemplate>
+                                                </ItemsControl.ItemTemplate>
+                                            </ItemsControl>
+                                        </ScrollViewer>
+                                    </Border>
+                                    <Button Content="+ Add Tag"
+                                            HorizontalAlignment="Center"
+                                            Background="#454545"
+                                            BorderBrush="#1A1A1A"
+                                            BorderThickness="1"
+                                            FontSize="10"
+                                            Padding="15,2"
+                                            CornerRadius="3"
+                                            Margin="0,2,0,4"
+                                            Command="{Binding AddTagCommand}"/>
+                                </StackPanel>
+                            </Expander>
+
+                            <!-- 组件区:数据驱动,按对象实际挂载的组件动态渲染(参考 Unity Inspector) -->
+                            <ItemsControl ItemsSource="{Binding SelectedHierarchyItem.ComponentEditors}">
+                                <ItemsControl.DataTemplates>
+
+                                    <!-- ══ Transform(核心组件,不可移除)══ -->
+                                    <DataTemplate DataType="vm:TransformComponentEditor">
+                                      <Expander IsExpanded="{Binding IsExpanded, Mode=TwoWay}" HorizontalAlignment="Stretch" Foreground="#DCDCDC" Background="#383838" BorderThickness="0" CornerRadius="0">
+                                        <Expander.Header>
+                                            <Grid ColumnDefinitions="Auto,*,Auto">
+                                                <TextBlock Text="{Binding Icon}" FontSize="12" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                                                <TextBlock Grid.Column="1" Text="{Binding Title}" FontWeight="SemiBold" FontSize="12" VerticalAlignment="Center"/>
+                                                <Button Grid.Column="2" Content="✕" Background="Transparent" BorderThickness="0" Foreground="#AA5555" FontSize="11" Padding="6,0" IsVisible="{Binding CanRemove}" Command="{Binding RemoveCommand}" ToolTip.Tip="移除组件"/>
+                                            </Grid>
+                                        </Expander.Header>
+                                        <Grid RowDefinitions="Auto,Auto,Auto" ColumnDefinitions="60,*,*,*" Margin="4,8,8,8">
+                                            <TextBlock Grid.Row="0" Grid.Column="0" Text="Position" Foreground="#959595" VerticalAlignment="Center" FontSize="11" Margin="0,0,0,6"/>
+                                            <Grid Grid.Row="0" Grid.Column="1" ColumnDefinitions="12,*" Margin="0,0,8,6">
+                                                <TextBlock Text="X" Foreground="#FF5555" FontSize="10" VerticalAlignment="Center" FontWeight="Bold"/>
+                                                <TextBox Grid.Column="1" Tag="X" GotFocus="InspectorTextBox_GotFocus" LostFocus="InspectorTextBox_LostFocus" Text="{Binding Owner.X, Mode=TwoWay}" Margin="4,0,0,0" Background="#2A2A2A" BorderBrush="#1A1A1A" Foreground="#DCDCDC" BorderThickness="1" Padding="4,2" FontSize="11" Height="22" CornerRadius="2"/>
+                                            </Grid>
+                                            <Grid Grid.Row="0" Grid.Column="2" ColumnDefinitions="12,*" Margin="0,0,8,6">
+                                                <TextBlock Text="Y" Foreground="#55FF55" FontSize="10" VerticalAlignment="Center" FontWeight="Bold"/>
+                                                <TextBox Grid.Column="1" Tag="Y" GotFocus="InspectorTextBox_GotFocus" LostFocus="InspectorTextBox_LostFocus" Text="{Binding Owner.Y, Mode=TwoWay}" Margin="4,0,0,0" Background="#2A2A2A" BorderBrush="#1A1A1A" Foreground="#DCDCDC" BorderThickness="1" Padding="4,2" FontSize="11" Height="22" CornerRadius="2"/>
+                                            </Grid>
+                                            <Grid Grid.Row="0" Grid.Column="3" ColumnDefinitions="12,*" Margin="0,0,0,6">
+                                                <TextBlock Text="Z" Foreground="#5555FF" FontSize="10" VerticalAlignment="Center" FontWeight="Bold"/>
+                                                <TextBox Grid.Column="1" Tag="Z" GotFocus="InspectorTextBox_GotFocus" LostFocus="InspectorTextBox_LostFocus" Text="{Binding Owner.Z, Mode=TwoWay}" Margin="4,0,0,0" Background="#2A2A2A" BorderBrush="#1A1A1A" Foreground="#DCDCDC" BorderThickness="1" Padding="4,2" FontSize="11" Height="22" CornerRadius="2"/>
+                                            </Grid>
+                                            <TextBlock Grid.Row="1" Grid.Column="0" Text="Rotation" Foreground="#959595" VerticalAlignment="Center" FontSize="11" Margin="0,0,0,6"/>
+                                            <Grid Grid.Row="1" Grid.Column="1" ColumnDefinitions="12,*" Margin="0,0,8,6">
+                                                <TextBlock Text="D" Foreground="#FFCC00" FontSize="10" VerticalAlignment="Center" FontWeight="Bold"/>
+                                                <TextBox Grid.Column="1" Tag="Rotation" GotFocus="InspectorTextBox_GotFocus" LostFocus="InspectorTextBox_LostFocus" Text="{Binding Owner.Rotation, Mode=TwoWay}" Margin="4,0,0,0" Background="#2A2A2A" BorderBrush="#1A1A1A" Foreground="#DCDCDC" BorderThickness="1" Padding="4,2" FontSize="11" Height="22" CornerRadius="2"/>
+                                            </Grid>
+                                            <TextBlock Grid.Row="2" Grid.Column="0" Text="Scale" Foreground="#959595" VerticalAlignment="Center" FontSize="11"/>
+                                            <Grid Grid.Row="2" Grid.Column="1" ColumnDefinitions="12,*" Margin="0,0,8,0">
+                                                <TextBlock Text="X" Foreground="#959595" FontSize="10" VerticalAlignment="Center"/>
+                                                <TextBox Grid.Column="1" Tag="ScaleX" GotFocus="InspectorTextBox_GotFocus" LostFocus="InspectorTextBox_LostFocus" Text="{Binding Owner.ScaleX, Mode=TwoWay}" Margin="4,0,0,0" Background="#2A2A2A" BorderBrush="#1A1A1A" Foreground="#DCDCDC" BorderThickness="1" Padding="4,2" FontSize="11" Height="22" CornerRadius="2"/>
+                                            </Grid>
+                                            <Grid Grid.Row="2" Grid.Column="2" ColumnDefinitions="12,*">
+                                                <TextBlock Text="Y" Foreground="#959595" FontSize="10" VerticalAlignment="Center"/>
+                                                <TextBox Grid.Column="1" Tag="ScaleY" GotFocus="InspectorTextBox_GotFocus" LostFocus="InspectorTextBox_LostFocus" Text="{Binding Owner.ScaleY, Mode=TwoWay}" Margin="4,0,0,0" Background="#2A2A2A" BorderBrush="#1A1A1A" Foreground="#DCDCDC" BorderThickness="1" Padding="4,2" FontSize="11" Height="22" CornerRadius="2"/>
+                                            </Grid>
+                                        </Grid>
+                                      </Expander>
+                                    </DataTemplate>
+
+                                    <!-- ══ Sprite Renderer(核心组件,不可移除)══ -->
+                                    <DataTemplate DataType="vm:SpriteRendererComponentEditor">
+                                      <Expander IsExpanded="{Binding IsExpanded, Mode=TwoWay}" HorizontalAlignment="Stretch" Foreground="#DCDCDC" Background="#383838" BorderThickness="0" CornerRadius="0">
+                                        <Expander.Header>
+                                            <Grid ColumnDefinitions="Auto,*,Auto">
+                                                <TextBlock Text="{Binding Icon}" FontSize="12" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                                                <TextBlock Grid.Column="1" Text="{Binding Title}" FontWeight="SemiBold" FontSize="12" VerticalAlignment="Center"/>
+                                                <Button Grid.Column="2" Content="✕" Background="Transparent" BorderThickness="0" Foreground="#AA5555" FontSize="11" Padding="6,0" IsVisible="{Binding CanRemove}" Command="{Binding RemoveCommand}" ToolTip.Tip="移除组件"/>
+                                            </Grid>
+                                        </Expander.Header>
+                                        <StackPanel Margin="12,8" Spacing="8">
+                                            <Grid ColumnDefinitions="60,*">
+                                                <TextBlock Text="Sprite" Foreground="#959595" VerticalAlignment="Center" FontSize="11"/>
+                                                <StackPanel Grid.Column="1" Spacing="4">
+                                                    <TextBlock Text="{Binding Owner.SourceAssetName, TargetNullValue='(无图片)'}" Foreground="#AAAAAA" FontSize="11" TextTrimming="CharacterEllipsis"/>
+                                                    <Grid ColumnDefinitions="*,Auto,Auto">
+                                                        <Button Content="选择图片..." Click="SelectSpriteImage_Click" Background="#454545" BorderBrush="#1A1A1A" BorderThickness="1" Foreground="#DCDCDC" FontSize="11" Padding="8,3" CornerRadius="3" HorizontalAlignment="Stretch"/>
+                                                        <Button Grid.Column="1" Content="💧" Click="PickSpriteFromAsset_Click" ToolTip.Tip="从素材库吸取图片" Background="#454545" BorderBrush="#1A1A1A" BorderThickness="1" Foreground="#DCDCDC" FontSize="13" Width="28" Height="24" Padding="0" Margin="4,0,0,0" CornerRadius="3"/>
+                                                        <ComboBox Grid.Column="2" SelectedIndex="{Binding #Root.DataContext.SpriteImportModeIndex, Mode=TwoWay}" Background="#2A2A2A" BorderBrush="#1A1A1A" Foreground="#DCDCDC" FontSize="10" Height="24" Width="70" Margin="4,0,0,0" CornerRadius="3" Padding="4,2">
+                                                            <ComboBoxItem Content="复制"/>
+                                                            <ComboBoxItem Content="引用"/>
+                                                        </ComboBox>
+                                                    </Grid>
+                                                </StackPanel>
+                                            </Grid>
+                                            <Grid ColumnDefinitions="60,*,8,*">
+                                                <TextBlock Text="Size" Foreground="#959595" VerticalAlignment="Center" FontSize="11"/>
+                                                <Grid Grid.Column="1" ColumnDefinitions="14,*">
+                                                    <TextBlock Text="W" Foreground="#959595" FontSize="10" VerticalAlignment="Center"/>
+                                                    <TextBox Grid.Column="1" Tag="ScaleX" GotFocus="InspectorTextBox_GotFocus" LostFocus="InspectorTextBox_LostFocus" Text="{Binding Owner.ScaleX, Mode=TwoWay}" Background="#2A2A2A" BorderBrush="#1A1A1A" Foreground="#DCDCDC" BorderThickness="1" Padding="4,2" FontSize="11" Height="22" CornerRadius="2"/>
+                                                </Grid>
+                                                <Grid Grid.Column="3" ColumnDefinitions="14,*">
+                                                    <TextBlock Text="H" Foreground="#959595" FontSize="10" VerticalAlignment="Center"/>
+                                                    <TextBox Grid.Column="1" Tag="ScaleY" GotFocus="InspectorTextBox_GotFocus" LostFocus="InspectorTextBox_LostFocus" Text="{Binding Owner.ScaleY, Mode=TwoWay}" Background="#2A2A2A" BorderBrush="#1A1A1A" Foreground="#DCDCDC" BorderThickness="1" Padding="4,2" FontSize="11" Height="22" CornerRadius="2"/>
+                                                </Grid>
+                                            </Grid>
+                                            <Grid ColumnDefinitions="60,*,8,*">
+                                                <TextBlock Text="Align" Foreground="#959595" VerticalAlignment="Center" FontSize="11"/>
+                                                <ComboBox Grid.Column="1" SelectedIndex="{Binding Owner.SpriteAlignX, Mode=TwoWay}" Background="#2A2A2A" BorderBrush="#1A1A1A" Foreground="#DCDCDC" FontSize="10" Height="22" Padding="4,2" CornerRadius="2">
+                                                    <ComboBoxItem Content="左"/>
+                                                    <ComboBoxItem Content="中"/>
+                                                    <ComboBoxItem Content="右"/>
+                                                </ComboBox>
+                                                <ComboBox Grid.Column="3" SelectedIndex="{Binding Owner.SpriteAlignY, Mode=TwoWay}" Background="#2A2A2A" BorderBrush="#1A1A1A" Foreground="#DCDCDC" FontSize="10" Height="22" Padding="4,2" CornerRadius="2">
+                                                    <ComboBoxItem Content="顶"/>
+                                                    <ComboBoxItem Content="中"/>
+                                                    <ComboBoxItem Content="底"/>
+                                                </ComboBox>
+                                            </Grid>
+                                            <Grid ColumnDefinitions="60,*">
+                                                <TextBlock Text="HitTest" Foreground="#959595" VerticalAlignment="Center" FontSize="11"/>
+                                                <CheckBox Grid.Column="1" IsChecked="{Binding Owner.SpriteHitTestEnabled, Mode=TwoWay}" Content="可点选拖动" Foreground="#AAAAAA" FontSize="11"/>
+                                            </Grid>
+                                            <Grid ColumnDefinitions="60,*">
+                                                <TextBlock Text="Color" Foreground="#959595" VerticalAlignment="Center" FontSize="11"/>
+                                                <Border Grid.Column="1" Background="{Binding Owner.SpriteBrush}" Height="18" CornerRadius="2" BorderBrush="#1A1A1A" BorderThickness="1"/>
+                                            </Grid>
+                                            <Grid ColumnDefinitions="60,*">
+                                                <TextBlock Text="Opacity" Foreground="#959595" VerticalAlignment="Center" FontSize="11"/>
+                                                <Slider Grid.Column="1" Minimum="0" Maximum="1" Value="{Binding Owner.Opacity, Mode=TwoWay}" Margin="0,-4,0,-4" Height="24"/>
+                                            </Grid>
+                                        </StackPanel>
+                                      </Expander>
+                                    </DataTemplate>
+
+                                    <!-- ══ Vision(可选组件,可移除)══ -->
+                                    <DataTemplate DataType="vm:VisionComponentEditor">
+                                      <Expander IsExpanded="{Binding IsExpanded, Mode=TwoWay}" HorizontalAlignment="Stretch" Foreground="#DCDCDC" Background="#383838" BorderThickness="0" CornerRadius="0">
+                                        <Expander.Header>
+                                            <Grid ColumnDefinitions="Auto,Auto,*,Auto">
+                                                <TextBlock Text="{Binding Icon}" FontSize="12" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                                                <CheckBox Grid.Column="1" IsChecked="{Binding Owner.VisionEnabled, Mode=TwoWay}" ToolTip.Tip="启用/停用该组件" Margin="0,0,4,0" MinWidth="0"/>
+                                                <TextBlock Grid.Column="2" Text="{Binding Title}" FontWeight="SemiBold" FontSize="12" VerticalAlignment="Center"/>
+                                                <Button Grid.Column="3" Content="✕" Background="Transparent" BorderThickness="0" Foreground="#AA5555" FontSize="11" Padding="6,0" IsVisible="{Binding CanRemove}" Command="{Binding RemoveCommand}" ToolTip.Tip="移除组件"/>
+                                            </Grid>
+                                        </Expander.Header>
+                                        <StackPanel Margin="12,8" Spacing="8">
+                                            <Grid ColumnDefinitions="80,*">
+                                                <TextBlock Text="Radius" Foreground="#959595" VerticalAlignment="Center" FontSize="11"/>
+                                                <TextBox Grid.Column="1" Tag="VisionRadius" GotFocus="InspectorTextBox_GotFocus" LostFocus="InspectorTextBox_LostFocus" Text="{Binding Owner.VisionRadius, Mode=TwoWay}" Background="#2A2A2A" BorderBrush="#1A1A1A" Foreground="#DCDCDC" BorderThickness="1" Padding="4,2" FontSize="11" Height="22" CornerRadius="2"/>
+                                            </Grid>
+                                            <Grid ColumnDefinitions="80,*">
+                                                <TextBlock Text="Orientation" Foreground="#959595" VerticalAlignment="Center" FontSize="11"/>
+                                                <TextBox Grid.Column="1" Tag="Orientation" GotFocus="InspectorTextBox_GotFocus" LostFocus="InspectorTextBox_LostFocus" Text="{Binding Owner.Orientation, Mode=TwoWay}" Background="#2A2A2A" BorderBrush="#1A1A1A" Foreground="#DCDCDC" BorderThickness="1" Padding="4,2" FontSize="11" Height="22" CornerRadius="2"/>
+                                            </Grid>
+                                            <Separator Background="#2A2A2A" Height="1" Margin="0,4"/>
+                                            <Grid ColumnDefinitions="*,Auto">
+                                                <TextBlock Text="Vision Cones" Foreground="#959595" VerticalAlignment="Center" FontSize="11" FontWeight="Bold"/>
+                                                <Button Grid.Column="1" Content="+" Click="AddVisionCone_Click" Background="#454545" BorderBrush="#1A1A1A" BorderThickness="1" Foreground="#DCDCDC" FontSize="13" Width="24" Height="24" Padding="0" CornerRadius="3"/>
+                                            </Grid>
+                                            <ItemsControl ItemsSource="{Binding Owner.VisionCones}">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <Border Background="#2A2A2A"
+                                                        BorderBrush="#1A1A1A"
+                                                        BorderThickness="1"
+                                                        CornerRadius="3"
+                                                        Padding="8,4"
+                                                        Margin="0,2">
+                                                    <Grid ColumnDefinitions="*,Auto">
+                                                        <TextBlock Text="{Binding DisplayText}"
+                                                                   Foreground="#DCDCDC"
+                                                                   FontSize="10"
+                                                                   VerticalAlignment="Center"
+                                                                   DoubleTapped="VisionConeItem_DoubleTapped"/>
+                                                        <Button Grid.Column="1"
+                                                                Content="×"
+                                                                Click="RemoveVisionCone_Click"
+                                                                CommandParameter="{Binding .}"
+                                                                Background="Transparent"
+                                                                BorderThickness="0"
+                                                                Foreground="#FF5555"
+                                                                FontSize="16"
+                                                                Width="20"
+                                                                Height="20"
+                                                                Padding="0"
+                                                                Margin="4,0,0,0"/>
+                                                    </Grid>
+                                                </Border>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                        </StackPanel>
+                                      </Expander>
+                                    </DataTemplate>
+
+                                    <!-- 墙壁组件 -->
+                                    <DataTemplate DataType="vm:WallComponentEditor">
+                                      <Expander IsExpanded="{Binding IsExpanded, Mode=TwoWay}" HorizontalAlignment="Stretch" Foreground="#DCDCDC" Background="#383838" BorderThickness="0" CornerRadius="0">
+                                        <Expander.Header>
+                                            <Grid ColumnDefinitions="Auto,*,Auto">
+                                                <TextBlock Text="{Binding Icon}" FontSize="12" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                                                <TextBlock Grid.Column="1" Text="{Binding Title}" FontWeight="SemiBold" FontSize="12" VerticalAlignment="Center"/>
+                                                <Button Grid.Column="2" Content="✕" Background="Transparent" BorderThickness="0" Foreground="#AA5555" FontSize="11" Padding="6,0" IsVisible="{Binding CanRemove}" Command="{Binding RemoveCommand}" ToolTip.Tip="移除组件"/>
+                                            </Grid>
+                                        </Expander.Header>
+                                        <StackPanel Margin="12,8" Spacing="8">
+                                            <Grid ColumnDefinitions="80,*">
+                                                <TextBlock Text="Type" Foreground="#959595" VerticalAlignment="Center" FontSize="11"/>
+                                                <ComboBox Grid.Column="1" SelectedIndex="{Binding Owner.WallType, Mode=TwoWay}" Background="#2A2A2A" BorderBrush="#1A1A1A" Foreground="#DCDCDC" FontSize="11" Height="22" Padding="4,2" CornerRadius="2">
+                                                    <ComboBoxItem Content="实心墙"/>
+                                                    <ComboBoxItem Content="门"/>
+                                                    <ComboBoxItem Content="窗户"/>
+                                                    <ComboBoxItem Content="隐形墙"/>
+                                                    <ComboBoxItem Content="地形"/>
+                                                </ComboBox>
+                                            </Grid>
+                                            <Grid ColumnDefinitions="80,*" IsVisible="{Binding Owner.IsDoor}">
+                                                <TextBlock Text="门状态" Foreground="#959595" VerticalAlignment="Center" FontSize="11"/>
+                                                <ToggleButton Grid.Column="1" IsChecked="{Binding Owner.IsDoorOpen, Mode=TwoWay}" Background="#454545" BorderBrush="#1A1A1A" BorderThickness="1" Foreground="#DCDCDC" FontSize="11" Padding="8,3" CornerRadius="3" HorizontalAlignment="Stretch">
+                                                    <Panel>
+                                                        <TextBlock Text="🟢 开启（不阻挡视野）" IsVisible="{Binding Owner.IsDoorOpen}"/>
+                                                        <TextBlock Text="🔴 关闭（阻挡视野）" IsVisible="{Binding !Owner.IsDoorOpen}"/>
+                                                    </Panel>
+                                                </ToggleButton>
+                                            </Grid>
+                                            <Grid ColumnDefinitions="80,*">
+                                                <TextBlock Text="Texture" Foreground="#959595" VerticalAlignment="Center" FontSize="11"/>
+                                                <StackPanel Grid.Column="1" Spacing="4">
+                                                    <TextBlock Text="{Binding Owner.WallTextureName}" Foreground="#AAAAAA" FontSize="10" TextTrimming="CharacterEllipsis"/>
+                                                    <Button Content="选择纹理..." Click="SelectWallTexture_Click" Background="#454545" BorderBrush="#1A1A1A" BorderThickness="1" Foreground="#DCDCDC" FontSize="11" Padding="8,3" CornerRadius="3" HorizontalAlignment="Stretch"/>
+                                                </StackPanel>
+                                            </Grid>
+
+                                            <Grid ColumnDefinitions="80,*,8,*">
+                                                <TextBlock Text="Tile Size" Foreground="#959595" VerticalAlignment="Center" FontSize="11"/>
+                                                <TextBox Grid.Column="1" Text="{Binding Owner.WallTileWidth, Mode=TwoWay}" Watermark="宽度" Background="#2A2A2A" BorderBrush="#1A1A1A" Foreground="#DCDCDC" BorderThickness="1" Padding="4,2" FontSize="11" Height="22" CornerRadius="2"/>
+                                                <TextBox Grid.Column="3" Text="{Binding Owner.WallTileHeight, Mode=TwoWay}" Watermark="高度" Background="#2A2A2A" BorderBrush="#1A1A1A" Foreground="#DCDCDC" BorderThickness="1" Padding="4,2" FontSize="11" Height="22" CornerRadius="2"/>
+                                            </Grid>
+                                            <Grid ColumnDefinitions="80,*">
+                                                <TextBlock Text="Thickness" Foreground="#959595" VerticalAlignment="Center" FontSize="11"/>
+                                                <TextBox Grid.Column="1" Text="{Binding Owner.WallThickness, Mode=TwoWay}" Background="#2A2A2A" BorderBrush="#1A1A1A" Foreground="#DCDCDC" BorderThickness="1" Padding="4,2" FontSize="11" Height="22" CornerRadius="2"/>
+                                            </Grid>
+
+                                            <CheckBox Content="阻挡视野" IsChecked="{Binding Owner.WallBlocksVision, Mode=TwoWay}" Foreground="#DCDCDC" FontSize="11"/>
+                                            <CheckBox Content="阻挡移动" IsChecked="{Binding Owner.WallBlocksMovement, Mode=TwoWay}" Foreground="#DCDCDC" FontSize="11"/>
+                                        </StackPanel>
+                                      </Expander>
+                                    </DataTemplate>
+
+                                    <!-- ══ Token 组件 ══ -->
+                                    <DataTemplate DataType="vm:TokenComponentEditor">
+                                      <Expander IsExpanded="{Binding IsExpanded, Mode=TwoWay}" HorizontalAlignment="Stretch" Foreground="#DCDCDC" Background="#383838" BorderThickness="0" CornerRadius="0">
+                                        <Expander.Header>
+                                            <Grid ColumnDefinitions="Auto,*,Auto">
+                                                <TextBlock Text="{Binding Icon}" FontSize="12" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                                                <TextBlock Grid.Column="1" Text="{Binding Title}" FontWeight="SemiBold" FontSize="12" VerticalAlignment="Center"/>
+                                                <Button Grid.Column="2" Content="✕" Background="Transparent" BorderThickness="0" Foreground="#AA5555" FontSize="11" Padding="6,0" IsVisible="{Binding CanRemove}" Command="{Binding RemoveCommand}" ToolTip.Tip="移除组件"/>
+                                            </Grid>
+                                        </Expander.Header>
+                                        <StackPanel Margin="12,8" Spacing="8">
+                                            <Grid ColumnDefinitions="80,*">
+                                                <TextBlock Text="Token 名称" Foreground="#959595" VerticalAlignment="Center" FontSize="11"/>
+                                                <TextBox Grid.Column="1" Text="{Binding Owner.TokenName, Mode=TwoWay}" Background="#2A2A2A" BorderBrush="#1A1A1A" Foreground="#DCDCDC" BorderThickness="1" Padding="4,2" FontSize="11" Height="22" CornerRadius="2"/>
+                                            </Grid>
+                                            <Grid ColumnDefinitions="80,*">
+                                                <TextBlock Text="先攻顺序" Foreground="#959595" VerticalAlignment="Center" FontSize="11"/>
+                                                <TextBox Grid.Column="1" Text="{Binding Owner.InitiativeOrder, Mode=TwoWay}" Background="#2A2A2A" BorderBrush="#1A1A1A" Foreground="#DCDCDC" BorderThickness="1" Padding="4,2" FontSize="11" Height="22" CornerRadius="2"/>
+                                            </Grid>
+                                            <Grid ColumnDefinitions="80,*">
+                                                <TextBlock Text="移动速度" Foreground="#959595" VerticalAlignment="Center" FontSize="11"/>
+                                                <TextBox Grid.Column="1" Text="{Binding Owner.MovementSpeed, Mode=TwoWay}" Background="#2A2A2A" BorderBrush="#1A1A1A" Foreground="#DCDCDC" BorderThickness="1" Padding="4,2" FontSize="11" Height="22" CornerRadius="2"/>
+                                            </Grid>
+                                            <CheckBox Content="玩家控制" IsChecked="{Binding Owner.IsPlayerControlled, Mode=TwoWay}" Foreground="#DCDCDC" FontSize="11"/>
+                                        </StackPanel>
+                                      </Expander>
+                                    </DataTemplate>
+
+                                    <!-- ══ 兜底:未知/其他组件(Token 等)══ -->
+                                    <DataTemplate DataType="vm:GenericComponentEditor">
+                                      <Expander IsExpanded="{Binding IsExpanded, Mode=TwoWay}" HorizontalAlignment="Stretch" Foreground="#DCDCDC" Background="#383838" BorderThickness="0" CornerRadius="0">
+                                        <Expander.Header>
+                                            <Grid ColumnDefinitions="Auto,*,Auto">
+                                                <TextBlock Text="{Binding Icon}" FontSize="12" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                                                <TextBlock Grid.Column="1" Text="{Binding Title}" FontWeight="SemiBold" FontSize="12" VerticalAlignment="Center"/>
+                                                <Button Grid.Column="2" Content="✕" Background="Transparent" BorderThickness="0" Foreground="#AA5555" FontSize="11" Padding="6,0" IsVisible="{Binding CanRemove}" Command="{Binding RemoveCommand}" ToolTip.Tip="移除组件"/>
+                                            </Grid>
+                                        </Expander.Header>
+                                        <TextBlock Margin="12,8" Text="该组件暂无专用编辑器。" Foreground="#777777" FontSize="11"/>
+                                      </Expander>
+                                    </DataTemplate>
+
+                                </ItemsControl.DataTemplates>
+                            </ItemsControl>
+                        </StackPanel>
+
+                        <Border Padding="20,20,20,40">
+                            <Button Content="Add Component"
+                                    Click="AddComponent_Click"
+                                    HorizontalAlignment="Stretch"
+                                    HorizontalContentAlignment="Center"
+                                    Background="#454545"
+                                    BorderBrush="#1A1A1A"
+                                    BorderThickness="1"
+                                    Foreground="#DCDCDC"
+                                    Height="30"
+                                    CornerRadius="3"
+                                    FontSize="12"/>
+                        </Border>
+                    </StackPanel>
+                </ScrollViewer>
+            </Grid>
+        </Border>
+    </Grid>
+</UserControl>

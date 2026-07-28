@@ -1,0 +1,1 @@
+{"Name":"木桌","Type":"StaticObjectClass","Components":[{"Type":"Transform","Properties":{}},{"Type":"SpriteRenderer","Properties":{"spriteColor":"#8B6914","opacity":"1"}}]}

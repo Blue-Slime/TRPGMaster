@@ -1,0 +1,43 @@
+# Build outputs
+bin/
+obj/
+out/
+
+# Visual Studio / Rider
+.vs/
+.vscode/
+.idea/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+*.slnLaunch.user
+
+# Avalonia
+__AvaloniaResources
+
+# Temporary files
+*.tmp
+*.log
+silk-debug.log
+temp_*.cs
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# User-specific data
+shared-data/
+*.db
+*.sqlite
+
+# NuGet
+packages/
+*.nupkg
+
+# Test results
+TestResults/
+*.trx
+
+# Dependencies that should be restored
+!**/packages/build/

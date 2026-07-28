@@ -1,0 +1,286 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:vm="using:MasterServerUI.ViewModels"
+        mc:Ignorable="d" d:DesignWidth="1400" d:DesignHeight="800"
+        x:Class="MasterServerUI.Views.MainWindow"
+        x:DataType="vm:MainWindowViewModel"
+        Title="{Binding Title}"
+        Width="1400" Height="800"
+        WindowStartupLocation="CenterScreen"
+        ExtendClientAreaToDecorationsHint="True"
+        ExtendClientAreaTitleBarHeightHint="-1">
+
+    <Panel>
+        <!-- 自定义标题栏 -->
+        <Border Height="32" VerticalAlignment="Top" Background="#1E1E1E" IsHitTestVisible="False">
+            <Grid>
+                <TextBlock Text="{Binding Title}" Margin="12,0,0,0"
+                           VerticalAlignment="Center" FontWeight="SemiBold" Foreground="#E0E0E0"/>
+            </Grid>
+        </Border>
+
+        <!-- 主内容 -->
+        <DockPanel Margin="0,32,0,0">
+            <!-- 底部状态栏 -->
+            <Border DockPanel.Dock="Bottom" Height="28" Background="#007ACC" Padding="8,0">
+                <StackPanel Orientation="Horizontal" Spacing="20">
+                    <StackPanel Orientation="Horizontal" Spacing="4">
+                        <TextBlock Text="●" Foreground="{Binding ServerStatusColor}" VerticalAlignment="Center"/>
+                        <TextBlock Text="{Binding ServerStatus}" Foreground="White" VerticalAlignment="Center"/>
+                    </StackPanel>
+                    <TextBlock Text="{Binding Port, StringFormat='端口: {0}'}" Foreground="White" VerticalAlignment="Center"/>
+                    <TextBlock Text="{Binding OnlineCount, StringFormat='在线: {0} 人'}" Foreground="White" VerticalAlignment="Center"/>
+                    <TextBlock Text="{Binding RoomCount, StringFormat='房间: {0} 个'}" Foreground="White" VerticalAlignment="Center"/>
+                    <TextBlock Text="{Binding CpuUsage, StringFormat='CPU: {0}'}" Foreground="White" VerticalAlignment="Center"/>
+                    <TextBlock Text="{Binding MemoryUsage, StringFormat='内存: {0}'}" Foreground="White" VerticalAlignment="Center"/>
+                </StackPanel>
+            </Border>
+
+            <!-- 三栏 -->
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" MinWidth="240" MaxWidth="400"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="320"/>
+                </Grid.ColumnDefinitions>
+
+                <!-- 左：房间列表 -->
+                <Border Grid.Column="0" Background="#252526" BorderBrush="#3C3C3C" BorderThickness="0,0,1,0">
+                    <DockPanel>
+                        <Border DockPanel.Dock="Top" BorderBrush="#3C3C3C" BorderThickness="0,0,0,1" Padding="16,12">
+                            <Grid>
+                                <TextBlock Text="房间列表" FontSize="16" FontWeight="SemiBold" Foreground="#FFFFFF" VerticalAlignment="Center"/>
+                                <Button HorizontalAlignment="Right" Width="32" Height="32"
+                                        Background="#3BA55D" CornerRadius="4"
+                                        ToolTip.Tip="创建新房间"
+                                        Command="{Binding CreateRoomCommand}">
+                                    <TextBlock Text="+" FontSize="20" FontWeight="Bold" Foreground="White"/>
+                                </Button>
+                            </Grid>
+                        </Border>
+                        <Border DockPanel.Dock="Bottom" BorderBrush="#3C3C3C" BorderThickness="0,1,0,0" Padding="12">
+                            <StackPanel Spacing="8">
+                                <Button HorizontalAlignment="Stretch" MinHeight="32" Padding="8,6"
+                                        IsEnabled="{Binding !IsServerRunning}"
+                                        Command="{Binding StartServerCommand}">
+                                    <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Center">
+                                        <TextBlock Text="▶" FontSize="14"/>
+                                        <TextBlock Text="启动服务器" VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                </Button>
+                                <Button HorizontalAlignment="Stretch" MinHeight="32" Padding="8,6" Classes="danger"
+                                        IsEnabled="{Binding IsServerRunning}"
+                                        Command="{Binding StopServerCommand}">
+                                    <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Center">
+                                        <TextBlock Text="■" FontSize="14"/>
+                                        <TextBlock Text="停止服务器" VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                </Button>
+                                <Button HorizontalAlignment="Stretch" MinHeight="32" Padding="8,6"
+                                        Command="{Binding RefreshRoomListCommand}">
+                                    <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Center">
+                                        <TextBlock Text="🔄" FontSize="14"/>
+                                        <TextBlock Text="刷新列表" VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                </Button>
+                                <Button HorizontalAlignment="Stretch" MinHeight="32" Padding="8,6"
+                                        Command="{Binding OpenSettingsCommand}">
+                                    <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Center">
+                                        <TextBlock Text="⚙️" FontSize="14"/>
+                                        <TextBlock Text="服务器设置" VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                </Button>
+                            </StackPanel>
+                        </Border>
+                        <ScrollViewer>
+                            <ListBox ItemsSource="{Binding Rooms}" SelectedItem="{Binding SelectedRoom}"
+                                     Background="Transparent" BorderThickness="0">
+                                <ListBox.ItemTemplate>
+                                    <DataTemplate x:DataType="vm:RoomItemViewModel">
+                                        <Border Padding="12,10">
+                                            <StackPanel>
+                                                <Grid ColumnDefinitions="*,Auto">
+                                                    <StackPanel Grid.Column="0">
+                                                        <TextBlock Text="{Binding RoomName}" FontSize="14" FontWeight="SemiBold" Foreground="#FFFFFF"/>
+                                                        <TextBlock Text="{Binding RoomId, StringFormat='ID: {0}'}" FontSize="11" Foreground="#999999" Margin="0,2,0,0"/>
+                                                    </StackPanel>
+                                                    <Border Grid.Column="1" Background="{Binding StatusColor}"
+                                                            CornerRadius="10" Padding="8,4" VerticalAlignment="Center">
+                                                        <TextBlock Text="{Binding OnlineLabel}" FontSize="11" Foreground="White"/>
+                                                    </Border>
+                                                </Grid>
+                                                <TextBlock Text="{Binding CreatorName, StringFormat='房主: {0}'}" FontSize="10" Foreground="#777777" Margin="0,4,0,0"/>
+                                            </StackPanel>
+                                        </Border>
+                                    </DataTemplate>
+                                </ListBox.ItemTemplate>
+                            </ListBox>
+                        </ScrollViewer>
+                    </DockPanel>
+                </Border>
+
+                <!-- 中：系统日志 -->
+                <Grid Grid.Column="1" Background="#1E1E1E">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+                    <Border Grid.Row="0" Background="#252526" BorderBrush="#3C3C3C" BorderThickness="0,0,0,1" Padding="16,12">
+                        <Grid>
+                            <StackPanel Orientation="Horizontal" Spacing="12">
+                                <TextBlock Text="📜" FontSize="18" VerticalAlignment="Center"/>
+                                <TextBlock Text="系统日志" FontSize="16" FontWeight="SemiBold" Foreground="#FFFFFF" VerticalAlignment="Center"/>
+                                <Border Background="#007ACC" CornerRadius="4" Padding="6,3" VerticalAlignment="Center">
+                                    <TextBlock Text="实时" FontSize="11" Foreground="White"/>
+                                </Border>
+                            </StackPanel>
+                            <Button HorizontalAlignment="Right" Width="36" Height="36"
+                                    ToolTip.Tip="清空日志" Command="{Binding ClearLogsCommand}">
+                                <TextBlock Text="🗑️" FontSize="16"/>
+                            </Button>
+                        </Grid>
+                    </Border>
+                    <Border Grid.Row="1" Background="#1A1A1A" Margin="8">
+                        <ScrollViewer VerticalScrollBarVisibility="Auto">
+                            <ItemsControl ItemsSource="{Binding LogEntries}" Margin="8">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="vm:LogEntryViewModel">
+                                        <Border Background="#252526" CornerRadius="4" Padding="12,8" Margin="0,0,0,4">
+                                            <Grid ColumnDefinitions="Auto,Auto,*">
+                                                <TextBlock Grid.Column="0" Text="{Binding TimeString}"
+                                                           FontFamily="Consolas" FontSize="11" Foreground="#999999"
+                                                           VerticalAlignment="Top" Margin="0,0,12,0"/>
+                                                <Border Grid.Column="1" Background="{Binding LevelColor}"
+                                                        CornerRadius="3" Padding="6,2" Height="20"
+                                                        VerticalAlignment="Top" Margin="0,0,12,0">
+                                                    <TextBlock Text="{Binding LevelString}" FontSize="10" FontWeight="Bold" Foreground="White"/>
+                                                </Border>
+                                                <TextBlock Grid.Column="2" Text="{Binding Message}"
+                                                           FontFamily="Consolas" TextWrapping="Wrap" Foreground="#E0E0E0"/>
+                                            </Grid>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </ScrollViewer>
+                    </Border>
+                    <Border Grid.Row="2" Background="#252526" BorderBrush="#3C3C3C" BorderThickness="0,1,0,0" Padding="12,8">
+                        <Grid ColumnDefinitions="Auto,*,Auto">
+                            <Border Grid.Column="0" Background="#3BA55D" CornerRadius="4" Padding="8,4">
+                                <TextBlock Text="● 实时" FontSize="11" Foreground="White"/>
+                            </Border>
+                            <TextBlock Grid.Column="1" Text="{Binding LogEntries.Count, StringFormat='共 {0} 条'}"
+                                       FontSize="11" Foreground="#999999" VerticalAlignment="Center" Margin="12,0"/>
+                            <Button Grid.Column="2" Content="清空" Classes="danger" Width="60" Height="28"
+                                    Command="{Binding ClearLogsCommand}"/>
+                        </Grid>
+                    </Border>
+                </Grid>
+
+                <!-- 右：房间详情+成员+操作 -->
+                <Border Grid.Column="2" Background="#252526" BorderBrush="#3C3C3C" BorderThickness="1,0,0,0">
+                    <ScrollViewer>
+                        <StackPanel Margin="16" Spacing="16">
+                            <!-- 房间信息 -->
+                            <Border Classes="panel">
+                                <StackPanel>
+                                    <TextBlock Text="房间详情" FontSize="16" FontWeight="SemiBold" Foreground="#FFFFFF" Margin="0,0,0,12"/>
+                                    <TextBlock Text="{Binding SelectedRoom.RoomName, FallbackValue='未选择房间'}"
+                                               FontSize="18" FontWeight="Bold" Foreground="#FFFFFF" Margin="0,0,0,8"/>
+                                    <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto,Auto" Margin="0,8,0,0">
+                                        <TextBlock Grid.Row="0" Grid.Column="0" Text="房间ID:" Foreground="#999" Margin="0,4"/>
+                                        <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding SelectedRoom.RoomId, FallbackValue='-'}" Margin="12,4"/>
+                                        <TextBlock Grid.Row="1" Grid.Column="0" Text="房主:" Foreground="#999" Margin="0,4"/>
+                                        <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding SelectedRoom.CreatorName, FallbackValue='-'}" Margin="12,4"/>
+                                        <TextBlock Grid.Row="2" Grid.Column="0" Text="在线人数:" Foreground="#999" Margin="0,4"/>
+                                        <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding SelectedRoom.PlayerCountDisplay, FallbackValue='0人'}" Foreground="#3BA55D" FontWeight="Bold" Margin="12,4"/>
+                                        <TextBlock Grid.Row="3" Grid.Column="0" Text="状态:" Foreground="#999" Margin="0,4"/>
+                                        <TextBlock Grid.Row="3" Grid.Column="1" Text="{Binding SelectedRoom.OnlineLabel, FallbackValue='-'}" Foreground="{Binding SelectedRoom.StatusColor}" FontWeight="Bold" Margin="12,4"/>
+                                    </Grid>
+                                </StackPanel>
+                            </Border>
+
+                            <!-- 成员列表 -->
+                            <Border Classes="panel">
+                                <StackPanel>
+                                    <TextBlock Text="在场成员" FontSize="14" FontWeight="SemiBold" Foreground="#FFFFFF" Margin="0,0,0,12"/>
+                                    <ItemsControl ItemsSource="{Binding RoomMembers}">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate x:DataType="vm:MemberItemViewModel">
+                                                <Border Background="#1A1A1A" CornerRadius="4" Padding="10,8" Margin="0,0,0,4">
+                                                    <Grid ColumnDefinitions="*,Auto,Auto">
+                                                        <StackPanel Grid.Column="0">
+                                                            <TextBlock Text="{Binding Username}" FontSize="13" FontWeight="SemiBold" Foreground="#E0E0E0"/>
+                                                            <TextBlock Text="{Binding UserId, StringFormat='ID: {0}'}" FontSize="10" Foreground="#777777" Margin="0,2,0,0"/>
+                                                        </StackPanel>
+                                                        <Border Grid.Column="1" Background="{Binding OnlineStatusColor}"
+                                                                CornerRadius="8" Padding="8,4" VerticalAlignment="Center" Margin="8,0">
+                                                            <TextBlock Text="{Binding OnlineStatus}" FontSize="10" Foreground="White"/>
+                                                        </Border>
+                                                        <Button Grid.Column="2" Width="24" Height="24" Padding="0"
+                                                                Background="#ED4245" CornerRadius="4"
+                                                                ToolTip.Tip="踢出成员"
+                                                                Command="{Binding $parent[ItemsControl].((vm:MainWindowViewModel)DataContext).KickMemberCommand}"
+                                                                CommandParameter="{Binding}">
+                                                            <TextBlock Text="×" FontSize="14" FontWeight="Bold" Foreground="White"/>
+                                                        </Button>
+                                                    </Grid>
+                                                </Border>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                    <TextBlock Text="暂无在场成员" FontSize="12" Foreground="#777777"
+                                               HorizontalAlignment="Center" Margin="0,16,0,0"
+                                               IsVisible="{Binding !RoomMembers.Count}"/>
+                                </StackPanel>
+                            </Border>
+
+                            <!-- 操作 -->
+                            <Border Classes="panel">
+                                <StackPanel Spacing="8">
+                                    <!-- 开启/关闭合一：按当前状态显示 -->
+                                    <Button HorizontalAlignment="Stretch" MinHeight="32" Padding="8,6"
+                                            IsEnabled="{Binding SelectedRoom, Converter={x:Static ObjectConverters.IsNotNull}}"
+                                            Command="{Binding ToggleRoomCommand}">
+                                        <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Center">
+                                            <TextBlock Text="{Binding SelectedRoom.ToggleIcon, FallbackValue='▶'}" FontSize="14"/>
+                                            <TextBlock Text="{Binding SelectedRoom.ToggleLabel, FallbackValue='开启房间'}" VerticalAlignment="Center"/>
+                                        </StackPanel>
+                                    </Button>
+                                    <!-- 编辑房间 -->
+                                    <Button HorizontalAlignment="Stretch" MinHeight="32" Padding="8,6"
+                                            Command="{Binding EditRoomCommand}"
+                                            IsEnabled="{Binding SelectedRoom, Converter={x:Static ObjectConverters.IsNotNull}}">
+                                        <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Center">
+                                            <TextBlock Text="✏️" FontSize="14"/>
+                                            <TextBlock Text="编辑房间" VerticalAlignment="Center"/>
+                                        </StackPanel>
+                                    </Button>
+                                    <Button HorizontalAlignment="Stretch" MinHeight="32" Padding="8,6"
+                                            Command="{Binding BroadcastToRoomCommand}"
+                                            IsEnabled="{Binding SelectedRoom, Converter={x:Static ObjectConverters.IsNotNull}}">
+                                        <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Center">
+                                            <TextBlock Text="💬" FontSize="14"/>
+                                            <TextBlock Text="向房间发送消息" VerticalAlignment="Center"/>
+                                        </StackPanel>
+                                    </Button>
+                                    <Button HorizontalAlignment="Stretch" MinHeight="32" Padding="8,6" Classes="danger"
+                                            Command="{Binding DeleteRoomCommand}"
+                                            IsEnabled="{Binding SelectedRoom, Converter={x:Static ObjectConverters.IsNotNull}}">
+                                        <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Center">
+                                            <TextBlock Text="🗑️" FontSize="14"/>
+                                            <TextBlock Text="删除房间" VerticalAlignment="Center"/>
+                                        </StackPanel>
+                                    </Button>
+                                </StackPanel>
+                            </Border>
+                        </StackPanel>
+                    </ScrollViewer>
+                </Border>
+            </Grid>
+        </DockPanel>
+    </Panel>
+</Window>

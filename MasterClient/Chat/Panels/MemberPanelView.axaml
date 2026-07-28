@@ -1,0 +1,72 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:panels="using:MasterClient.Chat.Panels"
+             mc:Ignorable="d" d:DesignWidth="240" d:DesignHeight="760"
+             x:Class="MasterClient.Chat.Panels.MemberPanelView"
+             x:DataType="panels:MemberPanelViewModel">
+
+    <UserControl.Styles>
+        <!-- 成员行：悬停底色浮现 -->
+        <Style Selector="Border.memberRow">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Transitions">
+                <Transitions>
+                    <BrushTransition Property="Background" Duration="0:0:0.1"/>
+                </Transitions>
+            </Setter>
+        </Style>
+        <Style Selector="Border.memberRow:pointerover">
+            <Setter Property="Background" Value="{DynamicResource BgModifierHover}"/>
+        </Style>
+    </UserControl.Styles>
+
+    <Border Background="{DynamicResource BgSecondary}">
+        <Grid RowDefinitions="48,*">
+            <Border Grid.Row="0" Background="{DynamicResource BgSecondary}"
+                    BorderBrush="{DynamicResource Divider}" BorderThickness="0,0,0,1" Padding="16,0">
+                <TextBlock Foreground="{DynamicResource TextFaint}" FontSize="{DynamicResource FontSm}"
+                           FontWeight="Bold" VerticalAlignment="Center">
+                    <Run Text="成员 —"/><Run Text="{Binding MemberCount}"/>
+                </TextBlock>
+            </Border>
+
+            <ScrollViewer Grid.Row="1" Padding="8,10">
+                <ItemsControl ItemsSource="{Binding Members}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="panels:MemberItemViewModel">
+                            <Border Classes="memberRow" Padding="8,6" Margin="0,0,0,2"
+                                    CornerRadius="{DynamicResource RadiusSm}">
+                                <StackPanel Orientation="Horizontal" Spacing="10">
+                                    <!-- 圆头像 + 在线状态点 -->
+                                    <Panel Width="32" Height="32">
+                                        <Border Width="32" Height="32" CornerRadius="{DynamicResource RadiusFull}"
+                                                Background="{Binding AvatarColor}">
+                                            <TextBlock Text="{Binding AvatarText}" Foreground="White"
+                                                       FontWeight="SemiBold"
+                                                       HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                        </Border>
+                                        <Ellipse Width="10" Height="10"
+                                                 Fill="{Binding StatusDotColor}"
+                                                 Stroke="{DynamicResource BgSecondary}" StrokeThickness="2"
+                                                 IsVisible="{Binding StatusDotVisible}"
+                                                 HorizontalAlignment="Right" VerticalAlignment="Bottom"/>
+                                    </Panel>
+                                    <StackPanel VerticalAlignment="Center">
+                                        <TextBlock Text="{Binding DisplayName}"
+                                                   Foreground="{DynamicResource TextNormal}"
+                                                   FontSize="{DynamicResource FontMd}"/>
+                                        <TextBlock Text="{Binding Role}"
+                                                   Foreground="{DynamicResource TextFaint}"
+                                                   FontSize="{DynamicResource FontXs}"/>
+                                    </StackPanel>
+                                </StackPanel>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </ScrollViewer>
+        </Grid>
+    </Border>
+</UserControl>

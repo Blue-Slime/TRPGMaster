@@ -1,0 +1,1 @@
+{"Name":"火把","Type":"StaticObjectClass","Components":[{"Type":"Transform","Properties":{}},{"Type":"SpriteRenderer","Properties":{"spriteColor":"#FF8C00","opacity":"0.9"}}]}

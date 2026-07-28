@@ -1,0 +1,12 @@
+{
+  "profiles": {
+    "MasterServer": {
+      "commandName": "Project",
+      "launchBrowser": true,
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Development"
+      },
+      "applicationUrl": "https://localhost:10609;http://localhost:10610"
+    }
+  }
+}

@@ -1,0 +1,1 @@
+{"Name":"法师","Type":"StaticObjectClass","Components":[{"Type":"Transform","Properties":{}},{"Type":"SpriteRenderer","Properties":{"spriteColor":"#5080E0","opacity":"1"}},{"Type":"Vision","Properties":{"enabled":"true","radius":"80"}}]}

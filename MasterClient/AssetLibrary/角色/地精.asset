@@ -1,0 +1,1 @@
+{"Name":"地精","Type":"StaticObjectClass","Components":[{"Type":"Transform","Properties":{}},{"Type":"SpriteRenderer","Properties":{"spriteColor":"#8B4513","opacity":"1"}},{"Type":"Vision","Properties":{"enabled":"false","radius":"30"}}]}

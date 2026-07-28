@@ -1,0 +1,1 @@
+{"Name":"柱子","Type":"StaticObjectClass","Components":[{"Type":"Transform","Properties":{}},{"Type":"SpriteRenderer","Properties":{"spriteColor":"#A0A0A0","opacity":"1"}}]}

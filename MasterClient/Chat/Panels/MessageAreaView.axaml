@@ -1,0 +1,158 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:panels="using:MasterClient.Chat.Panels"
+             xmlns:msg="using:MasterClient.Chat.Messages"
+             xmlns:chat="using:MasterClient.Chat"
+             mc:Ignorable="d" d:DesignWidth="700" d:DesignHeight="760"
+             x:Class="MasterClient.Chat.Panels.MessageAreaView"
+             x:DataType="panels:MessageAreaViewModel">
+
+    <Grid RowDefinitions="48,*,Auto,Auto" Background="{DynamicResource BgPrimary}">
+        <!-- 顶部：频道名 + 右上角搜索 -->
+        <Border Grid.Row="0" BorderBrush="{DynamicResource Divider}"
+                BorderThickness="0,0,0,1" Padding="16,0">
+            <Grid ColumnDefinitions="*,Auto" VerticalAlignment="Center">
+                <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                    <TextBlock Text="#" Foreground="{DynamicResource TextFaint}"
+                               FontWeight="Bold" FontSize="{DynamicResource FontXl}"/>
+                    <TextBlock Text="{Binding CurrentChannelName}"
+                               Foreground="{DynamicResource TextHeader}"
+                               FontWeight="SemiBold" FontSize="{DynamicResource FontLg}"/>
+                </StackPanel>
+
+                <!-- 右上角操作：置顶列表 + 搜索（命令在父 ChatRoomViewModel 上）-->
+                <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="2" VerticalAlignment="Center">
+                    <Button Classes="icon" Content="📌" ToolTip.Tip="置顶消息"
+                            Command="{Binding $parent[Window].((chat:ChatRoomViewModel)DataContext).OpenPinnedCommand}"/>
+                    <Button Classes="icon" Content="🔍" ToolTip.Tip="搜索聊天记录"
+                            Command="{Binding $parent[Window].((chat:ChatRoomViewModel)DataContext).OpenSearchCommand}"/>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- 消息列表（ScrollViewer 命名供搜索跳转定位滚动）-->
+        <ScrollViewer Grid.Row="1" Name="MessageScroll" Padding="0,12" VerticalScrollBarVisibility="Auto">
+            <ItemsControl Name="MessageList" ItemsSource="{Binding Messages}">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="msg:MessageItemViewModel">
+                        <msg:MessageItemView/>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </ScrollViewer>
+
+        <!-- 正在输入 -->
+        <Border Grid.Row="2" Padding="16,2" IsVisible="{Binding ShowTypingIndicator}">
+            <TextBlock Foreground="{DynamicResource TextMuted}" FontSize="{DynamicResource FontSm}">
+                <Run Text="{Binding TypingIndicatorText}"/><Run Text=" 正在输入..."/>
+            </TextBlock>
+        </Border>
+
+        <!-- 输入区 + 工具栏 -->
+        <Border Grid.Row="3" Padding="16,4,16,20">
+            <StackPanel Spacing="8">
+                <!-- 工具栏（命令在父 ChatRoomViewModel 上，经 Window.DataContext 取）-->
+                <StackPanel Orientation="Horizontal" Spacing="2">
+                    <Button Classes="icon" Content="🎲" ToolTip.Tip="骰子"
+                            Command="{Binding $parent[Window].((chat:ChatRoomViewModel)DataContext).QuickDiceCommand}"/>
+                    <Button Classes="icon" Content="📁" ToolTip.Tip="文件"
+                            Command="{Binding $parent[Window].((chat:ChatRoomViewModel)DataContext).AttachFileCommand}"/>
+                    <Button Classes="icon" Content="🖼" ToolTip.Tip="图片"
+                            Command="{Binding $parent[Window].((chat:ChatRoomViewModel)DataContext).AttachImageCommand}"/>
+                    <Button Classes="icon" Content="@" ToolTip.Tip="提及"
+                            Command="{Binding $parent[Window].((chat:ChatRoomViewModel)DataContext).MentionCommand}"/>
+                    <Button Classes="icon" Content="🔗" ToolTip.Tip="链接"
+                            Command="{Binding $parent[Window].((chat:ChatRoomViewModel)DataContext).InsertLinkCommand}"/>
+                    <Button Classes="icon" Content="📖" ToolTip.Tip="规则"
+                            Command="{Binding $parent[Window].((chat:ChatRoomViewModel)DataContext).InvokeRuleCommand}"/>
+                    <Button Classes="icon" Content="🃏" ToolTip.Tip="角色卡"
+                            Command="{Binding $parent[Window].((chat:ChatRoomViewModel)DataContext).OpenCharacterCardCommand}"/>
+                    <Button Classes="icon" Content="🗺" ToolTip.Tip="地图"
+                            Command="{Binding $parent[Window].((chat:ChatRoomViewModel)DataContext).OpenMapCommand}"/>
+                </StackPanel>
+
+                <!-- 待接入提示 -->
+                <TextBlock Text="{Binding $parent[Window].((chat:ChatRoomViewModel)DataContext).FeatureHint}"
+                           Foreground="{DynamicResource DiceGold}" FontSize="{DynamicResource FontSm}"
+                           IsVisible="{Binding $parent[Window].((chat:ChatRoomViewModel)DataContext).FeatureHint, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+
+                <!-- 回复引用条（正在回复某条消息时显示） -->
+                <Border IsVisible="{Binding IsReplying}"
+                        Background="{DynamicResource BgSecondary}"
+                        CornerRadius="{DynamicResource RadiusSm}" Padding="12,6">
+                    <Grid ColumnDefinitions="*,Auto">
+                        <TextBlock Grid.Column="0" Foreground="{DynamicResource TextMuted}"
+                                   FontSize="{DynamicResource FontSm}" TextTrimming="CharacterEllipsis">
+                            <Run Text="正在回复 "/><Run Text="{Binding ReplyingTo.SenderName}"
+                                Foreground="{DynamicResource TextNormal}" FontWeight="SemiBold"/>
+                        </TextBlock>
+                        <Button Grid.Column="1" Classes="icon" Content="✕"
+                                Command="{Binding CancelReplyCommand}" ToolTip.Tip="取消回复"/>
+                    </Grid>
+                </Border>
+
+                <!-- 编辑态：编辑框 + 提交/取消（编辑与发送互斥） -->
+                <Grid ColumnDefinitions="*,Auto" IsVisible="{Binding IsEditing}">
+                    <TextBox Grid.Column="0" Name="EditBox" Classes="chatInput"
+                             Text="{Binding EditInput}"
+                             Watermark="编辑消息... (Enter 提交，Esc 取消)"
+                             AcceptsReturn="True" TextWrapping="Wrap"
+                             MinHeight="44" MaxHeight="120"/>
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="4" Margin="8,0,0,0">
+                        <Button Classes="send" Content="保存" Command="{Binding CommitEditCommand}"
+                                Width="60" Height="44"/>
+                        <Button Classes="icon" Content="✕" Command="{Binding CancelEditCommand}"
+                                ToolTip.Tip="取消编辑" Height="44"/>
+                    </StackPanel>
+                </Grid>
+
+                <!-- 输入框+发送（编辑态时隐藏）+ @提及候选浮层 -->
+                <Grid ColumnDefinitions="*,Auto" IsVisible="{Binding !IsEditing}">
+                    <Panel Grid.Column="0">
+                        <TextBox Name="MessageInput" Classes="chatInput"
+                                 Text="{Binding MessageInput}"
+                                 Watermark="发送消息... (Enter 发送，Shift+Enter 换行)"
+                                 AcceptsReturn="True" TextWrapping="Wrap"
+                                 MinHeight="44" MaxHeight="120"/>
+                        <!-- @提及候选浮层（InputChanged 在 code-behind 里触发） -->
+                        <Popup IsOpen="{Binding HasMentionSuggestions}"
+                               PlacementTarget="{Binding #MessageInput}"
+                               Placement="Top" VerticalOffset="-4">
+                            <Border Background="{DynamicResource BgFloating}"
+                                    BorderBrush="{DynamicResource Divider}" BorderThickness="1"
+                                    CornerRadius="{DynamicResource RadiusSm}"
+                                    BoxShadow="0 4 12 0 #40000000"
+                                    MaxHeight="220" MinWidth="200">
+                                <ListBox ItemsSource="{Binding MentionSuggestions}"
+                                         Background="Transparent"
+                                         Name="MentionList">
+                                    <ListBox.ItemTemplate>
+                                        <DataTemplate x:DataType="panels:MemberItemViewModel">
+                                            <StackPanel Orientation="Horizontal" Spacing="8" Margin="8,4">
+                                                <Border Width="24" Height="24"
+                                                        CornerRadius="{DynamicResource RadiusFull}"
+                                                        Background="{Binding AvatarColor}">
+                                                    <TextBlock Text="{Binding AvatarText}" Foreground="White"
+                                                               FontSize="11" FontWeight="SemiBold"
+                                                               HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                </Border>
+                                                <TextBlock Text="{Binding DisplayName}"
+                                                           Foreground="{DynamicResource TextNormal}"
+                                                           FontSize="13" VerticalAlignment="Center"/>
+                                            </StackPanel>
+                                        </DataTemplate>
+                                    </ListBox.ItemTemplate>
+                                </ListBox>
+                            </Border>
+                        </Popup>
+                    </Panel>
+                    <Button Grid.Column="1" Classes="send" Content="发送"
+                            Command="{Binding SendMessageCommand}"
+                            Width="72" Height="44" Margin="8,0,0,0"/>
+                </Grid>
+            </StackPanel>
+        </Border>
+    </Grid>
+</UserControl>

@@ -1,0 +1,65 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d" d:DesignWidth="480" d:DesignHeight="380"
+        x:Class="MapEngine.Avalonia.Views.SettingsDialog"
+        Title="全局设置"
+        Width="480" Height="380"
+        WindowStartupLocation="CenterOwner"
+        CanResize="False"
+        Background="#2D2D30">
+
+    <Grid RowDefinitions="Auto,*,Auto" Margin="16">
+        <TextBlock Grid.Row="0"
+                   Text="全局设置"
+                   Foreground="#FFFFFF"
+                   FontSize="18"
+                   FontWeight="Bold"
+                   Margin="0,0,0,12"/>
+
+        <ScrollViewer Grid.Row="1">
+            <StackPanel Spacing="10">
+                <StackPanel>
+                    <TextBlock Text="地图包名称" Foreground="#CCCCCC" Margin="0,0,0,4"/>
+                    <TextBox x:Name="PackageNameBox" Background="#1E1E1E" Foreground="#FFFFFF"/>
+                </StackPanel>
+
+                <StackPanel>
+                    <TextBlock Text="每格英尺数 (FeetPerCell)" Foreground="#CCCCCC" Margin="0,0,0,4"/>
+                    <NumericUpDown x:Name="FeetPerCellBox" Minimum="1" Maximum="100" Increment="1"
+                                   Background="#1E1E1E" Foreground="#FFFFFF"/>
+                </StackPanel>
+
+                <StackPanel>
+                    <TextBlock Text="默认缩放 (%)" Foreground="#CCCCCC" Margin="0,0,0,4"/>
+                    <NumericUpDown x:Name="DefaultZoomBox" Minimum="10" Maximum="500" Increment="10"
+                                   Background="#1E1E1E" Foreground="#FFFFFF"/>
+                </StackPanel>
+
+                <CheckBox x:Name="ShowGridBox" Content="默认显示网格" Foreground="#CCCCCC"/>
+
+                <StackPanel>
+                    <TextBlock Text="Agent TCP 端口" Foreground="#CCCCCC" Margin="0,0,0,4"/>
+                    <NumericUpDown x:Name="AgentPortBox" Minimum="1024" Maximum="65535" Increment="1"
+                                   Background="#1E1E1E" Foreground="#FFFFFF"/>
+                </StackPanel>
+
+                <TextBlock Text="资源导入模式：copy（已锁定，云端同步兼容）"
+                           Foreground="#888888"
+                           FontStyle="Italic"
+                           Margin="0,4,0,0"/>
+            </StackPanel>
+        </ScrollViewer>
+
+        <StackPanel Grid.Row="2"
+                    Orientation="Horizontal"
+                    HorizontalAlignment="Right"
+                    Spacing="8"
+                    Margin="0,12,0,0">
+            <Button Content="取消" Click="OnCancelClick" Width="80"/>
+            <Button Content="保存" Click="OnSaveClick" Width="80"
+                    Background="#0E639C" Foreground="#FFFFFF"/>
+        </StackPanel>
+    </Grid>
+</Window>

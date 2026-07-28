@@ -1,0 +1,61 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:connect="using:MasterClient.Connect"
+             mc:Ignorable="d" d:DesignWidth="600" d:DesignHeight="500"
+             x:Class="MasterClient.Connect.ConnectingView"
+             x:DataType="connect:ConnectingViewModel">
+
+    <Border Background="#0a0a0f">
+        <Panel HorizontalAlignment="Center" VerticalAlignment="Center">
+
+            <!-- 连接中态：转圈 + 状态文字 + 取消 -->
+            <StackPanel Spacing="24" HorizontalAlignment="Center"
+                        IsVisible="{Binding !HasError}">
+                <Border Width="72" Height="72" CornerRadius="36" Background="#2d4a6a"
+                        HorizontalAlignment="Center">
+                    <TextBlock Text="⏳" FontSize="34"
+                               HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                </Border>
+                <TextBlock Text="{Binding StatusText}"
+                           FontSize="16" Foreground="#e0e8f0"
+                           HorizontalAlignment="Center" TextWrapping="Wrap"
+                           MaxWidth="360" TextAlignment="Center"/>
+                <Button Command="{Binding CancelCommand}"
+                        Classes="banner-btn-secondary"
+                        HorizontalAlignment="Center"
+                        HorizontalContentAlignment="Center"
+                        Content="取消并返回" Height="40" Width="160" Margin="0,8,0,0"/>
+            </StackPanel>
+
+            <!-- 错误态：停在此界面显示错误，用户手动重试或返回 -->
+            <StackPanel Spacing="24" HorizontalAlignment="Center"
+                        IsVisible="{Binding HasError}">
+                <Border Width="72" Height="72" CornerRadius="36" Background="#5a2d2d"
+                        HorizontalAlignment="Center">
+                    <TextBlock Text="⚠" FontSize="34" Foreground="#ffb0b0"
+                               HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                </Border>
+                <TextBlock Text="连接未成功" FontSize="18" FontWeight="SemiBold"
+                           Foreground="#f0e0e0" HorizontalAlignment="Center"/>
+                <TextBlock Text="{Binding ErrorMessage}"
+                           FontSize="14" Foreground="#d0b0b0"
+                           HorizontalAlignment="Center" TextWrapping="Wrap"
+                           MaxWidth="400" TextAlignment="Center"/>
+                <StackPanel Orientation="Horizontal" Spacing="12" HorizontalAlignment="Center"
+                            Margin="0,8,0,0">
+                    <Button Command="{Binding RetryCommand}"
+                            Classes="banner-btn-primary"
+                            HorizontalContentAlignment="Center"
+                            Content="重试" Height="40" Width="120"/>
+                    <Button Command="{Binding ReturnCommand}"
+                            Classes="banner-btn-secondary"
+                            HorizontalContentAlignment="Center"
+                            Content="返回" Height="40" Width="120"/>
+                </StackPanel>
+            </StackPanel>
+
+        </Panel>
+    </Border>
+</UserControl>

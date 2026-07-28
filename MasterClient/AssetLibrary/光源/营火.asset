@@ -1,0 +1,1 @@
+{"Name":"营火","Type":"StaticObjectClass","Components":[{"Type":"Transform","Properties":{}},{"Type":"SpriteRenderer","Properties":{"spriteColor":"#FF4500","opacity":"0.95"}}]}

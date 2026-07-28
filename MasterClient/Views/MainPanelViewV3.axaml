@@ -1,0 +1,1320 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="using:MasterClient.ViewModels"
+             mc:Ignorable="d"
+             d:DesignWidth="1080" d:DesignHeight="640"
+             x:Class="MasterClient.Views.MainPanelViewV3"
+             x:DataType="vm:MainWindowViewModel">
+
+    <Panel>
+    <Grid ColumnDefinitions="220,*">
+
+        <!-- 左侧导航栏 -->
+        <Border Grid.Column="0" Background="#0a0a0f">
+            <Grid RowDefinitions="Auto,*,Auto">
+
+                <!-- Logo区域 -->
+                <Border Grid.Row="0" Padding="20,24,20,20">
+                    <StackPanel Spacing="12">
+                        <!-- Logo -->
+                        <Border Width="64" Height="64" CornerRadius="16" HorizontalAlignment="Left">
+                            <Border.Background>
+                                <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,100%">
+                                    <GradientStop Color="#667eea" Offset="0"/>
+                                    <GradientStop Color="#764ba2" Offset="1"/>
+                                </LinearGradientBrush>
+                            </Border.Background>
+                            <TextBlock Text="🎲" FontSize="32" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <StackPanel Spacing="2">
+                            <TextBlock Text="跑团大师" FontSize="20" FontWeight="Bold" Foreground="White"/>
+                            <TextBlock Text="TRPG Master" FontSize="11" Foreground="#6b7280"/>
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+
+                <!-- 导航菜单 -->
+                <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+                    <StackPanel Spacing="4" Margin="12,0">
+
+                        <!-- 主页 -->
+                        <Button Classes="nav-item" Classes.nav-active="{Binding IsHomePage}" Command="{Binding ShowHomeCommand}">
+                            <Grid ColumnDefinitions="Auto,*">
+                                <TextBlock Grid.Column="0" Text="🏠" FontSize="18" VerticalAlignment="Center" Margin="0,0,12,0"/>
+                                <TextBlock Grid.Column="1" Text="主页" FontSize="14" VerticalAlignment="Center"/>
+                            </Grid>
+                        </Button>
+
+                        <!-- 分隔线 -->
+                        <Border Height="1" Background="#1f2937" Margin="0,8"/>
+                        <TextBlock Text="游戏" FontSize="11" Foreground="#6b7280" Margin="8,4,0,8"/>
+
+                        <!-- 造访新世界 -->
+                        <Button Classes="nav-item" Classes.nav-active="{Binding IsConnectRoomPage}" Command="{Binding ConnectRoomCommand}">
+                            <Grid ColumnDefinitions="Auto,*">
+                                <TextBlock Grid.Column="0" Text="🌍" FontSize="18" VerticalAlignment="Center" Margin="0,0,12,0"/>
+                                <TextBlock Grid.Column="1" Text="造访新世界" FontSize="14" VerticalAlignment="Center"/>
+                            </Grid>
+                        </Button>
+
+                        <!-- 已知的世界 -->
+                        <Button Classes="nav-item" Classes.nav-active="{Binding IsRecentRoomsPage}" Command="{Binding ShowRecentRoomsCommand}">
+                            <Grid ColumnDefinitions="Auto,*">
+                                <TextBlock Grid.Column="0" Text="📜" FontSize="18" VerticalAlignment="Center" Margin="0,0,12,0"/>
+                                <TextBlock Grid.Column="1" Text="已知的世界" FontSize="14" VerticalAlignment="Center"/>
+                            </Grid>
+                        </Button>
+
+                        <!-- 分隔线 -->
+                        <Border Height="1" Background="#1f2937" Margin="0,8"/>
+                        <TextBlock Text="工具" FontSize="11" Foreground="#6b7280" Margin="8,4,0,8"/>
+
+                        <!-- 编辑器 -->
+                        <Button Classes="nav-item" Classes.nav-active="{Binding IsEditorsPage}" Command="{Binding ShowEditorsCommand}">
+                            <Grid ColumnDefinitions="Auto,*">
+                                <TextBlock Grid.Column="0" Text="🛠️" FontSize="18" VerticalAlignment="Center" Margin="0,0,12,0"/>
+                                <TextBlock Grid.Column="1" Text="编辑器" FontSize="14" VerticalAlignment="Center"/>
+                            </Grid>
+                        </Button>
+
+                        <!-- 分隔线 -->
+                        <Border Height="1" Background="#1f2937" Margin="0,8"/>
+                        <TextBlock Text="资源" FontSize="11" Foreground="#6b7280" Margin="8,4,0,8"/>
+
+                        <!-- 资源仓库 -->
+                        <Button Classes="nav-item" Classes.nav-active="{Binding IsStoragePage}" Command="{Binding ShowStorageCommand}">
+                            <Grid ColumnDefinitions="Auto,*">
+                                <TextBlock Grid.Column="0" Text="📁" FontSize="18" VerticalAlignment="Center" Margin="0,0,12,0"/>
+                                <TextBlock Grid.Column="1" Text="资源仓库" FontSize="14" VerticalAlignment="Center"/>
+                            </Grid>
+                        </Button>
+
+                        <!-- 分隔线 -->
+                        <Border Height="1" Background="#1f2937" Margin="0,8"/>
+
+                        <!-- 设置 -->
+                        <Button Classes="nav-item" Classes.nav-active="{Binding IsSettingsPage}" Command="{Binding ShowSettingsCommand}">
+                            <Grid ColumnDefinitions="Auto,*">
+                                <TextBlock Grid.Column="0" Text="⚙️" FontSize="18" VerticalAlignment="Center" Margin="0,0,12,0"/>
+                                <TextBlock Grid.Column="1" Text="设置" FontSize="14" VerticalAlignment="Center"/>
+                            </Grid>
+                        </Button>
+
+                        <!-- 帮助 -->
+                        <Button Classes="nav-item" Classes.nav-active="{Binding IsHelpPage}" Command="{Binding ShowHelpCommand}">
+                            <Grid ColumnDefinitions="Auto,*">
+                                <TextBlock Grid.Column="0" Text="❓" FontSize="18" VerticalAlignment="Center" Margin="0,0,12,0"/>
+                                <TextBlock Grid.Column="1" Text="帮助" FontSize="14" VerticalAlignment="Center"/>
+                            </Grid>
+                        </Button>
+
+                    </StackPanel>
+                </ScrollViewer>
+
+                <!-- 底部用户区域 -->
+                <Border Grid.Row="2" Padding="12,16" BorderBrush="#1f2937" BorderThickness="0,1,0,0">
+                    <Grid ColumnDefinitions="Auto,*,Auto">
+                        <!-- 已登录状态 -->
+                        <Button Grid.Column="0" Classes="icon-btn" Width="40" Height="40" CornerRadius="20"
+                                Background="#2d5a4a" Margin="0,0,12,0"
+                                IsVisible="{Binding IsLoggedIn}">
+                            <TextBlock Text="👤" FontSize="18" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Button>
+                        <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2"
+                                    IsVisible="{Binding IsLoggedIn}">
+                            <TextBlock Text="{Binding UserDisplayName}" FontSize="13" FontWeight="SemiBold" Foreground="White"/>
+                            <TextBlock Text="{Binding SubscriptionDisplay}" FontSize="11" Foreground="#6b7280"/>
+                        </StackPanel>
+
+                        <!-- 未登录状态 - 显示登录按钮 -->
+                        <Button Grid.Column="0" Classes="icon-btn" Width="40" Height="40" CornerRadius="20"
+                                Background="#5a4a2d" Margin="0,0,12,0"
+                                IsVisible="{Binding !IsLoggedIn}"
+                                Command="{Binding ShowLoginCommand}">
+                            <TextBlock Text="👤" FontSize="18" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Button>
+                        <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="4"
+                                    IsVisible="{Binding !IsLoggedIn}">
+                            <TextBlock Text="未登录" FontSize="13" FontWeight="SemiBold" Foreground="#9ca3af"/>
+                            <Button Classes="login-btn-small" Command="{Binding ShowLoginCommand}">
+                                <TextBlock Text="登录 / 注册" FontSize="12"/>
+                            </Button>
+                        </StackPanel>
+
+                        <!-- 设置按钮 -->
+                        <Button Grid.Column="2" Classes="icon-btn" Width="32" Height="32"
+                                ToolTip.Tip="设置" Command="{Binding ShowSettingsCommand}">
+                            <TextBlock Text="⚙️" FontSize="14"/>
+                        </Button>
+                    </Grid>
+                </Border>
+            </Grid>
+        </Border>
+
+        <!-- 右侧主内容区 -->
+        <Grid Grid.Column="1" RowDefinitions="*,Auto">
+
+            <!-- 背景图/海报区域 -->
+            <Border Grid.Row="0" Grid.RowSpan="2">
+                <Border.Background>
+                    <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,100%">
+                        <GradientStop Color="#1a1a2e" Offset="0"/>
+                        <GradientStop Color="#16213e" Offset="0.5"/>
+                        <GradientStop Color="#0f3460" Offset="1"/>
+                    </LinearGradientBrush>
+                </Border.Background>
+            </Border>
+
+            <!-- 主内容 -->
+            <ScrollViewer Grid.Row="0" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                <Grid Margin="32,24">
+
+                    <!-- ==================== 主页内容 ==================== -->
+                    <StackPanel IsVisible="{Binding IsHomePage}" Spacing="24">
+
+                        <!-- 顶部欢迎区域 - 已登录 -->
+                        <StackPanel Spacing="8" IsVisible="{Binding IsLoggedIn}">
+                            <TextBlock Text="欢迎回来" FontSize="14" Foreground="#9ca3af"/>
+                            <TextBlock FontSize="32" FontWeight="Bold" Foreground="White">
+                                <TextBlock.Text>
+                                    <MultiBinding StringFormat="{}准备好开始冒险了吗，{0}？">
+                                        <Binding Path="UserDisplayName"/>
+                                    </MultiBinding>
+                                </TextBlock.Text>
+                            </TextBlock>
+                        </StackPanel>
+
+                        <!-- 顶部登录横幅 - 未登录状态 -->
+                        <Border IsVisible="{Binding !IsLoggedIn}" CornerRadius="16" ClipToBounds="True">
+                            <Border.Background>
+                                <LinearGradientBrush StartPoint="0%,50%" EndPoint="100%,50%">
+                                    <GradientStop Color="#1e3a5f" Offset="0"/>
+                                    <GradientStop Color="#2d4a6a" Offset="0.5"/>
+                                    <GradientStop Color="#3a5f80" Offset="1"/>
+                                </LinearGradientBrush>
+                            </Border.Background>
+                            <Grid ColumnDefinitions="Auto,*,Auto" Margin="24,20">
+                                <!-- 左侧图标 -->
+                                <Border Grid.Column="0" Width="56" Height="56" CornerRadius="28"
+                                        Background="#ffffff15" Margin="0,0,20,0">
+                                    <TextBlock Text="👤" FontSize="28" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                </Border>
+                                <!-- 中间文字 -->
+                                <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="4">
+                                    <TextBlock Text="登录以解锁更多功能" FontSize="20" FontWeight="Bold" Foreground="White"/>
+                                    <TextBlock Text="登录后可保存角色卡、同步游戏进度、加入在线房间" FontSize="13" Foreground="#a0b4c8"/>
+                                </StackPanel>
+                                <!-- 右侧按钮 -->
+                                <Button Grid.Column="2" Classes="join-btn" Padding="24,12" Command="{Binding ShowLoginCommand}">
+                                    <StackPanel Orientation="Horizontal" Spacing="8">
+                                        <TextBlock Text="🔑" FontSize="16"/>
+                                        <TextBlock Text="登录 / 注册" FontSize="14" FontWeight="SemiBold"/>
+                                    </StackPanel>
+                                </Button>
+                            </Grid>
+                        </Border>
+
+                        <!-- 主海报/Banner轮播区域 -->
+                        <Border Height="280" CornerRadius="16" ClipToBounds="True">
+                            <Grid>
+                                <!-- 海报背景 - 根据当前Banner动态变化 -->
+                                <Border CornerRadius="16" Name="BannerBackground">
+                                    <Border.Background>
+                                        <LinearGradientBrush StartPoint="0%,50%" EndPoint="100%,50%">
+                                            <GradientStop Color="#4c1d95" Offset="0"/>
+                                            <GradientStop Color="#7c3aed" Offset="0.5"/>
+                                            <GradientStop Color="#a78bfa" Offset="1"/>
+                                        </LinearGradientBrush>
+                                    </Border.Background>
+                                </Border>
+
+                                <!-- 装饰元素 -->
+                                <Border Opacity="0.1">
+                                    <Border.Background>
+                                        <LinearGradientBrush StartPoint="100%,0%" EndPoint="0%,100%">
+                                            <GradientStop Color="White" Offset="0"/>
+                                            <GradientStop Color="Transparent" Offset="0.5"/>
+                                        </LinearGradientBrush>
+                                    </Border.Background>
+                                </Border>
+
+                                <!-- 海报内容 -->
+                                <Grid ColumnDefinitions="*,Auto" Margin="40">
+                                    <StackPanel Grid.Column="0" VerticalAlignment="Center" Spacing="16">
+                                        <Border Background="#1f293780" CornerRadius="20" Padding="12,6" HorizontalAlignment="Left">
+                                            <TextBlock Text="{Binding CurrentBanner.Tag}" FontSize="12" Foreground="#e0e8f0"/>
+                                        </Border>
+                                        <TextBlock Text="{Binding CurrentBanner.Title}" FontSize="42" FontWeight="Bold" Foreground="White"/>
+                                        <TextBlock Text="{Binding CurrentBanner.Description}"
+                                                   FontSize="14" Foreground="#d1d5db" LineHeight="22" TextWrapping="Wrap"/>
+                                        <StackPanel Orientation="Horizontal" Spacing="12" Margin="0,8,0,0">
+                                            <Button Classes="banner-btn-primary" Command="{Binding BannerActionCommand}">
+                                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                                    <TextBlock Text="🚀" FontSize="16"/>
+                                                    <TextBlock Text="{Binding CurrentBanner.ActionText}" FontSize="14" FontWeight="SemiBold"/>
+                                                </StackPanel>
+                                            </Button>
+                                            <Button Classes="banner-btn-secondary" Command="{Binding ShowHelpCommand}">
+                                                <TextBlock Text="了解更多" FontSize="14"/>
+                                            </Button>
+                                        </StackPanel>
+                                    </StackPanel>
+
+                                    <!-- 右侧装饰图标 -->
+                                    <Border Grid.Column="1" Width="180" Height="180" CornerRadius="90"
+                                            Background="#ffff30" VerticalAlignment="Center">
+                                        <TextBlock Text="{Binding CurrentBanner.Icon}" FontSize="80"
+                                                   HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                    </Border>
+                                </Grid>
+
+                                <!-- 轮播指示器 -->
+                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center"
+                                            VerticalAlignment="Bottom" Margin="0,0,0,16" Spacing="8">
+                                    <Border Name="Indicator0" Width="8" Height="8" CornerRadius="4"
+                                            Background="White" Opacity="1" Cursor="Hand" PointerPressed="Indicator0_Click"/>
+                                    <Border Name="Indicator1" Width="8" Height="8" CornerRadius="4"
+                                            Background="White" Opacity="0.4" Cursor="Hand" PointerPressed="Indicator1_Click"/>
+                                    <Border Name="Indicator2" Width="8" Height="8" CornerRadius="4"
+                                            Background="White" Opacity="0.4" Cursor="Hand" PointerPressed="Indicator2_Click"/>
+                                    <Border Name="Indicator3" Width="8" Height="8" CornerRadius="4"
+                                            Background="White" Opacity="0.4" Cursor="Hand" PointerPressed="Indicator3_Click"/>
+                                </StackPanel>
+
+                                <!-- 左右切换按钮 -->
+                                <Button Classes="icon-btn" HorizontalAlignment="Left" VerticalAlignment="Center"
+                                        Margin="16,0" Width="40" Height="40" CornerRadius="20" Background="#00000040"
+                                        Command="{Binding PreviousBannerCommand}">
+                                    <TextBlock Text="◀" FontSize="16" Foreground="White"/>
+                                </Button>
+                                <Button Classes="icon-btn" HorizontalAlignment="Right" VerticalAlignment="Center"
+                                        Margin="16,0" Width="40" Height="40" CornerRadius="20" Background="#00000040"
+                                        Command="{Binding NextBannerCommand}">
+                                    <TextBlock Text="▶" FontSize="16" Foreground="White"/>
+                                </Button>
+
+                                <!-- 版本标签 -->
+                                <Border Background="#00000040" CornerRadius="8" Padding="12,6"
+                                        HorizontalAlignment="Right" VerticalAlignment="Top" Margin="16">
+                                    <TextBlock Text="v1.0.0 Beta" FontSize="11" Foreground="White"/>
+                                </Border>
+                            </Grid>
+                        </Border>
+
+                        <!-- 本地服务器快捷入口（仅在扫到本地服务器时显示） -->
+                        <Border IsVisible="{Binding IsLocalServerAvailable}" Background="#1e3a5f"
+                                CornerRadius="12" Padding="16" Margin="0,0,0,8">
+                            <Grid ColumnDefinitions="Auto,*,Auto">
+                                <!-- 左侧图标和状态 -->
+                                <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
+                                    <Border Width="40" Height="40" CornerRadius="8" Background="#2d5a4a">
+                                        <TextBlock Text="🖥️" FontSize="20" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                    </Border>
+                                    <StackPanel Spacing="2">
+                                        <StackPanel Orientation="Horizontal" Spacing="8">
+                                            <TextBlock Text="本地服务器" FontSize="14" FontWeight="SemiBold" Foreground="White"/>
+                                            <Border Background="#2d5a4a" CornerRadius="4" Padding="6,2">
+                                                <TextBlock Text="在线" FontSize="10" Foreground="#a0d8c0"/>
+                                            </Border>
+                                        </StackPanel>
+                                        <TextBlock Text="localhost:7890" FontSize="11" Foreground="#6b7280"/>
+                                    </StackPanel>
+                                </StackPanel>
+
+                                <!-- 中间房间列表（紧凑显示） -->
+                                <ItemsControl Grid.Column="1" ItemsSource="{Binding LocalServerRooms}" Margin="24,0">
+                                    <ItemsControl.ItemsPanel>
+                                        <ItemsPanelTemplate>
+                                            <StackPanel Orientation="Horizontal" Spacing="8"/>
+                                        </ItemsPanelTemplate>
+                                    </ItemsControl.ItemsPanel>
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Button Classes="room-item" Padding="12,8"
+                                                    Command="{Binding $parent[UserControl].((vm:MainWindowViewModel)DataContext).JoinLocalRoomCommand}"
+                                                    CommandParameter="{Binding}">
+                                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                                    <TextBlock Text="🏠" FontSize="14"/>
+                                                    <TextBlock Text="{Binding RoomName}" FontSize="12" Foreground="White" MaxWidth="120" TextTrimming="CharacterEllipsis"/>
+                                                    <TextBlock Text="{Binding PlayerCountDisplay}" FontSize="10" Foreground="#6b7280"/>
+                                                </StackPanel>
+                                            </Button>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+
+                                <!-- 右侧刷新按钮 -->
+                                <Button Grid.Column="2" Classes="icon-btn" ToolTip.Tip="刷新"
+                                        Command="{Binding RefreshLocalServerCommand}"
+                                        IsEnabled="{Binding !IsCheckingLocalServer}">
+                                    <TextBlock Text="🔄" FontSize="14"/>
+                                </Button>
+                            </Grid>
+                        </Border>
+
+                        <!-- 快捷功能区 -->
+                        <StackPanel Spacing="16">
+                            <TextBlock Text="快速开始" FontSize="18" FontWeight="SemiBold" Foreground="White"/>
+
+                            <Grid ColumnDefinitions="*,*,*,*" ColumnSpacing="16">
+                                <!-- 已知的世界 -->
+                                <Button Grid.Column="0" Classes="quick-card" Command="{Binding ShowRecentRoomsCommand}">
+                                    <StackPanel Spacing="12" HorizontalAlignment="Center">
+                                        <Border Width="48" Height="48" CornerRadius="12" Background="#4a2d5a30">
+                                            <TextBlock Text="📜" FontSize="24" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                        </Border>
+                                        <TextBlock Text="已知的世界" FontSize="13" FontWeight="SemiBold" HorizontalAlignment="Center"/>
+                                        <TextBlock Text="曾访问的服务器" FontSize="11" Foreground="#6b7280" HorizontalAlignment="Center"/>
+                                    </StackPanel>
+                                </Button>
+
+                                <!-- 角色卡工厂 -->
+                                <Button Grid.Column="1" Classes="quick-card" Command="{Binding OpenCardFactoryCommand}">
+                                    <StackPanel Spacing="12" HorizontalAlignment="Center">
+                                        <Border Width="48" Height="48" CornerRadius="12" Background="#2d4a6a30">
+                                            <TextBlock Text="🏭" FontSize="24" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                        </Border>
+                                        <TextBlock Text="角色卡工厂" FontSize="13" FontWeight="SemiBold" HorizontalAlignment="Center"/>
+                                        <TextBlock Text="创建角色卡模板" FontSize="11" Foreground="#6b7280" HorizontalAlignment="Center"/>
+                                    </StackPanel>
+                                </Button>
+
+                                <!-- 地图工厂 -->
+                                <Button Grid.Column="2" Classes="quick-card" Command="{Binding OpenMapEditorCommand}">
+                                    <StackPanel Spacing="12" HorizontalAlignment="Center">
+                                        <Border Width="48" Height="48" CornerRadius="12" Background="#2d5a4a30">
+                                            <TextBlock Text="🗺️" FontSize="24" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                        </Border>
+                                        <TextBlock Text="地图工厂" FontSize="13" FontWeight="SemiBold" HorizontalAlignment="Center"/>
+                                        <TextBlock Text="编辑战斗地图" FontSize="11" Foreground="#6b7280" HorizontalAlignment="Center"/>
+                                    </StackPanel>
+                                </Button>
+
+                                <!-- 规则书工厂 -->
+                                <Button Grid.Column="3" Classes="quick-card" Command="{Binding OpenRulebookEditorCommand}">
+                                    <StackPanel Spacing="12" HorizontalAlignment="Center">
+                                        <Border Width="48" Height="48" CornerRadius="12" Background="#5a4a2d30">
+                                            <TextBlock Text="📖" FontSize="24" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                        </Border>
+                                        <TextBlock Text="规则书工厂" FontSize="13" FontWeight="SemiBold" HorizontalAlignment="Center"/>
+                                        <TextBlock Text="管理游戏规则" FontSize="11" Foreground="#6b7280" HorizontalAlignment="Center"/>
+                                    </StackPanel>
+                                </Button>
+                            </Grid>
+                        </StackPanel>
+
+                        <!-- 公告栏 -->
+                        <Border Background="#1f293780" CornerRadius="16" Padding="20">
+                            <StackPanel Spacing="16">
+                                <Grid ColumnDefinitions="Auto,*,Auto">
+                                    <TextBlock Grid.Column="0" Text="📢" FontSize="18" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                    <TextBlock Grid.Column="1" Text="公告栏" FontSize="16" FontWeight="SemiBold" Foreground="White" VerticalAlignment="Center"/>
+                                    <Button Grid.Column="2" Classes="link" Content="查看全部" FontSize="12"/>
+                                </Grid>
+
+                                <ItemsControl ItemsSource="{Binding Announcements}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Button Classes="announcement-item"
+                                                    Command="{Binding $parent[ItemsControl].((vm:MainWindowViewModel)DataContext).OpenAnnouncementDetailCommand}"
+                                                    CommandParameter="{Binding}">
+                                                <Border Background="#0f172a80" CornerRadius="8" Padding="12" Margin="0,0,0,8">
+                                                    <Grid ColumnDefinitions="Auto,*,Auto">
+                                                        <Border Grid.Column="0" Background="{Binding TagColor}" CornerRadius="4"
+                                                                Padding="8,4" Margin="0,0,12,0" VerticalAlignment="Top">
+                                                            <TextBlock Text="{Binding Tag}" FontSize="10" Foreground="White" FontWeight="SemiBold"/>
+                                                        </Border>
+                                                        <StackPanel Grid.Column="1" Spacing="4">
+                                                            <TextBlock Text="{Binding Title}" FontSize="14" FontWeight="SemiBold" Foreground="White"/>
+                                                            <TextBlock Text="{Binding Summary}" FontSize="12" Foreground="#9ca3af"
+                                                                       TextWrapping="Wrap" MaxLines="2"/>
+                                                        </StackPanel>
+                                                        <TextBlock Grid.Column="2" Text="{Binding DateDisplay}" FontSize="11"
+                                                                   Foreground="#6b7280" VerticalAlignment="Top" Margin="12,0,0,0"/>
+                                                    </Grid>
+                                                </Border>
+                                            </Button>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+
+                                <!-- 无公告时显示 -->
+                                <Border IsVisible="{Binding !Announcements.Count}" Background="#0f172a80"
+                                        CornerRadius="8" Padding="24">
+                                    <StackPanel HorizontalAlignment="Center" Spacing="8">
+                                        <TextBlock Text="📭" FontSize="32" HorizontalAlignment="Center"/>
+                                        <TextBlock Text="暂无公告" FontSize="14" Foreground="#6b7280" HorizontalAlignment="Center"/>
+                                    </StackPanel>
+                                </Border>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+
+                    <!-- ==================== 造访新世界页面 ==================== -->
+                    <StackPanel IsVisible="{Binding IsConnectRoomPage}" Spacing="24">
+                        <!-- 页面标题 -->
+                        <StackPanel Spacing="8">
+                            <TextBlock Text="造访新世界" FontSize="28" FontWeight="Bold" Foreground="White"/>
+                            <TextBlock Text="输入服务器地址、房间ID 和用户ID，连接并进入房间（连接测试）"
+                                       FontSize="14" Foreground="#9ca3af"/>
+                        </StackPanel>
+
+                        <!-- 连接测试主面板（单一入口）-->
+                        <Border CornerRadius="20" ClipToBounds="True" HorizontalAlignment="Center"
+                                Width="560" Margin="0,8,0,0">
+                            <Border.Background>
+                                <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,100%">
+                                    <GradientStop Color="#1e3a5f" Offset="0"/>
+                                    <GradientStop Color="#2d4a6a" Offset="0.5"/>
+                                    <GradientStop Color="#1e3a5f" Offset="1"/>
+                                </LinearGradientBrush>
+                            </Border.Background>
+                            <StackPanel Margin="28" Spacing="16">
+                                <!-- 头部：图标 -->
+                                <StackPanel Orientation="Horizontal" Spacing="16">
+                                    <Border Width="64" Height="64" CornerRadius="16" Background="#ffffff10">
+                                        <TextBlock Text="🌐" FontSize="32" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                    </Border>
+                                    <StackPanel VerticalAlignment="Center" Spacing="4">
+                                        <TextBlock Text="连接测试" FontSize="22" FontWeight="Bold" Foreground="White"/>
+                                        <TextBlock Text="直接进入指定房间" FontSize="13" Foreground="#a0b4c8"/>
+                                    </StackPanel>
+                                </StackPanel>
+
+                                <!-- 输入区 -->
+                                <StackPanel Spacing="6">
+                                    <TextBlock Text="服务器地址" FontSize="12" Foreground="#a0b4c8"/>
+                                    <TextBox Text="{Binding DirectConnectAddress, Mode=TwoWay}"
+                                             Watermark="ws://localhost:5000/im 或 localhost:5000"
+                                             Classes="dark-input" FontSize="14" MinHeight="44"/>
+                                </StackPanel>
+                                <StackPanel Spacing="6">
+                                    <TextBlock Text="房间ID" FontSize="12" Foreground="#a0b4c8"/>
+                                    <TextBox Text="{Binding DirectRoomId, Mode=TwoWay}"
+                                             Watermark="room_001" Classes="dark-input" FontSize="14" MinHeight="44"/>
+                                </StackPanel>
+                                <!-- 用户ID 已移到设置页全局配置，此处显示当前值 -->
+                                <StackPanel Spacing="6">
+                                    <TextBlock Text="当前用户ID（在设置页修改）" FontSize="12" Foreground="#a0b4c8"/>
+                                    <TextBlock Text="{Binding UserId}" FontSize="14" Foreground="#e0e8f0"
+                                               FontWeight="SemiBold"/>
+                                </StackPanel>
+
+                                <Button Classes="connect-btn" HorizontalAlignment="Stretch" Height="48"
+                                        Command="{Binding DirectConnectCommand}" Margin="0,4,0,0">
+                                    <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Center">
+                                        <TextBlock Text="🔗" FontSize="16"/>
+                                        <TextBlock Text="连接并进入" FontSize="15" FontWeight="SemiBold"/>
+                                    </StackPanel>
+                                </Button>
+
+                                <TextBlock Text="{Binding DirectConnectError}" FontSize="13" Foreground="#f87171"
+                                           TextWrapping="Wrap"
+                                           IsVisible="{Binding !!DirectConnectError.Length}"/>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+                    <!-- ==================== 已知的世界页面 ==================== -->
+                    <StackPanel IsVisible="{Binding IsRecentRoomsPage}" Spacing="24">
+                        <!-- 页面标题 -->
+                        <Grid ColumnDefinitions="*,Auto">
+                            <StackPanel Grid.Column="0" Spacing="8">
+                                <TextBlock Text="记忆的房间" FontSize="28" FontWeight="Bold" Foreground="White"/>
+                                <TextBlock Text="点击曾经进入过的房间，直接再次进入" FontSize="14" Foreground="#9ca3af"/>
+                            </StackPanel>
+                            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
+                                <Button Classes="link" Content="🗑 清空" FontSize="12"
+                                        Command="{Binding ClearRecentRoomsCommand}"
+                                        IsVisible="{Binding !!RecentRooms.Count}"/>
+                            </StackPanel>
+                        </Grid>
+
+                        <!-- 空状态 -->
+                        <Border IsVisible="{Binding !RecentRooms.Count}" CornerRadius="20" ClipToBounds="True" Padding="40">
+                            <Border.Background>
+                                <LinearGradientBrush StartPoint="0%,50%" EndPoint="100%,50%">
+                                    <GradientStop Color="#1e293b" Offset="0"/>
+                                    <GradientStop Color="#0f172a" Offset="1"/>
+                                </LinearGradientBrush>
+                            </Border.Background>
+                            <StackPanel Spacing="12" HorizontalAlignment="Center">
+                                <TextBlock Text="🗺️" FontSize="48" HorizontalAlignment="Center"/>
+                                <TextBlock Text="还没有记忆的房间" FontSize="18" FontWeight="SemiBold"
+                                           Foreground="White" HorizontalAlignment="Center"/>
+                                <TextBlock Text="在「造访新世界」页连接进入房间后，会自动记忆到这里"
+                                           FontSize="13" Foreground="#9ca3af" HorizontalAlignment="Center"/>
+                                <Button Classes="connect-btn" Content="🔗 去连接房间" Margin="0,8,0,0"
+                                        HorizontalAlignment="Center"
+                                        Command="{Binding ConnectRoomCommand}"/>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- 记忆房间列表 -->
+                        <ItemsControl ItemsSource="{Binding RecentRooms}" IsVisible="{Binding !!RecentRooms.Count}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border Background="#1f293780" CornerRadius="12" Padding="16" Margin="0,0,0,10">
+                                        <Grid ColumnDefinitions="Auto,*,Auto,Auto">
+                                            <!-- 头像占位 -->
+                                            <Border Grid.Column="0" Width="48" Height="48" CornerRadius="12"
+                                                    Background="#2d4a6a" Margin="0,0,16,0">
+                                                <TextBlock Text="{Binding AvatarText}" FontSize="20" FontWeight="Bold"
+                                                           Foreground="White"
+                                                           HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                            </Border>
+                                            <!-- 房间信息 -->
+                                            <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="4">
+                                                <TextBlock Text="{Binding DisplayName}" FontSize="16" FontWeight="SemiBold"
+                                                           Foreground="White"/>
+                                                <StackPanel Orientation="Horizontal" Spacing="16">
+                                                    <TextBlock Text="{Binding ServerAddress}" FontSize="12" Foreground="#6b7280"/>
+                                                    <TextBlock Text="{Binding UserId, StringFormat='用户: {0}'}" FontSize="12" Foreground="#6b7280"/>
+                                                    <TextBlock Text="{Binding LastJoinedDisplay}" FontSize="12" Foreground="#6b7280"/>
+                                                </StackPanel>
+                                            </StackPanel>
+                                            <!-- 进入按钮 -->
+                                            <Button Grid.Column="2" Classes="join-btn" Padding="24,10" VerticalAlignment="Center"
+                                                    Command="{Binding $parent[ItemsControl].((vm:MainWindowViewModel)DataContext).JoinRecentRoomCommand}"
+                                                    CommandParameter="{Binding}">
+                                                <TextBlock Text="进入" FontSize="14"/>
+                                            </Button>
+                                            <!-- 删除按钮 -->
+                                            <Button Grid.Column="3" Classes="icon-btn" Margin="8,0,0,0" VerticalAlignment="Center"
+                                                    ToolTip.Tip="从记忆中移除"
+                                                    Command="{Binding $parent[ItemsControl].((vm:MainWindowViewModel)DataContext).RemoveRecentRoomCommand}"
+                                                    CommandParameter="{Binding}">
+                                                <TextBlock Text="✕" FontSize="14" Foreground="#9ca3af"/>
+                                            </Button>
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+
+                    <!-- ==================== 编辑器页面 ==================== -->
+                    <StackPanel IsVisible="{Binding IsEditorsPage}" Spacing="24">
+                        <StackPanel Spacing="8">
+                            <TextBlock Text="编辑器" FontSize="28" FontWeight="Bold" Foreground="White"/>
+                            <TextBlock Text="创建和编辑游戏资源" FontSize="14" Foreground="#9ca3af"/>
+                        </StackPanel>
+
+                        <Grid ColumnDefinitions="*,*,*" RowDefinitions="*,*" ColumnSpacing="24" RowSpacing="24">
+                            <!-- 角色卡编辑器 -->
+                            <Button Grid.Row="0" Grid.Column="0" Classes="quick-card" Height="160"
+                                    Command="{Binding OpenCharacterEditorCommand}">
+                                <StackPanel Spacing="16" HorizontalAlignment="Center">
+                                    <Border Width="56" Height="56" CornerRadius="14" Background="#2d4a6a30">
+                                        <TextBlock Text="👤" FontSize="28" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                    </Border>
+                                    <StackPanel Spacing="4">
+                                        <TextBlock Text="角色卡编辑器" FontSize="16" FontWeight="SemiBold" HorizontalAlignment="Center"/>
+                                        <TextBlock Text="创建和编辑角色卡" FontSize="12" Foreground="#6b7280" HorizontalAlignment="Center"/>
+                                    </StackPanel>
+                                </StackPanel>
+                            </Button>
+
+                            <!-- 角色卡工厂 (CardFactory) -->
+                            <Button Grid.Row="0" Grid.Column="1" Classes="quick-card" Height="160"
+                                    Command="{Binding OpenCardFactoryCommand}">
+                                <StackPanel Spacing="16" HorizontalAlignment="Center">
+                                    <Border Width="56" Height="56" CornerRadius="14" Background="#4a2d6a30">
+                                        <TextBlock Text="🏭" FontSize="28" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                    </Border>
+                                    <StackPanel Spacing="4">
+                                        <TextBlock Text="角色卡工厂" FontSize="16" FontWeight="SemiBold" HorizontalAlignment="Center"/>
+                                        <TextBlock Text="批量生成和管理角色卡模板" FontSize="12" Foreground="#6b7280" HorizontalAlignment="Center"/>
+                                    </StackPanel>
+                                </StackPanel>
+                            </Button>
+
+                            <!-- 地图编辑器 -->
+                            <Button Grid.Row="0" Grid.Column="2" Classes="quick-card" Height="160"
+                                    Command="{Binding OpenMapEditorCommand}">
+                                <StackPanel Spacing="16" HorizontalAlignment="Center">
+                                    <Border Width="56" Height="56" CornerRadius="14" Background="#2d5a4a30">
+                                        <TextBlock Text="🗺️" FontSize="28" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                    </Border>
+                                    <StackPanel Spacing="4">
+                                        <TextBlock Text="地图编辑器" FontSize="16" FontWeight="SemiBold" HorizontalAlignment="Center"/>
+                                        <TextBlock Text="编辑和创建战斗地图" FontSize="12" Foreground="#6b7280" HorizontalAlignment="Center"/>
+                                    </StackPanel>
+                                </StackPanel>
+                            </Button>
+
+                            <!-- 骰子编辑器 -->
+                            <Button Grid.Row="1" Grid.Column="0" Classes="quick-card" Height="160"
+                                    Command="{Binding OpenDiceEditorCommand}">
+                                <StackPanel Spacing="16" HorizontalAlignment="Center">
+                                    <Border Width="56" Height="56" CornerRadius="14" Background="#5a2d4a30">
+                                        <TextBlock Text="🎲" FontSize="28" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                    </Border>
+                                    <StackPanel Spacing="4">
+                                        <TextBlock Text="骰子编辑器" FontSize="16" FontWeight="SemiBold" HorizontalAlignment="Center"/>
+                                        <TextBlock Text="自定义骰子规则和检定" FontSize="12" Foreground="#6b7280" HorizontalAlignment="Center"/>
+                                    </StackPanel>
+                                </StackPanel>
+                            </Button>
+
+                            <!-- 规则书编辑器 -->
+                            <Button Grid.Row="1" Grid.Column="1" Classes="quick-card" Height="160"
+                                    Command="{Binding OpenRulebookEditorCommand}">
+                                <StackPanel Spacing="16" HorizontalAlignment="Center">
+                                    <Border Width="56" Height="56" CornerRadius="14" Background="#5a4a2d30">
+                                        <TextBlock Text="📖" FontSize="28" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                    </Border>
+                                    <StackPanel Spacing="4">
+                                        <TextBlock Text="规则书编辑器" FontSize="16" FontWeight="SemiBold" HorizontalAlignment="Center"/>
+                                        <TextBlock Text="编辑和管理游戏规则书" FontSize="12" Foreground="#6b7280" HorizontalAlignment="Center"/>
+                                    </StackPanel>
+                                </StackPanel>
+                            </Button>
+                        </Grid>
+                    </StackPanel>
+
+                    <!-- ==================== 资源仓库页面 ==================== -->
+                    <StackPanel IsVisible="{Binding IsStoragePage}" Spacing="24">
+                        <StackPanel Spacing="8">
+                            <TextBlock Text="资源仓库" FontSize="28" FontWeight="Bold" Foreground="White"/>
+                            <TextBlock Text="管理本地存储的游戏资源" FontSize="14" Foreground="#9ca3af"/>
+                        </StackPanel>
+
+                        <Grid ColumnDefinitions="*,*" RowDefinitions="*,*" ColumnSpacing="24" RowSpacing="24">
+                            <!-- 人物卡仓库 -->
+                            <Button Grid.Row="0" Grid.Column="0" Classes="quick-card" Height="140"
+                                    Command="{Binding OpenCharacterStorageCommand}">
+                                <StackPanel Spacing="12" HorizontalAlignment="Center">
+                                    <Border Width="48" Height="48" CornerRadius="12" Background="#2d4a6a30">
+                                        <TextBlock Text="🗂️" FontSize="24" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                    </Border>
+                                    <StackPanel Spacing="2">
+                                        <TextBlock Text="人物卡仓库" FontSize="14" FontWeight="SemiBold" HorizontalAlignment="Center"/>
+                                        <TextBlock Text="本地存储的角色卡资源" FontSize="11" Foreground="#6b7280" HorizontalAlignment="Center"/>
+                                    </StackPanel>
+                                </StackPanel>
+                            </Button>
+
+                            <!-- 地图仓库 -->
+                            <Button Grid.Row="0" Grid.Column="1" Classes="quick-card" Height="140"
+                                    Command="{Binding OpenMapStorageCommand}">
+                                <StackPanel Spacing="12" HorizontalAlignment="Center">
+                                    <Border Width="48" Height="48" CornerRadius="12" Background="#2d5a4a30">
+                                        <TextBlock Text="🗺️" FontSize="24" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                    </Border>
+                                    <StackPanel Spacing="2">
+                                        <TextBlock Text="地图仓库" FontSize="14" FontWeight="SemiBold" HorizontalAlignment="Center"/>
+                                        <TextBlock Text="本地存储的地图资源" FontSize="11" Foreground="#6b7280" HorizontalAlignment="Center"/>
+                                    </StackPanel>
+                                </StackPanel>
+                            </Button>
+
+                            <!-- 规则书仓库 -->
+                            <Button Grid.Row="1" Grid.Column="0" Classes="quick-card" Height="140"
+                                    Command="{Binding OpenRulebookStorageCommand}">
+                                <StackPanel Spacing="12" HorizontalAlignment="Center">
+                                    <Border Width="48" Height="48" CornerRadius="12" Background="#5a4a2d30">
+                                        <TextBlock Text="📚" FontSize="24" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                    </Border>
+                                    <StackPanel Spacing="2">
+                                        <TextBlock Text="规则书仓库" FontSize="14" FontWeight="SemiBold" HorizontalAlignment="Center"/>
+                                        <TextBlock Text="本地存储的规则书资源" FontSize="11" Foreground="#6b7280" HorizontalAlignment="Center"/>
+                                    </StackPanel>
+                                </StackPanel>
+                            </Button>
+
+                            <!-- 素材仓库 -->
+                            <Button Grid.Row="1" Grid.Column="1" Classes="quick-card" Height="140"
+                                    Command="{Binding OpenAssetStorageCommand}">
+                                <StackPanel Spacing="12" HorizontalAlignment="Center">
+                                    <Border Width="48" Height="48" CornerRadius="12" Background="#5a2d4a30">
+                                        <TextBlock Text="🎨" FontSize="24" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                    </Border>
+                                    <StackPanel Spacing="2">
+                                        <TextBlock Text="素材仓库" FontSize="14" FontWeight="SemiBold" HorizontalAlignment="Center"/>
+                                        <TextBlock Text="图片、音效等游戏素材" FontSize="11" Foreground="#6b7280" HorizontalAlignment="Center"/>
+                                    </StackPanel>
+                                </StackPanel>
+                            </Button>
+                        </Grid>
+                    </StackPanel>
+
+                    <!-- ==================== 设置页面 ==================== -->
+                    <StackPanel IsVisible="{Binding IsSettingsPage}" Spacing="24">
+                        <StackPanel Spacing="8">
+                            <TextBlock Text="全局设置" FontSize="28" FontWeight="Bold" Foreground="White"/>
+                            <TextBlock Text="这些设置适用于所有房间" FontSize="14" Foreground="#9ca3af"/>
+                        </StackPanel>
+
+                        <!-- 🆔 用户ID（置顶：进房时全局使用）-->
+                        <Border Background="#1f293780" CornerRadius="16" Padding="24">
+                            <StackPanel Spacing="12">
+                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                    <TextBlock Text="🆔" FontSize="18"/>
+                                    <TextBlock Text="用户ID" FontSize="16" FontWeight="SemiBold" Foreground="White"/>
+                                </StackPanel>
+                                <TextBox Text="{Binding UserId, Mode=TwoWay}"
+                                         Watermark="例如 player_a" Classes="dark-input"
+                                         FontSize="14" MinHeight="44"/>
+                                <TextBlock Text="进入任何房间（造访新世界 / 记忆的世界）都用这个ID；修改后点下方「保存设置」生效"
+                                           FontSize="12" Foreground="#6b7280" TextWrapping="Wrap"/>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- 📁 存储设置 -->
+                        <Border Background="#1f293780" CornerRadius="16" Padding="24">
+                            <StackPanel Spacing="16">
+                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                    <TextBlock Text="📁" FontSize="18"/>
+                                    <TextBlock Text="存储设置" FontSize="16" FontWeight="SemiBold" Foreground="White"/>
+                                </StackPanel>
+
+                                <StackPanel Spacing="8">
+                                    <TextBlock Text="默认房间存储路径" FontSize="14" Foreground="White"/>
+                                    <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="8">
+                                        <TextBox Grid.Column="0" Text="{Binding DefaultRoomsPath}" Classes="dark-input" IsReadOnly="True"/>
+                                        <Button Grid.Column="1" Classes="icon-btn" Command="{Binding OpenDefaultRoomsFolderCommand}" ToolTip.Tip="打开文件夹">
+                                            <TextBlock Text="📂" FontSize="14"/>
+                                        </Button>
+                                        <Button Grid.Column="2" Classes="connect-btn" Command="{Binding BrowseDefaultRoomsPathCommand}">
+                                            <TextBlock Text="浏览..." FontSize="14"/>
+                                        </Button>
+                                    </Grid>
+                                    <TextBlock Text="每个房间在此目录下创建独立文件夹" FontSize="12" Foreground="#6b7280"/>
+                                </StackPanel>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- 🚀 启动设置 -->
+                        <Border Background="#1f293780" CornerRadius="16" Padding="24">
+                            <StackPanel Spacing="16">
+                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                    <TextBlock Text="🚀" FontSize="18"/>
+                                    <TextBlock Text="启动设置" FontSize="16" FontWeight="SemiBold" Foreground="White"/>
+                                </StackPanel>
+
+                                <Grid RowDefinitions="Auto,Auto,Auto,Auto,Auto" RowSpacing="12">
+                                    <Grid Grid.Row="0" ColumnDefinitions="*,Auto">
+                                        <StackPanel Grid.Column="0" Spacing="2">
+                                            <TextBlock Text="记住密码" FontSize="14" Foreground="White"/>
+                                            <TextBlock Text="下次启动时自动填充密码" FontSize="12" Foreground="#6b7280"/>
+                                        </StackPanel>
+                                        <CheckBox Grid.Column="1" IsChecked="{Binding RememberPassword}" VerticalAlignment="Center"/>
+                                    </Grid>
+                                    <Grid Grid.Row="1" ColumnDefinitions="*,Auto">
+                                        <StackPanel Grid.Column="0" Spacing="2">
+                                            <TextBlock Text="自动登录" FontSize="14" Foreground="White"/>
+                                            <TextBlock Text="启动时自动登录上次使用的账号" FontSize="12" Foreground="#6b7280"/>
+                                        </StackPanel>
+                                        <CheckBox Grid.Column="1" IsChecked="{Binding AutoLogin}" VerticalAlignment="Center"/>
+                                    </Grid>
+                                    <Grid Grid.Row="2" ColumnDefinitions="*,Auto">
+                                        <StackPanel Grid.Column="0" Spacing="2">
+                                            <TextBlock Text="开机自动启动" FontSize="14" Foreground="White"/>
+                                            <TextBlock Text="系统启动时自动运行启动器" FontSize="12" Foreground="#6b7280"/>
+                                        </StackPanel>
+                                        <CheckBox Grid.Column="1" IsChecked="{Binding StartWithWindows}" VerticalAlignment="Center"/>
+                                    </Grid>
+                                    <Grid Grid.Row="3" ColumnDefinitions="*,Auto">
+                                        <StackPanel Grid.Column="0" Spacing="2">
+                                            <TextBlock Text="关闭时最小化到托盘" FontSize="14" Foreground="White"/>
+                                            <TextBlock Text="点击关闭按钮时隐藏到系统托盘而非退出" FontSize="12" Foreground="#6b7280"/>
+                                        </StackPanel>
+                                        <CheckBox Grid.Column="1" IsChecked="{Binding MinimizeToTrayOnClose}" VerticalAlignment="Center"/>
+                                    </Grid>
+                                    <Grid Grid.Row="4" ColumnDefinitions="*,Auto">
+                                        <StackPanel Grid.Column="0" Spacing="2">
+                                            <TextBlock Text="启动时检查更新" FontSize="14" Foreground="White"/>
+                                            <TextBlock Text="自动检查是否有新版本可用" FontSize="12" Foreground="#6b7280"/>
+                                        </StackPanel>
+                                        <CheckBox Grid.Column="1" IsChecked="{Binding CheckUpdateOnStart}" VerticalAlignment="Center"/>
+                                    </Grid>
+                                </Grid>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- 🎨 显示设置 -->
+                        <Border Background="#1f293780" CornerRadius="16" Padding="24">
+                            <StackPanel Spacing="16">
+                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                    <TextBlock Text="🎨" FontSize="18"/>
+                                    <TextBlock Text="显示设置" FontSize="16" FontWeight="SemiBold" Foreground="White"/>
+                                </StackPanel>
+
+                                <Grid RowDefinitions="Auto,Auto,Auto,Auto" RowSpacing="12">
+                                    <!-- 主题选择 -->
+                                    <Grid Grid.Row="0" ColumnDefinitions="*,Auto">
+                                        <StackPanel Grid.Column="0" Spacing="2">
+                                            <TextBlock Text="主题" FontSize="14" Foreground="White"/>
+                                            <TextBlock Text="界面颜色主题（目前仅支持深色）" FontSize="12" Foreground="#6b7280"/>
+                                        </StackPanel>
+                                        <ComboBox Grid.Column="1" SelectedItem="{Binding SelectedTheme}" Width="120" VerticalAlignment="Center">
+                                            <ComboBoxItem Content="深色" Tag="Dark" IsSelected="True"/>
+                                            <ComboBoxItem Content="浅色" Tag="Light" IsEnabled="False"/>
+                                            <ComboBoxItem Content="跟随系统" Tag="System" IsEnabled="False"/>
+                                        </ComboBox>
+                                    </Grid>
+                                    <!-- 字体大小 -->
+                                    <Grid Grid.Row="1" ColumnDefinitions="*,Auto">
+                                        <StackPanel Grid.Column="0" Spacing="2">
+                                            <TextBlock Text="字体大小" FontSize="14" Foreground="White"/>
+                                            <TextBlock Text="消息文本大小 (px)" FontSize="12" Foreground="#6b7280"/>
+                                        </StackPanel>
+                                        <NumericUpDown Grid.Column="1" Value="{Binding FontSize}" Minimum="10" Maximum="24" Increment="1" Width="100" VerticalAlignment="Center"/>
+                                    </Grid>
+                                    <Grid Grid.Row="2" ColumnDefinitions="*,Auto">
+                                        <StackPanel Grid.Column="0" Spacing="2">
+                                            <TextBlock Text="显示消息时间戳" FontSize="14" Foreground="White"/>
+                                            <TextBlock Text="在消息旁边显示发送时间" FontSize="12" Foreground="#6b7280"/>
+                                        </StackPanel>
+                                        <CheckBox Grid.Column="1" IsChecked="{Binding ShowTimestamp}" VerticalAlignment="Center"/>
+                                    </Grid>
+                                    <Grid Grid.Row="3" ColumnDefinitions="*,Auto">
+                                        <StackPanel Grid.Column="0" Spacing="2">
+                                            <TextBlock Text="紧凑消息模式" FontSize="14" Foreground="White"/>
+                                            <TextBlock Text="减少消息之间的间距" FontSize="12" Foreground="#6b7280"/>
+                                        </StackPanel>
+                                        <CheckBox Grid.Column="1" IsChecked="{Binding CompactMode}" VerticalAlignment="Center"/>
+                                    </Grid>
+                                </Grid>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- 💬 输入状态指示器 -->
+                        <Border Background="#1f293780" CornerRadius="16" Padding="24">
+                            <StackPanel Spacing="16">
+                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                    <TextBlock Text="💬" FontSize="18"/>
+                                    <TextBlock Text="输入状态指示器" FontSize="16" FontWeight="SemiBold" Foreground="White"/>
+                                </StackPanel>
+
+                                <Grid RowDefinitions="Auto,Auto,Auto,Auto" RowSpacing="12">
+                                    <Grid Grid.Row="0" ColumnDefinitions="*,Auto">
+                                        <StackPanel Grid.Column="0" Spacing="2">
+                                            <TextBlock Text="启用输入状态指示器" FontSize="14" Foreground="White"/>
+                                            <TextBlock Text="向其他玩家显示你正在输入" FontSize="12" Foreground="#6b7280"/>
+                                        </StackPanel>
+                                        <CheckBox Grid.Column="1" IsChecked="{Binding TypingIndicatorEnabled}" VerticalAlignment="Center"/>
+                                    </Grid>
+                                    <Grid Grid.Row="1" ColumnDefinitions="*,Auto">
+                                        <StackPanel Grid.Column="0" Spacing="2">
+                                            <TextBlock Text="发送冷却时间" FontSize="14" Foreground="White"/>
+                                            <TextBlock Text="连续发送输入状态的最小间隔 (秒)" FontSize="12" Foreground="#6b7280"/>
+                                        </StackPanel>
+                                        <NumericUpDown Grid.Column="1" Value="{Binding TypingSendCooldown}" Minimum="1" Maximum="10" Increment="1" Width="100" VerticalAlignment="Center"/>
+                                    </Grid>
+                                    <Grid Grid.Row="2" ColumnDefinitions="*,Auto">
+                                        <StackPanel Grid.Column="0" Spacing="2">
+                                            <TextBlock Text="显示持续时间" FontSize="14" Foreground="White"/>
+                                            <TextBlock Text="输入指示器显示的时长 (秒)" FontSize="12" Foreground="#6b7280"/>
+                                        </StackPanel>
+                                        <NumericUpDown Grid.Column="1" Value="{Binding TypingDisplayDuration}" Minimum="2" Maximum="15" Increment="1" Width="100" VerticalAlignment="Center"/>
+                                    </Grid>
+                                    <Grid Grid.Row="3" ColumnDefinitions="*,Auto">
+                                        <StackPanel Grid.Column="0" Spacing="2">
+                                            <TextBlock Text="发送消息后立即清除" FontSize="14" Foreground="White"/>
+                                            <TextBlock Text="发送消息后立刻清除输入状态，而非等待超时" FontSize="12" Foreground="#6b7280"/>
+                                        </StackPanel>
+                                        <CheckBox Grid.Column="1" IsChecked="{Binding TypingClearModeImmediate}" VerticalAlignment="Center"/>
+                                    </Grid>
+                                </Grid>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- 📤 文件传输 -->
+                        <Border Background="#1f293780" CornerRadius="16" Padding="24">
+                            <StackPanel Spacing="16">
+                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                    <TextBlock Text="📤" FontSize="18"/>
+                                    <TextBlock Text="文件传输" FontSize="16" FontWeight="SemiBold" Foreground="White"/>
+                                </StackPanel>
+
+                                <Grid RowDefinitions="Auto,Auto,Auto,Auto" RowSpacing="12">
+                                    <Grid Grid.Row="0" ColumnDefinitions="*,Auto">
+                                        <StackPanel Grid.Column="0" Spacing="2">
+                                            <TextBlock Text="分块大小" FontSize="14" Foreground="White"/>
+                                            <TextBlock Text="文件传输时每个数据块的大小 (KB)" FontSize="12" Foreground="#6b7280"/>
+                                        </StackPanel>
+                                        <NumericUpDown Grid.Column="1" Value="{Binding ChunkSizeKB}" Minimum="16" Maximum="256" Increment="16" Width="100" VerticalAlignment="Center"/>
+                                    </Grid>
+                                    <Grid Grid.Row="1" ColumnDefinitions="*,Auto">
+                                        <StackPanel Grid.Column="0" Spacing="2">
+                                            <TextBlock Text="单块超时时间" FontSize="14" Foreground="White"/>
+                                            <TextBlock Text="等待单个数据块响应的最大时间 (秒)" FontSize="12" Foreground="#6b7280"/>
+                                        </StackPanel>
+                                        <NumericUpDown Grid.Column="1" Value="{Binding ChunkTimeoutSeconds}" Minimum="5" Maximum="120" Increment="5" Width="100" VerticalAlignment="Center"/>
+                                    </Grid>
+                                    <Grid Grid.Row="2" ColumnDefinitions="*,Auto">
+                                        <StackPanel Grid.Column="0" Spacing="2">
+                                            <TextBlock Text="全局超时时间" FontSize="14" Foreground="White"/>
+                                            <TextBlock Text="单次传输任务的最大时间 (秒)" FontSize="12" Foreground="#6b7280"/>
+                                        </StackPanel>
+                                        <NumericUpDown Grid.Column="1" Value="{Binding GlobalTimeoutSeconds}" Minimum="60" Maximum="1800" Increment="60" Width="100" VerticalAlignment="Center"/>
+                                    </Grid>
+                                    <Grid Grid.Row="3" ColumnDefinitions="*,Auto">
+                                        <StackPanel Grid.Column="0" Spacing="2">
+                                            <TextBlock Text="最大重试次数" FontSize="14" Foreground="White"/>
+                                            <TextBlock Text="传输失败时的重试次数" FontSize="12" Foreground="#6b7280"/>
+                                        </StackPanel>
+                                        <NumericUpDown Grid.Column="1" Value="{Binding MaxRetryCount}" Minimum="0" Maximum="10" Increment="1" Width="100" VerticalAlignment="Center"/>
+                                    </Grid>
+                                </Grid>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- 🔔 通知设置 -->
+                        <Border Background="#1f293780" CornerRadius="16" Padding="24">
+                            <StackPanel Spacing="16">
+                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                    <TextBlock Text="🔔" FontSize="18"/>
+                                    <TextBlock Text="通知设置" FontSize="16" FontWeight="SemiBold" Foreground="White"/>
+                                </StackPanel>
+
+                                <Grid RowDefinitions="Auto,Auto,Auto" RowSpacing="12">
+                                    <Grid Grid.Row="0" ColumnDefinitions="*,Auto">
+                                        <StackPanel Grid.Column="0" Spacing="2">
+                                            <TextBlock Text="启用消息提示音" FontSize="14" Foreground="White"/>
+                                            <TextBlock Text="收到新消息时播放提示音" FontSize="12" Foreground="#6b7280"/>
+                                        </StackPanel>
+                                        <CheckBox Grid.Column="1" IsChecked="{Binding EnableSound}" VerticalAlignment="Center"/>
+                                    </Grid>
+                                    <Grid Grid.Row="1" ColumnDefinitions="*,Auto">
+                                        <StackPanel Grid.Column="0" Spacing="2">
+                                            <TextBlock Text="启用桌面通知" FontSize="14" Foreground="White"/>
+                                            <TextBlock Text="收到新消息时显示系统通知" FontSize="12" Foreground="#6b7280"/>
+                                        </StackPanel>
+                                        <CheckBox Grid.Column="1" IsChecked="{Binding EnableDesktopNotification}" VerticalAlignment="Center"/>
+                                    </Grid>
+                                    <Grid Grid.Row="2" ColumnDefinitions="*,Auto">
+                                        <StackPanel Grid.Column="0" Spacing="2">
+                                            <TextBlock Text="@提及时高亮显示" FontSize="14" Foreground="White"/>
+                                            <TextBlock Text="当有人@你时特别提醒" FontSize="12" Foreground="#6b7280"/>
+                                        </StackPanel>
+                                        <CheckBox Grid.Column="1" IsChecked="{Binding HighlightMention}" VerticalAlignment="Center"/>
+                                    </Grid>
+                                </Grid>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- 👤 账户设置 -->
+                        <Border Background="#1f293780" CornerRadius="16" Padding="24">
+                            <StackPanel Spacing="20">
+                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                    <TextBlock Text="👤" FontSize="18"/>
+                                    <TextBlock Text="账户" FontSize="16" FontWeight="SemiBold" Foreground="White"/>
+                                </StackPanel>
+
+                                <Grid ColumnDefinitions="Auto,*,Auto">
+                                    <Border Grid.Column="0" Width="56" Height="56" CornerRadius="28" Background="#2d4a6a" Margin="0,0,16,0">
+                                        <TextBlock Text="👤" FontSize="24" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                    </Border>
+                                    <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="4">
+                                        <TextBlock Text="{Binding UserDisplayName}" FontSize="16" FontWeight="SemiBold" Foreground="White"/>
+                                        <TextBlock Text="{Binding SubscriptionDisplay}" FontSize="13" Foreground="#6b7280"/>
+                                    </StackPanel>
+                                    <Button Grid.Column="2" Classes="connect-btn" Command="{Binding ShowLoginCommand}"
+                                            IsVisible="{Binding IsGuestMode}">
+                                        <TextBlock Text="登录" FontSize="14"/>
+                                    </Button>
+                                    <Button Grid.Column="2" Classes="link" Content="登出" FontSize="14"
+                                            Command="{Binding LogoutCommand}"
+                                            IsVisible="{Binding IsLoggedIn}"/>
+                                </Grid>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- ℹ️ 关于 -->
+                        <Border Background="#1f293780" CornerRadius="16" Padding="24">
+                            <StackPanel Spacing="20">
+                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                    <TextBlock Text="ℹ️" FontSize="18"/>
+                                    <TextBlock Text="关于" FontSize="16" FontWeight="SemiBold" Foreground="White"/>
+                                </StackPanel>
+
+                                <Grid RowDefinitions="Auto,Auto,Auto,Auto" RowSpacing="12">
+                                    <StackPanel Grid.Row="0" Orientation="Horizontal" Spacing="12">
+                                        <TextBlock Text="版本" FontSize="14" Foreground="#6b7280" Width="100"/>
+                                        <TextBlock Text="{Binding VersionDisplay}" FontSize="14" Foreground="White"/>
+                                    </StackPanel>
+                                    <StackPanel Grid.Row="1" Orientation="Horizontal" Spacing="12">
+                                        <TextBlock Text="框架" FontSize="14" Foreground="#6b7280" Width="100"/>
+                                        <TextBlock Text="Avalonia UI 11.3.9" FontSize="14" Foreground="White"/>
+                                    </StackPanel>
+                                    <StackPanel Grid.Row="2" Orientation="Horizontal" Spacing="12">
+                                        <TextBlock Text="运行时" FontSize="14" Foreground="#6b7280" Width="100"/>
+                                        <TextBlock Text=".NET 8.0" FontSize="14" Foreground="White"/>
+                                    </StackPanel>
+                                    <StackPanel Grid.Row="3" Orientation="Horizontal" Spacing="12">
+                                        <TextBlock Text="平台" FontSize="14" Foreground="#6b7280" Width="100"/>
+                                        <TextBlock Text="Windows x64" FontSize="14" Foreground="White"/>
+                                    </StackPanel>
+                                </Grid>
+
+                                <StackPanel Orientation="Horizontal" Spacing="12">
+                                    <Button Classes="connect-btn" Command="{Binding CheckForUpdateCommand}">
+                                        <StackPanel Orientation="Horizontal" Spacing="8">
+                                            <TextBlock Text="🔄" FontSize="14"/>
+                                            <TextBlock Text="{Binding IsCheckingUpdate, Converter={StaticResource BoolToCheckingTextConverter}}" FontSize="14"/>
+                                        </StackPanel>
+                                    </Button>
+                                    <Button Classes="banner-btn-secondary" Command="{Binding OpenFeedbackPageCommand}">
+                                        <StackPanel Orientation="Horizontal" Spacing="8">
+                                            <TextBlock Text="💬" FontSize="14"/>
+                                            <TextBlock Text="反馈问题" FontSize="14"/>
+                                        </StackPanel>
+                                    </Button>
+                                </StackPanel>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- 底部操作栏 -->
+                        <Grid ColumnDefinitions="Auto,*,Auto" Margin="0,8,0,0">
+                            <Button Grid.Column="0" Classes="banner-btn-secondary" Command="{Binding ResetToDefaultsCommand}">
+                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                    <TextBlock Text="↩️" FontSize="14"/>
+                                    <TextBlock Text="恢复默认" FontSize="14"/>
+                                </StackPanel>
+                            </Button>
+                            <Button Grid.Column="2" Classes="join-btn" Command="{Binding SaveSettingsCommand}">
+                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                    <TextBlock Text="💾" FontSize="14"/>
+                                    <TextBlock Text="保存设置" FontSize="14"/>
+                                </StackPanel>
+                            </Button>
+                        </Grid>
+                    </StackPanel>
+
+                    <!-- ==================== 帮助页面 ==================== -->
+                    <StackPanel IsVisible="{Binding IsHelpPage}" Spacing="24">
+                        <StackPanel Spacing="8">
+                            <TextBlock Text="帮助中心" FontSize="28" FontWeight="Bold" Foreground="White"/>
+                            <TextBlock Text="获取使用帮助和支持" FontSize="14" Foreground="#9ca3af"/>
+                        </StackPanel>
+
+                        <!-- 快速入门 -->
+                        <Border Background="#1f293780" CornerRadius="16" Padding="24">
+                            <StackPanel Spacing="16">
+                                <TextBlock Text="🚀 快速入门" FontSize="18" FontWeight="SemiBold" Foreground="White"/>
+                                <TextBlock Text="1. 点击「开始游戏」选择连接方式" FontSize="14" Foreground="#9ca3af"/>
+                                <TextBlock Text="2. 扫描局域网房间或直接输入服务器地址" FontSize="14" Foreground="#9ca3af"/>
+                                <TextBlock Text="3. 加入房间后开始游戏" FontSize="14" Foreground="#9ca3af"/>
+                                <TextBlock Text="4. 使用编辑器创建角色卡、地图等资源" FontSize="14" Foreground="#9ca3af"/>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- 常见问题 -->
+                        <Border Background="#1f293780" CornerRadius="16" Padding="24">
+                            <StackPanel Spacing="16">
+                                <TextBlock Text="❓ 常见问题" FontSize="18" FontWeight="SemiBold" Foreground="White"/>
+
+                                <StackPanel Spacing="12">
+                                    <StackPanel Spacing="4">
+                                        <TextBlock Text="Q: 无法扫描到局域网房间？" FontSize="14" FontWeight="SemiBold" Foreground="White"/>
+                                        <TextBlock Text="A: 请确保主机和客户端在同一网络，且防火墙允许UDP广播。" FontSize="13" Foreground="#6b7280" TextWrapping="Wrap"/>
+                                    </StackPanel>
+                                    <StackPanel Spacing="4">
+                                        <TextBlock Text="Q: 直接连接失败？" FontSize="14" FontWeight="SemiBold" Foreground="White"/>
+                                        <TextBlock Text="A: 检查IP地址和端口是否正确，确保服务器已启动。" FontSize="13" Foreground="#6b7280" TextWrapping="Wrap"/>
+                                    </StackPanel>
+                                    <StackPanel Spacing="4">
+                                        <TextBlock Text="Q: 资源仓库在哪里？" FontSize="14" FontWeight="SemiBold" Foreground="White"/>
+                                        <TextBlock Text="A: 点击「资源仓库」，各类资源存储在程序目录下的Storage文件夹中。" FontSize="13" Foreground="#6b7280" TextWrapping="Wrap"/>
+                                    </StackPanel>
+                                </StackPanel>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- 联系我们 -->
+                        <Border Background="#1f293780" CornerRadius="16" Padding="24">
+                            <StackPanel Spacing="16">
+                                <TextBlock Text="📞 联系我们" FontSize="18" FontWeight="SemiBold" Foreground="White"/>
+                                <TextBlock Text="如有问题或建议，欢迎通过以下方式联系：" FontSize="14" Foreground="#9ca3af"/>
+                                <StackPanel Orientation="Horizontal" Spacing="16">
+                                    <Button Classes="connect-btn">
+                                        <TextBlock Text="官方网站" FontSize="14"/>
+                                    </Button>
+                                    <Button Classes="banner-btn-secondary">
+                                        <TextBlock Text="问题反馈" FontSize="14"/>
+                                    </Button>
+                                </StackPanel>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+
+                </Grid>
+            </ScrollViewer>
+
+            <!-- 底部状态栏 -->
+            <Border Grid.Row="1" Background="#0a0a0f80" Padding="24,12">
+                <Grid ColumnDefinitions="*,Auto">
+                    <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="24">
+                        <TextBlock Text="{Binding VersionDisplay, StringFormat='版本 {0}'}" FontSize="12" Foreground="#6b7280"/>
+                        <TextBlock Text="●" FontSize="8" Foreground="#7aab9a" VerticalAlignment="Center"/>
+                        <TextBlock Text="服务正常" FontSize="12" Foreground="#6b7280"/>
+                    </StackPanel>
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="16">
+                        <Button Classes="link" FontSize="12" Command="{Binding CheckForUpdateCommand}">
+                            <TextBlock Text="{Binding IsCheckingUpdate, Converter={StaticResource BoolToCheckingTextConverter}}" FontSize="12"/>
+                        </Button>
+                        <Button Classes="link" Content="反馈问题" FontSize="12" Command="{Binding OpenFeedbackPageCommand}"/>
+                    </StackPanel>
+                </Grid>
+            </Border>
+        </Grid>
+    </Grid>
+
+    <!-- ==================== 公告详情弹窗 ==================== -->
+    <Border IsVisible="{Binding IsAnnouncementDetailOpen}"
+            Background="#00000080"
+            HorizontalAlignment="Stretch"
+            VerticalAlignment="Stretch">
+        <Border Background="#1a1a2e"
+                CornerRadius="16"
+                MaxWidth="600"
+                MaxHeight="500"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center"
+                Margin="40"
+                Padding="0"
+                BoxShadow="0 25 50 -12 #00000080">
+            <Grid RowDefinitions="Auto,*,Auto">
+                <!-- 弹窗头部 -->
+                <Border Grid.Row="0" Padding="24,20" BorderBrush="#2d3748" BorderThickness="0,0,0,1">
+                    <Grid ColumnDefinitions="Auto,*,Auto">
+                        <!-- 标签 -->
+                        <Border Grid.Column="0"
+                                Background="{Binding SelectedAnnouncement.TagColor}"
+                                CornerRadius="6"
+                                Padding="12,6"
+                                Margin="0,0,16,0"
+                                VerticalAlignment="Center">
+                            <TextBlock Text="{Binding SelectedAnnouncement.Tag}"
+                                       FontSize="12"
+                                       Foreground="White"
+                                       FontWeight="SemiBold"/>
+                        </Border>
+                        <!-- 标题 -->
+                        <TextBlock Grid.Column="1"
+                                   Text="{Binding SelectedAnnouncement.Title}"
+                                   FontSize="18"
+                                   FontWeight="Bold"
+                                   Foreground="White"
+                                   VerticalAlignment="Center"
+                                   TextTrimming="CharacterEllipsis"/>
+                        <!-- 关闭按钮 -->
+                        <Button Grid.Column="2"
+                                Classes="icon-btn"
+                                Command="{Binding CloseAnnouncementDetailCommand}"
+                                Width="32" Height="32"
+                                Margin="16,0,0,0">
+                            <TextBlock Text="✕" FontSize="16" Foreground="#9ca3af"/>
+                        </Button>
+                    </Grid>
+                </Border>
+
+                <!-- 弹窗内容 -->
+                <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Padding="24,20">
+                    <StackPanel Spacing="16">
+                        <!-- 发布信息 -->
+                        <StackPanel Orientation="Horizontal" Spacing="16">
+                            <TextBlock Text="{Binding SelectedAnnouncement.Author, StringFormat='发布者: {0}'}"
+                                       FontSize="12"
+                                       Foreground="#6b7280"/>
+                            <TextBlock Text="•"
+                                       FontSize="12"
+                                       Foreground="#4b5563"/>
+                            <TextBlock Text="{Binding SelectedAnnouncement.FullDateDisplay}"
+                                       FontSize="12"
+                                       Foreground="#6b7280"/>
+                        </StackPanel>
+                        <!-- 正文内容 -->
+                        <TextBlock Text="{Binding SelectedAnnouncement.Content}"
+                                   FontSize="14"
+                                   Foreground="#d1d5db"
+                                   LineHeight="24"
+                                   TextWrapping="Wrap"/>
+                    </StackPanel>
+                </ScrollViewer>
+
+                <!-- 弹窗底部 -->
+                <Border Grid.Row="2" Padding="24,16" BorderBrush="#2d3748" BorderThickness="0,1,0,0">
+                    <Button Classes="connect-btn"
+                            HorizontalAlignment="Right"
+                            Command="{Binding CloseAnnouncementDetailCommand}">
+                        <TextBlock Text="关闭" FontSize="14"/>
+                    </Button>
+                </Border>
+            </Grid>
+        </Border>
+    </Border>
+
+    <!-- ==================== 更新对话框 ==================== -->
+    <Border IsVisible="{Binding IsUpdateDialogOpen}"
+            Background="#00000080"
+            HorizontalAlignment="Stretch"
+            VerticalAlignment="Stretch">
+        <Border Background="#1a1a2e"
+                CornerRadius="16"
+                MaxWidth="500"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center"
+                Margin="40"
+                Padding="0"
+                BoxShadow="0 25 50 -12 #00000080">
+            <Grid RowDefinitions="Auto,*,Auto">
+                <!-- 弹窗头部 -->
+                <Border Grid.Row="0" Padding="24,20" BorderBrush="#2d3748" BorderThickness="0,0,0,1">
+                    <Grid ColumnDefinitions="*,Auto">
+                        <StackPanel Grid.Column="0" Spacing="4">
+                            <TextBlock Text="🎉 发现新版本"
+                                       FontSize="18"
+                                       FontWeight="Bold"
+                                       Foreground="White"/>
+                            <TextBlock Text="{Binding LatestVersion, StringFormat='最新版本: {0}'}"
+                                       FontSize="13"
+                                       Foreground="#9ca3af"/>
+                        </StackPanel>
+                        <!-- 关闭按钮 -->
+                        <Button Grid.Column="1"
+                                Classes="icon-btn"
+                                Command="{Binding CloseUpdateDialogCommand}"
+                                Width="32" Height="32">
+                            <TextBlock Text="✕" FontSize="16" Foreground="#9ca3af"/>
+                        </Button>
+                    </Grid>
+                </Border>
+
+                <!-- 弹窗内容 -->
+                <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Padding="24,20" MaxHeight="300">
+                    <StackPanel Spacing="16">
+                        <TextBlock Text="更新内容:"
+                                   FontSize="14"
+                                   FontWeight="SemiBold"
+                                   Foreground="White"/>
+                        <TextBlock Text="{Binding UpdateNotes}"
+                                   FontSize="13"
+                                   Foreground="#d1d5db"
+                                   LineHeight="22"
+                                   TextWrapping="Wrap"/>
+                    </StackPanel>
+                </ScrollViewer>
+
+                <!-- 弹窗底部 -->
+                <Border Grid.Row="2" Padding="24,16" BorderBrush="#2d3748" BorderThickness="0,1,0,0">
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="12">
+                        <Button Classes="banner-btn-secondary"
+                                Command="{Binding CloseUpdateDialogCommand}">
+                            <TextBlock Text="稍后更新" FontSize="14"/>
+                        </Button>
+                        <Button Classes="join-btn"
+                                Command="{Binding OpenDownloadPageCommand}">
+                            <TextBlock Text="立即下载" FontSize="14"/>
+                        </Button>
+                    </StackPanel>
+                </Border>
+            </Grid>
+        </Border>
+    </Border>
+    </Panel>
+</UserControl>

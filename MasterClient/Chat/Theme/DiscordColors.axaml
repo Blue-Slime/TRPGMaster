@@ -1,0 +1,55 @@
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!-- ============================================================
+         Discord 设计令牌（对标其 CSS 变量）。数值取自 Discord 深色主题。
+         只被聊天窗口作用域 merge，不污染门户主题。
+         ============================================================ -->
+
+    <!-- 背景层级（从深到浅） -->
+    <SolidColorBrush x:Key="BgTertiary"     Color="#1e1f22"/>  <!-- 最深：服务器栏(我们不用) -->
+    <SolidColorBrush x:Key="BgSecondaryAlt" Color="#232428"/>  <!-- 侧栏底 -->
+    <SolidColorBrush x:Key="BgSecondary"    Color="#2b2d31"/>  <!-- 频道列表/成员栏 -->
+    <SolidColorBrush x:Key="BgPrimary"      Color="#313338"/>  <!-- 消息主区 -->
+    <SolidColorBrush x:Key="BgInputArea"    Color="#383a40"/>  <!-- 输入框 -->
+    <SolidColorBrush x:Key="BgMessageHover" Color="#2e3035"/>  <!-- 消息悬停底 -->
+    <SolidColorBrush x:Key="BgMessageHighlight" Color="#3b3a2c"/>  <!-- 搜索跳转定位高亮底（暖黄调） -->
+    <SolidColorBrush x:Key="BgModifierHover" Color="#35373c"/> <!-- 频道项悬停 -->
+    <SolidColorBrush x:Key="BgModifierSelected" Color="#404249"/> <!-- 频道项选中 -->
+    <SolidColorBrush x:Key="BgFloating"     Color="#111214"/>  <!-- 浮层/悬停条底 -->
+
+    <!-- 文本 -->
+    <SolidColorBrush x:Key="TextHeader"  Color="#f2f3f5"/>  <!-- 标题/强调 -->
+    <SolidColorBrush x:Key="TextNormal"  Color="#dbdee1"/>  <!-- 正文 -->
+    <SolidColorBrush x:Key="TextMuted"   Color="#949ba4"/>  <!-- 次要/时间 -->
+    <SolidColorBrush x:Key="TextFaint"   Color="#80848e"/>  <!-- 更弱/分组标题 -->
+
+    <!-- 交互元素（图标/工具按钮的三态） -->
+    <SolidColorBrush x:Key="InteractiveNormal" Color="#b5bac1"/>
+    <SolidColorBrush x:Key="InteractiveHover"  Color="#dbdee1"/>
+    <SolidColorBrush x:Key="InteractiveActive" Color="#ffffff"/>
+
+    <!-- 品牌 & 语义色 -->
+    <SolidColorBrush x:Key="BrandNormal" Color="#5865f2"/>
+    <SolidColorBrush x:Key="BrandHover"  Color="#4752c4"/>
+    <SolidColorBrush x:Key="DangerNormal" Color="#da373c"/>
+    <SolidColorBrush x:Key="DangerHover"  Color="#a12828"/>
+    <SolidColorBrush x:Key="Positive"    Color="#3ba55d"/>
+    <SolidColorBrush x:Key="DiceGold"    Color="#fee75c"/>
+    <SolidColorBrush x:Key="MentionBg"   Color="#3d3f22"/>  <!-- @提及高亮底 -->
+    <SolidColorBrush x:Key="Divider"     Color="#1f1f22"/>
+
+    <!-- 圆角令牌 -->
+    <CornerRadius x:Key="RadiusXs">4</CornerRadius>
+    <CornerRadius x:Key="RadiusSm">6</CornerRadius>
+    <CornerRadius x:Key="RadiusMd">8</CornerRadius>
+    <CornerRadius x:Key="RadiusFull">999</CornerRadius>
+
+    <!-- 字号令牌 -->
+    <x:Double x:Key="FontXs">11</x:Double>
+    <x:Double x:Key="FontSm">12</x:Double>
+    <x:Double x:Key="FontMd">14</x:Double>
+    <x:Double x:Key="FontLg">16</x:Double>
+    <x:Double x:Key="FontXl">18</x:Double>
+
+</ResourceDictionary>

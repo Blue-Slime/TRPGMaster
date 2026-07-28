@@ -1,0 +1,105 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:vm="using:MasterServerUI.ViewModels"
+        mc:Ignorable="d" d:DesignWidth="450" d:DesignHeight="560"
+        x:Class="MasterServerUI.Views.CreateRoomDialog"
+        x:DataType="vm:CreateRoomDialogViewModel"
+        Title="{Binding DialogTitle}"
+        Width="450"
+        SizeToContent="Height"
+        MaxHeight="700"
+        WindowStartupLocation="CenterOwner"
+        CanResize="False">
+
+    <Border Padding="24">
+        <StackPanel Spacing="14">
+            <StackPanel Margin="0,0,0,8">
+                <TextBlock Text="{Binding DialogTitle}" FontSize="20" FontWeight="Bold" Foreground="#FFFFFF"/>
+                <TextBlock Text="设置房间基本信息" FontSize="12" Foreground="#888888" Margin="0,4,0,0"/>
+            </StackPanel>
+
+            <!-- 房间ID（创建时可填，编辑时只读） -->
+            <StackPanel Spacing="4">
+                <StackPanel Orientation="Horizontal" Spacing="6">
+                    <TextBlock Text="房间ID *" FontSize="13" Foreground="#CCCCCC"/>
+                    <TextBlock Text="（未来将改为自动生成）" FontSize="11" Foreground="#666666"
+                               IsVisible="{Binding !IsEditMode}"/>
+                </StackPanel>
+                <TextBox Text="{Binding RoomId, Mode=TwoWay}"
+                         IsReadOnly="{Binding IsRoomIdReadOnly}"
+                         Watermark="如: room_001"
+                         MaxLength="32"/>
+            </StackPanel>
+
+            <!-- 房间名称 -->
+            <StackPanel Spacing="4">
+                <TextBlock Text="房间名称 *" FontSize="13" Foreground="#CCCCCC"/>
+                <TextBox Text="{Binding RoomName, Mode=TwoWay}"
+                         Watermark="输入房间名称..." MaxLength="50"/>
+            </StackPanel>
+
+            <!-- 简介 -->
+            <StackPanel Spacing="4">
+                <TextBlock Text="房间简介" FontSize="13" Foreground="#CCCCCC"/>
+                <TextBox Text="{Binding Description, Mode=TwoWay}"
+                         Watermark="输入房间简介（可选）..."
+                         AcceptsReturn="True" TextWrapping="Wrap" Height="55" MaxLength="200"/>
+            </StackPanel>
+
+            <!-- 游戏系统 + 最大人数 -->
+            <Grid ColumnDefinitions="*,16,*">
+                <StackPanel Grid.Column="0" Spacing="4">
+                    <TextBlock Text="游戏系统" FontSize="13" Foreground="#CCCCCC"/>
+                    <ComboBox ItemsSource="{Binding GameSystems}"
+                              SelectedItem="{Binding GameSystem, Mode=TwoWay}"
+                              HorizontalAlignment="Stretch"/>
+                </StackPanel>
+                <StackPanel Grid.Column="2" Spacing="4">
+                    <TextBlock Text="最大人数" FontSize="13" Foreground="#CCCCCC"/>
+                    <NumericUpDown Value="{Binding MaxPlayers, Mode=TwoWay}"
+                                  Minimum="2" Maximum="20" Increment="1"
+                                  HorizontalAlignment="Stretch"/>
+                </StackPanel>
+            </Grid>
+
+            <!-- 公开房间 -->
+            <Border Background="#1E1E1E" CornerRadius="6" Padding="12">
+                <Grid ColumnDefinitions="*,Auto">
+                    <StackPanel Grid.Column="0">
+                        <TextBlock Text="公开房间" FontSize="14" FontWeight="SemiBold" Foreground="#E0E0E0"/>
+                        <TextBlock Text="公开房间可在房间列表中被看到"
+                                   FontSize="11" Foreground="#888888" Margin="0,2,0,0"/>
+                    </StackPanel>
+                    <ToggleSwitch Grid.Column="1" IsChecked="{Binding IsPublic, Mode=TwoWay}"
+                                  OnContent="" OffContent="" VerticalAlignment="Center"/>
+                </Grid>
+            </Border>
+
+            <!-- 密码 -->
+            <StackPanel Spacing="4">
+                <TextBlock Text="房间密码（可选）" FontSize="13" Foreground="#CCCCCC"/>
+                <TextBox Text="{Binding Password, Mode=TwoWay}"
+                         Watermark="留空表示无密码..."
+                         PasswordChar="●" MaxLength="32"/>
+            </StackPanel>
+
+            <!-- 错误提示 -->
+            <TextBlock Text="{Binding ErrorMessage}" Foreground="#ED4245" FontSize="12"
+                       IsVisible="{Binding ErrorMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+
+            <!-- 按钮 -->
+            <Grid ColumnDefinitions="*,8,*" Margin="0,6,0,0">
+                <Button Grid.Column="0" Content="取消"
+                        Command="{Binding CancelCommand}"
+                        HorizontalAlignment="Stretch" Height="40"
+                        Background="#3C3C3C" Foreground="#E0E0E0"/>
+                <Button Grid.Column="2" Content="{Binding ConfirmText}"
+                        Command="{Binding ConfirmCommand}"
+                        HorizontalAlignment="Stretch" Height="40"
+                        Background="#3BA55D" Foreground="White" FontWeight="SemiBold"/>
+            </Grid>
+        </StackPanel>
+    </Border>
+</Window>

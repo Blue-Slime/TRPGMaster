@@ -1,0 +1,1 @@
+{"Name":"弓手","Type":"StaticObjectClass","Components":[{"Type":"Transform","Properties":{}},{"Type":"SpriteRenderer","Properties":{"spriteColor":"#50C060","opacity":"1"}},{"Type":"Vision","Properties":{"enabled":"true","radius":"100"}}]}

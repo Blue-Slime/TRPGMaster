@@ -1,0 +1,1 @@
+{"Name":"宝箱","Type":"StaticObjectClass","Components":[{"Type":"Transform","Properties":{}},{"Type":"SpriteRenderer","Properties":{"spriteColor":"#DAA520","opacity":"1"}}]}

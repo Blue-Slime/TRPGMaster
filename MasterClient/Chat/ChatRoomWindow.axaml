@@ -1,0 +1,73 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:chat="using:MasterClient.Chat"
+        xmlns:panels="using:MasterClient.Chat.Panels"
+        mc:Ignorable="d" d:DesignWidth="1200" d:DesignHeight="760"
+        x:Class="MasterClient.Chat.ChatRoomWindow"
+        x:DataType="chat:ChatRoomViewModel"
+        Title="{Binding RoomTitle, StringFormat='跑团 - {0}'}"
+        Width="1200" Height="760"
+        MinWidth="900" MinHeight="560"
+        WindowStartupLocation="CenterScreen"
+        Background="{DynamicResource BgPrimary}">
+
+    <!-- Discord 主题资源（令牌/控件/动画三分）收进本窗口作用域，不污染门户主题。
+         对标 Discord 的 CSS 变量 + SCSS Module 分离。 -->
+    <Window.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceInclude Source="/Chat/Theme/DiscordColors.axaml"/>
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
+    </Window.Resources>
+
+    <Window.Styles>
+        <StyleInclude Source="/Chat/Theme/DiscordControls.axaml"/>
+    </Window.Styles>
+
+    <!-- 外层：聊天三栏在底层，地图覆盖层浮在上方 -->
+    <Grid Name="RootGrid">
+        <!-- 底层：聊天三栏 -->
+        <Grid ColumnDefinitions="240,*,240">
+            <panels:ChannelListView Grid.Column="0" DataContext="{Binding ChannelList}"/>
+            <panels:MessageAreaView Grid.Column="1" DataContext="{Binding MessageArea}"
+                                    Tag="{Binding}"/>
+            <panels:MemberPanelView Grid.Column="2" DataContext="{Binding MemberPanel}"/>
+        </Grid>
+
+        <!-- 地图覆盖层：整窗覆盖，用 TranslateTransform.Y 从底部滑入/滑出。
+             圆按钮嵌在覆盖层顶边，随覆盖层一起滑动（收起=按钮在窗口底部露上半，
+             展开=按钮滑到窗口顶部）。ClipToBounds=False 让按钮能探出覆盖层顶边。 -->
+        <Border Name="MapOverlay"
+                Background="{DynamicResource BgPrimary}"
+                RenderTransformOrigin="0,0"
+                ClipToBounds="False"
+                IsVisible="{Binding IsMapLoaded}">
+            <Border.RenderTransform>
+                <TranslateTransform/>
+            </Border.RenderTransform>
+
+            <!-- 无行定义的 Grid：地图内容铺满，圆按钮叠在顶边（内嵌模式无头栏） -->
+            <Grid>
+                <!-- 地图内容：懒加载后由 code-behind 注入 MapEditorView，直接铺满 -->
+                <ContentControl Name="MapHost"/>
+
+                <!-- 推拉圆按钮：锚定覆盖层顶边中央，负 margin 让上半探出覆盖层顶边。
+                     随覆盖层一起滑动。既是收起入口，也充当把手。 -->
+                <Button Name="MapPullButton"
+                        Width="56" Height="56"
+                        HorizontalAlignment="Center" VerticalAlignment="Top"
+                        Margin="0,-28,0,0"
+                        CornerRadius="28"
+                        Background="{DynamicResource BrandNormal}"
+                        Command="{Binding ToggleMapCommand}"
+                        ToolTip.Tip="拉起/收起地图">
+                    <TextBlock Text="🗺" FontSize="22"
+                               HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                </Button>
+            </Grid>
+        </Border>
+    </Grid>
+</Window>

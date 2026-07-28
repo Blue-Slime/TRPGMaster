@@ -1,0 +1,81 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:panels="using:MasterClient.Chat.Panels"
+             mc:Ignorable="d" d:DesignWidth="240" d:DesignHeight="760"
+             x:Class="MasterClient.Chat.Panels.ChannelListView"
+             x:DataType="panels:ChannelListViewModel">
+
+    <Border Background="{DynamicResource BgSecondary}">
+        <Grid RowDefinitions="48,*">
+            <!-- 房间标题 -->
+            <Border Grid.Row="0" Height="48" Background="{DynamicResource BgSecondary}"
+                    BorderBrush="{DynamicResource Divider}" BorderThickness="0,0,0,1" Padding="16,0">
+                <TextBlock Text="{Binding RoomTitle}" Foreground="{DynamicResource TextHeader}"
+                           FontWeight="Bold" FontSize="{DynamicResource FontLg}" VerticalAlignment="Center"
+                           TextTrimming="CharacterEllipsis"/>
+            </Border>
+
+            <!-- 频道列表（空白处右键=新建）-->
+            <Grid Grid.Row="1">
+                <Grid.ContextMenu>
+                    <ContextMenu>
+                        <MenuItem Header="➕ 新建频道" Command="{Binding AddChannelCommand}"/>
+                    </ContextMenu>
+                </Grid.ContextMenu>
+
+                <ScrollViewer Padding="8,12">
+                    <StackPanel Spacing="2">
+                        <!-- 分组标题行 -->
+                        <Grid Margin="8,0,4,6" ColumnDefinitions="*,Auto">
+                            <TextBlock Grid.Column="0" Text="频道" Foreground="{DynamicResource TextFaint}"
+                                       FontSize="{DynamicResource FontXs}" FontWeight="Bold"
+                                       VerticalAlignment="Center"/>
+                            <Button Grid.Column="1" Classes="icon" Content="＋"
+                                    Command="{Binding AddChannelCommand}" ToolTip.Tip="新建频道"
+                                    MinWidth="24" MinHeight="24" Padding="4"/>
+                        </Grid>
+
+                        <ListBox Name="ChannelListBox" Classes="channelList"
+                                 ItemsSource="{Binding Channels}"
+                                 SelectedItem="{Binding SelectedChannel, Mode=TwoWay}"
+                                 Background="Transparent" BorderThickness="0" Padding="0">
+                            <ListBox.ItemTemplate>
+                                <DataTemplate x:DataType="panels:ChannelItemViewModel">
+                                    <Grid Background="Transparent" ColumnDefinitions="Auto,*,Auto">
+                                        <!-- 频道项右键：配置/删除 -->
+                                        <Grid.ContextMenu>
+                                            <ContextMenu>
+                                                <MenuItem Header="⚙ 频道配置" Command="{Binding EditCommand}"/>
+                                                <MenuItem Header="🗑 删除频道" Command="{Binding DeleteCommand}"/>
+                                            </ContextMenu>
+                                        </Grid.ContextMenu>
+
+                                        <!-- # 前缀 -->
+                                        <TextBlock Grid.Column="0" Text="#"
+                                                   Foreground="{DynamicResource TextFaint}"
+                                                   FontWeight="Bold" FontSize="{DynamicResource FontMd}"
+                                                   VerticalAlignment="Center" Margin="0,0,6,0"/>
+                                        <!-- 频道名（选中时由样式提亮） -->
+                                        <TextBlock Grid.Column="1" Classes="channelName"
+                                                   Text="{Binding ChannelName}"
+                                                   Foreground="{DynamicResource TextMuted}"
+                                                   FontSize="{DynamicResource FontMd}"
+                                                   VerticalAlignment="Center"
+                                                   TextTrimming="CharacterEllipsis"/>
+                                        <!-- 未读红点 -->
+                                        <Ellipse Grid.Column="2" Width="8" Height="8"
+                                                 Fill="{DynamicResource TextHeader}"
+                                                 VerticalAlignment="Center" Margin="6,0"
+                                                 IsVisible="{Binding HasUnread}"/>
+                                    </Grid>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+                    </StackPanel>
+                </ScrollViewer>
+            </Grid>
+        </Grid>
+    </Border>
+</UserControl>

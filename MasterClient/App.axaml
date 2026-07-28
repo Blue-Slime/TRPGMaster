@@ -1,0 +1,434 @@
+<Application xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="using:MasterClient"
+             xmlns:converters="using:MasterClient.Converters"
+             x:Class="MasterClient.App"
+             RequestedThemeVariant="Dark">
+
+    <Application.DataTemplates>
+        <local:ViewLocator/>
+    </Application.DataTemplates>
+
+    <Application.Resources>
+        <!-- Discord-style Colors -->
+        <SolidColorBrush x:Key="DarkestBgBrush" Color="#1E2124"/>
+        <SolidColorBrush x:Key="DarkerBgBrush" Color="#282B30"/>
+        <SolidColorBrush x:Key="DarkBgBrush" Color="#36393F"/>
+        <SolidColorBrush x:Key="LighterBgBrush" Color="#40444B"/>
+
+        <SolidColorBrush x:Key="TextNormalBrush" Color="#DCDDDE"/>
+        <SolidColorBrush x:Key="TextMutedBrush" Color="#72767D"/>
+        <SolidColorBrush x:Key="TextLinkBrush" Color="#00AFF4"/>
+
+        <SolidColorBrush x:Key="BlurpleBrush" Color="#5865F2"/>
+        <SolidColorBrush x:Key="GreenBrush" Color="#3BA55D"/>
+        <SolidColorBrush x:Key="RedBrush" Color="#ED4245"/>
+        <SolidColorBrush x:Key="YellowBrush" Color="#FAA61A"/>
+        <SolidColorBrush x:Key="VIPGoldBrush" Color="#F1C40F"/>
+
+        <!-- Converters -->
+        <converters:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
+        <converters:InverseBoolConverter x:Key="InverseBoolConverter"/>
+        <converters:BoolToScanButtonTextConverter x:Key="BoolToScanButtonTextConverter"/>
+        <converters:OnlineStatusConverter x:Key="OnlineStatusConverter"/>
+        <converters:BoolToCheckingTextConverter x:Key="BoolToCheckingTextConverter"/>
+        <converters:BoolToConnectionColorConverter x:Key="BoolToConnectionColorConverter"/>
+        <converters:BoolToFavoriteTextConverter x:Key="BoolToFavoriteTextConverter"/>
+        <converters:BoolToStarConverter x:Key="BoolToStarConverter"/>
+    </Application.Resources>
+
+    <Application.Styles>
+        <FluentTheme />
+
+        <!-- Window Style -->
+        <Style Selector="Window">
+            <Setter Property="Background" Value="#282B30"/>
+        </Style>
+
+        <!-- Global Text Styles -->
+        <Style Selector="TextBlock">
+            <Setter Property="Foreground" Value="#DCDDDE"/>
+            <Setter Property="FontFamily" Value="Segoe UI, Microsoft YaHei UI"/>
+        </Style>
+
+        <Style Selector="TextBlock.heading1">
+            <Setter Property="FontSize" Value="28"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="Foreground" Value="#FFFFFF"/>
+        </Style>
+
+        <Style Selector="TextBlock.heading2">
+            <Setter Property="FontSize" Value="18"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Foreground" Value="#FFFFFF"/>
+        </Style>
+
+        <Style Selector="TextBlock.muted">
+            <Setter Property="Foreground" Value="#72767D"/>
+        </Style>
+
+        <!-- Button Styles -->
+        <Style Selector="Button">
+            <Setter Property="Background" Value="#5865F2"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="Padding" Value="16,10"/>
+            <Setter Property="CornerRadius" Value="6"/>
+            <Setter Property="FontWeight" Value="Medium"/>
+            <Setter Property="BorderThickness" Value="0"/>
+        </Style>
+
+        <Style Selector="Button:pointerover">
+            <Setter Property="Background" Value="#4752C4"/>
+        </Style>
+
+        <Style Selector="Button:pressed">
+            <Setter Property="Background" Value="#3C45A5"/>
+        </Style>
+
+        <Style Selector="Button.secondary">
+            <Setter Property="Background" Value="#40444B"/>
+        </Style>
+
+        <Style Selector="Button.secondary:pointerover">
+            <Setter Property="Background" Value="#4F545C"/>
+        </Style>
+
+        <Style Selector="Button.success">
+            <Setter Property="Background" Value="#3BA55D"/>
+        </Style>
+
+        <Style Selector="Button.success:pointerover">
+            <Setter Property="Background" Value="#2D8049"/>
+        </Style>
+
+        <Style Selector="Button.danger">
+            <Setter Property="Background" Value="#ED4245"/>
+        </Style>
+
+        <Style Selector="Button.link">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="#6b9ac4"/>
+            <Setter Property="Padding" Value="0"/>
+        </Style>
+
+        <Style Selector="Button.link:pointerover">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="#8fb8dc"/>
+        </Style>
+
+        <!-- TextBox Styles -->
+        <Style Selector="TextBox">
+            <Setter Property="Background" Value="#1E2124"/>
+            <Setter Property="BorderBrush" Value="Transparent"/>
+            <Setter Property="Foreground" Value="#DCDDDE"/>
+            <Setter Property="SelectionBrush" Value="#5865F2"/>
+            <Setter Property="CaretBrush" Value="#FFFFFF"/>
+            <Setter Property="Padding" Value="12,10"/>
+            <Setter Property="CornerRadius" Value="6"/>
+            <Setter Property="MinHeight" Value="40"/>
+        </Style>
+
+        <Style Selector="TextBox:focus">
+            <Setter Property="BorderBrush" Value="#5865F2"/>
+            <Setter Property="BorderThickness" Value="1"/>
+        </Style>
+
+        <!-- CheckBox Styles -->
+        <Style Selector="CheckBox">
+            <Setter Property="Foreground" Value="#DCDDDE"/>
+        </Style>
+
+        <!-- Border/Panel Styles -->
+        <Style Selector="Border.panel">
+            <Setter Property="Background" Value="#36393F"/>
+            <Setter Property="CornerRadius" Value="8"/>
+            <Setter Property="Padding" Value="16"/>
+        </Style>
+
+        <Style Selector="Border.card">
+            <Setter Property="Background" Value="#2F3136"/>
+            <Setter Property="CornerRadius" Value="12"/>
+            <Setter Property="Padding" Value="20"/>
+        </Style>
+
+        <!-- ListBox Styles -->
+        <Style Selector="ListBox">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderBrush" Value="Transparent"/>
+        </Style>
+
+        <Style Selector="ListBoxItem">
+            <Setter Property="Padding" Value="12,10"/>
+            <Setter Property="Margin" Value="0,2"/>
+            <Setter Property="CornerRadius" Value="6"/>
+        </Style>
+
+        <Style Selector="ListBoxItem:selected">
+            <Setter Property="Background" Value="#42454A"/>
+        </Style>
+
+        <Style Selector="ListBoxItem:pointerover">
+            <Setter Property="Background" Value="#3C3F45"/>
+        </Style>
+
+        <!-- ScrollBar Styles -->
+        <Style Selector="ScrollBar">
+            <Setter Property="Background" Value="Transparent"/>
+        </Style>
+
+        <Style Selector="ScrollBar /template/ Thumb">
+            <Setter Property="Background" Value="#1A1B1E"/>
+            <Setter Property="CornerRadius" Value="4"/>
+        </Style>
+
+        <Style Selector="ScrollBar /template/ Thumb:pointerover">
+            <Setter Property="Background" Value="#3A3C41"/>
+        </Style>
+        <!-- V2 Styles - 新版启动器样式 -->
+
+        <!-- Primary Button (主入口按钮) -->
+        <Style Selector="Button.primary">
+            <Setter Property="Background">
+                <Setter.Value>
+                    <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,100%">
+                        <GradientStop Color="#5865F2" Offset="0"/>
+                        <GradientStop Color="#4752C4" Offset="1"/>
+                    </LinearGradientBrush>
+                </Setter.Value>
+            </Setter>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="Padding" Value="16,12"/>
+            <Setter Property="CornerRadius" Value="10"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="BorderThickness" Value="0"/>
+        </Style>
+
+        <Style Selector="Button.primary:pointerover">
+            <Setter Property="Background">
+                <Setter.Value>
+                    <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,100%">
+                        <GradientStop Color="#6875F5" Offset="0"/>
+                        <GradientStop Color="#5865F2" Offset="1"/>
+                    </LinearGradientBrush>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style Selector="Button.primary:pressed">
+            <Setter Property="Background" Value="#3C45A5"/>
+        </Style>
+
+        <!-- Feature Card Button -->
+        <Style Selector="Button.feature-card">
+            <Setter Property="Background" Value="#2F3136"/>
+            <Setter Property="Foreground" Value="#DCDDDE"/>
+            <Setter Property="Padding" Value="12"/>
+            <Setter Property="CornerRadius" Value="10"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="BorderBrush" Value="#3D4147"/>
+            <Setter Property="HorizontalAlignment" Value="Stretch"/>
+        </Style>
+
+        <Style Selector="Button.feature-card:pointerover">
+            <Setter Property="Background" Value="#36393F"/>
+            <Setter Property="BorderBrush" Value="#5865F2"/>
+        </Style>
+
+        <Style Selector="Button.feature-card:pressed">
+            <Setter Property="Background" Value="#2A2D31"/>
+        </Style>
+
+        <!-- Debug Button -->
+        <Style Selector="Button.debug-btn">
+            <Setter Property="Background" Value="#1E2124"/>
+            <Setter Property="Foreground" Value="#B9BBBE"/>
+            <Setter Property="Padding" Value="8,12"/>
+            <Setter Property="CornerRadius" Value="6"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="BorderBrush" Value="#40444B"/>
+            <Setter Property="HorizontalAlignment" Value="Stretch"/>
+        </Style>
+
+        <Style Selector="Button.debug-btn:pointerover">
+            <Setter Property="Background" Value="#282B30"/>
+            <Setter Property="BorderBrush" Value="#FAA61A"/>
+        </Style>
+
+        <!-- Icon Button -->
+        <Style Selector="Button.icon">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="#B9BBBE"/>
+            <Setter Property="Padding" Value="4"/>
+            <Setter Property="CornerRadius" Value="4"/>
+            <Setter Property="BorderThickness" Value="0"/>
+        </Style>
+
+        <Style Selector="Button.icon:pointerover">
+            <Setter Property="Background" Value="#3D4147"/>
+        </Style>
+
+        <!-- V3 Styles - 风格启动器样式 -->
+
+        <!-- 导航项按钮 -->
+        <Style Selector="Button.nav-item">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="#9ca3af"/>
+            <Setter Property="Padding" Value="12,10"/>
+            <Setter Property="CornerRadius" Value="8"/>
+            <Setter Property="HorizontalAlignment" Value="Stretch"/>
+            <Setter Property="HorizontalContentAlignment" Value="Left"/>
+            <Setter Property="BorderThickness" Value="0"/>
+        </Style>
+
+        <Style Selector="Button.nav-item:pointerover">
+            <Setter Property="Background" Value="#1f2937"/>
+            <Setter Property="Foreground" Value="White"/>
+        </Style>
+
+        <Style Selector="Button.nav-item.nav-active">
+            <Setter Property="Background" Value="#2d4a6a"/>
+            <Setter Property="Foreground" Value="#e0e8f0"/>
+        </Style>
+
+        <!-- 图标按钮 V3 -->
+        <Style Selector="Button.icon-btn">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="#9ca3af"/>
+            <Setter Property="Padding" Value="4"/>
+            <Setter Property="CornerRadius" Value="6"/>
+            <Setter Property="BorderThickness" Value="0"/>
+        </Style>
+
+        <Style Selector="Button.icon-btn:pointerover">
+            <Setter Property="Background" Value="#1f2937"/>
+            <Setter Property="Foreground" Value="White"/>
+        </Style>
+        <!-- Banner主按钮（温和深色调） -->
+        <Style Selector="Button.banner-btn-primary">
+            <Setter Property="Background" Value="#2d4a6a"/>
+            <Setter Property="Foreground" Value="#e0e8f0"/>
+            <Setter Property="Padding" Value="20,12"/>
+            <Setter Property="CornerRadius" Value="8"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="BorderThickness" Value="0"/>
+        </Style>
+
+        <Style Selector="Button.banner-btn-primary:pointerover">
+            <Setter Property="Background" Value="#3a5f80"/>
+        </Style>
+
+        <!-- Banner次要按钮（温和深色调） -->
+        <Style Selector="Button.banner-btn-secondary">
+            <Setter Property="Background" Value="#1f293780"/>
+            <Setter Property="Foreground" Value="#e0e8f0"/>
+            <Setter Property="Padding" Value="20,12"/>
+            <Setter Property="CornerRadius" Value="8"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="BorderBrush" Value="#374151"/>
+        </Style>
+
+        <Style Selector="Button.banner-btn-secondary:pointerover">
+            <Setter Property="Background" Value="#374151"/>
+        </Style>
+
+        <!-- 快捷卡片 -->
+        <Style Selector="Button.quick-card">
+            <Setter Property="Background" Value="#1f293780"/>
+            <Setter Property="Foreground" Value="#e5e7eb"/>
+            <Setter Property="Padding" Value="20"/>
+            <Setter Property="CornerRadius" Value="12"/>
+            <Setter Property="HorizontalAlignment" Value="Stretch"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="BorderBrush" Value="#374151"/>
+            <Setter Property="Height" Value="140"/>
+        </Style>
+
+        <Style Selector="Button.quick-card:pointerover">
+            <Setter Property="Background" Value="#374151"/>
+            <Setter Property="BorderBrush" Value="#4a6a8a"/>
+        </Style>
+
+        <!-- 暗色输入框 -->
+        <Style Selector="TextBox.dark-input">
+            <Setter Property="Background" Value="#0f172a"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="BorderBrush" Value="#374151"/>
+            <Setter Property="Padding" Value="16,12"/>
+            <Setter Property="CornerRadius" Value="8"/>
+            <Setter Property="MinHeight" Value="44"/>
+        </Style>
+
+        <Style Selector="TextBox.dark-input:focus">
+            <Setter Property="BorderBrush" Value="#4a6a8a"/>
+        </Style>
+
+        <!-- 连接按钮（温和深蓝色调） -->
+        <Style Selector="Button.connect-btn">
+            <Setter Property="Background" Value="#2d4a6a"/>
+            <Setter Property="Foreground" Value="#e0e8f0"/>
+            <Setter Property="Padding" Value="20,12"/>
+            <Setter Property="CornerRadius" Value="8"/>
+            <Setter Property="BorderThickness" Value="0"/>
+        </Style>
+
+        <Style Selector="Button.connect-btn:pointerover">
+            <Setter Property="Background" Value="#3a5f80"/>
+        </Style>
+
+        <!-- 房间列表项 -->
+        <Style Selector="Button.room-item">
+            <Setter Property="Background" Value="#0f172a80"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="Padding" Value="12"/>
+            <Setter Property="CornerRadius" Value="8"/>
+            <Setter Property="HorizontalAlignment" Value="Stretch"/>
+            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+            <Setter Property="BorderThickness" Value="0"/>
+        </Style>
+
+        <Style Selector="Button.room-item:pointerover">
+            <Setter Property="Background" Value="#1e3a5f"/>
+        </Style>
+
+        <!-- 进入按钮（温和深绿色调） -->
+        <Style Selector="Button.join-btn">
+            <Setter Property="Background" Value="#2d5a4a"/>
+            <Setter Property="Foreground" Value="#e0f0e8"/>
+            <Setter Property="Padding" Value="16,8"/>
+            <Setter Property="CornerRadius" Value="6"/>
+            <Setter Property="BorderThickness" Value="0"/>
+        </Style>
+
+        <Style Selector="Button.join-btn:pointerover">
+            <Setter Property="Background" Value="#3a7260"/>
+        </Style>
+
+        <!-- 公告项按钮（透明背景，悬停高亮） -->
+        <Style Selector="Button.announcement-item">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="HorizontalAlignment" Value="Stretch"/>
+            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Cursor" Value="Hand"/>
+        </Style>
+
+        <Style Selector="Button.announcement-item:pointerover Border">
+            <Setter Property="Background" Value="#1e3a5f"/>
+        </Style>
+
+        <!-- 小型登录按钮 -->
+        <Style Selector="Button.login-btn-small">
+            <Setter Property="Background" Value="#2d4a6a"/>
+            <Setter Property="Foreground" Value="#e0e8f0"/>
+            <Setter Property="Padding" Value="12,4"/>
+            <Setter Property="CornerRadius" Value="4"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="FontSize" Value="12"/>
+        </Style>
+
+        <Style Selector="Button.login-btn-small:pointerover">
+            <Setter Property="Background" Value="#3a5f80"/>
+        </Style>
+    </Application.Styles>
+</Application>

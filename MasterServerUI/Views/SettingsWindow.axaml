@@ -1,0 +1,35 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:MasterServerUI.ViewModels"
+        mc:Ignorable="d"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        x:Class="MasterServerUI.Views.SettingsWindow"
+        x:DataType="vm:SettingsViewModel"
+        Title="服务器设置" Width="500" Height="400"
+        WindowStartupLocation="CenterOwner">
+    <Grid RowDefinitions="*,Auto" Margin="20">
+        <StackPanel Grid.Row="0" Spacing="12">
+            <TextBlock Text="网络设置" FontWeight="Bold" FontSize="16"/>
+            <Grid ColumnDefinitions="120,*" RowDefinitions="Auto,Auto,Auto" ColumnSpacing="12" RowSpacing="8">
+                <TextBlock Grid.Row="0" Grid.Column="0" Text="端口" VerticalAlignment="Center"/>
+                <NumericUpDown Grid.Row="0" Grid.Column="1" Value="{Binding Port, Mode=TwoWay}" Minimum="1024" Maximum="65535"/>
+                <TextBlock Grid.Row="1" Grid.Column="0" Text="绑定地址" VerticalAlignment="Center"/>
+                <TextBox Grid.Row="1" Grid.Column="1" Text="{Binding BindAddress, Mode=TwoWay}"/>
+                <TextBlock Grid.Row="2" Grid.Column="0" Text="最大连接数" VerticalAlignment="Center"/>
+                <NumericUpDown Grid.Row="2" Grid.Column="1" Value="{Binding MaxConnections, Mode=TwoWay}" Minimum="1" Maximum="100000"/>
+            </Grid>
+            <TextBlock Text="界面设置" FontWeight="Bold" FontSize="16" Margin="0,8,0,0"/>
+            <CheckBox Content="自动刷新" IsChecked="{Binding AutoRefresh, Mode=TwoWay}"/>
+            <Grid ColumnDefinitions="120,*" ColumnSpacing="12">
+                <TextBlock Grid.Column="0" Text="刷新间隔(秒)" VerticalAlignment="Center"/>
+                <NumericUpDown Grid.Column="1" Value="{Binding RefreshIntervalSeconds, Mode=TwoWay}" Minimum="1" Maximum="60"/>
+            </Grid>
+            <CheckBox Content="启动时自动启动服务器" IsChecked="{Binding AutoStartServer, Mode=TwoWay}"/>
+        </StackPanel>
+        <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8" Margin="0,16,0,0">
+            <Button Content="保存" Command="{Binding SaveCommand}" Classes="success" Click="OnSaveClicked"/>
+            <Button Content="取消" Click="OnCancelClicked" Classes="danger"/>
+        </StackPanel>
+    </Grid>
+</Window>

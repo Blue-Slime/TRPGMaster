@@ -1,0 +1,24 @@
+<Solution>
+  <Configurations>
+    <Platform Name="Any CPU" />
+    <Platform Name="x64" />
+    <Platform Name="x86" />
+  </Configurations>
+  <Folder Name="/MapEngine/">
+    <Project Path="MapEngine/MapEngine.Agent/MapEngine.Agent.csproj" />
+    <Project Path="MapEngine/MapEngine.Avalonia/MapEngine.Avalonia.csproj" />
+    <Project Path="MapEngine/MapEngine.Core/MapEngine.Core.csproj" />
+    <Project Path="MapEngine/MapEngine.Render/MapEngine.Render.csproj" />
+    <Project Path="MapEngine/MapEngine.Shell/MapEngine.Shell.csproj" />
+    <Project Path="MapEngine/MapEngine.Tests/MapEngine.Tests.csproj" />
+  </Folder>
+  <Folder Name="/MasterIM/">
+    <Project Path="MasterIM/Master.IM.Models/Master.IM.Models.csproj" />
+    <Project Path="MasterIM/Master.IM.SDK/MasterIM.SDK.csproj" />
+    <Project Path="MasterIM/Master.IM.Server/MasterIM.Server.csproj" />
+  </Folder>
+  <Project Path="MasterClient/MasterClient.csproj" />
+  <Project Path="MasterServer/MasterServer.csproj" />
+  <Project Path="MasterServerUI/MasterServerUI.csproj" />
+  <Project Path="TRPGMaster.Assets/TRPGMaster.Assets.csproj" />
+</Solution>

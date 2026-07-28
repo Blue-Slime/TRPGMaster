@@ -1,0 +1,1 @@
+{"Name":"骷髅","Type":"StaticObjectClass","Components":[{"Type":"Transform","Properties":{}},{"Type":"SpriteRenderer","Properties":{"spriteColor":"#C8C8C8","opacity":"1"}},{"Type":"Vision","Properties":{"enabled":"false","radius":"20"}}]}

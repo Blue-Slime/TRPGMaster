@@ -1,0 +1,97 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="using:MasterClient.ViewModels"
+             mc:Ignorable="d"
+             d:DesignWidth="420" d:DesignHeight="500"
+             x:Class="MasterClient.Views.LoginView"
+             x:DataType="vm:MainWindowViewModel">
+
+    <Grid RowDefinitions="Auto,*,Auto">
+        <!-- 顶部标题栏 -->
+        <Border Grid.Row="0" Padding="20,16" BorderBrush="#374151" BorderThickness="0,0,0,1">
+            <TextBlock Text="账号登录" FontSize="18" FontWeight="Bold"
+                       Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+        </Border>
+
+        <!-- 主内容区 -->
+        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+            <StackPanel Spacing="20" Margin="32,24">
+
+                <!-- 用户头像区域 -->
+                <Border Width="80" Height="80" CornerRadius="40" Background="#2d4a6a"
+                        HorizontalAlignment="Center">
+                    <TextBlock Text="👤" FontSize="36"
+                               HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                </Border>
+
+                <!-- 账号输入 -->
+                <StackPanel Spacing="8">
+                    <TextBlock Text="账号/邮箱" FontSize="13" FontWeight="SemiBold" Foreground="#9ca3af"/>
+                    <TextBox Text="{Binding Account, Mode=TwoWay}"
+                             Watermark="请输入账号或邮箱"
+                             Classes="dark-input"
+                             IsEnabled="{Binding IsLoggingIn, Converter={StaticResource InverseBoolConverter}}"/>
+                </StackPanel>
+
+                <!-- 密码输入 -->
+                <StackPanel Spacing="8">
+                    <TextBlock Text="密码" FontSize="13" FontWeight="SemiBold" Foreground="#9ca3af"/>
+                    <TextBox Text="{Binding Password, Mode=TwoWay}"
+                             PasswordChar="●"
+                             Watermark="请输入密码"
+                             Classes="dark-input"
+                             IsEnabled="{Binding IsLoggingIn, Converter={StaticResource InverseBoolConverter}}"/>
+                </StackPanel>
+
+                <!-- 记住密码和自动登录 -->
+                <Grid ColumnDefinitions="*,*">
+                    <CheckBox Grid.Column="0" Content="记住密码"
+                              IsChecked="{Binding RememberPassword, Mode=TwoWay}"
+                              Foreground="#9ca3af" FontSize="13"/>
+                    <CheckBox Grid.Column="1" Content="自动登录"
+                              IsChecked="{Binding AutoLogin, Mode=TwoWay}"
+                              Foreground="#9ca3af" FontSize="13"
+                              HorizontalAlignment="Right"/>
+                </Grid>
+
+                <!-- 错误消息 -->
+                <Border IsVisible="{Binding LoginErrorMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                        Background="#5a2d2d" CornerRadius="8" Padding="12,8">
+                    <TextBlock Text="{Binding LoginErrorMessage}"
+                               Foreground="#f0a0a0" FontSize="13"
+                               TextWrapping="Wrap"/>
+                </Border>
+
+                <!-- 登录按钮 -->
+                <Button Command="{Binding LoginCommand}"
+                        Classes="join-btn"
+                        HorizontalAlignment="Stretch"
+                        HorizontalContentAlignment="Center"
+                        IsEnabled="{Binding IsLoggingIn, Converter={StaticResource InverseBoolConverter}}"
+                        Height="48" Margin="0,4,0,0">
+                    <Panel>
+                        <StackPanel Orientation="Horizontal" Spacing="8"
+                                    IsVisible="{Binding IsLoggingIn, Converter={StaticResource InverseBoolConverter}}">
+                            <TextBlock Text="🔑" FontSize="16"/>
+                            <TextBlock Text="登 录" FontSize="15" FontWeight="SemiBold"/>
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal" Spacing="8"
+                                    IsVisible="{Binding IsLoggingIn}">
+                            <TextBlock Text="⏳" FontSize="16"/>
+                            <TextBlock Text="登录中..." FontSize="15" FontWeight="SemiBold"/>
+                        </StackPanel>
+                    </Panel>
+                </Button>
+
+                <!-- 注册和忘记密码链接 -->
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Spacing="24">
+                    <Button Classes="link" Content="注册账号" FontSize="13"/>
+                    <TextBlock Text="|" Foreground="#4b5563" VerticalAlignment="Center"/>
+                    <Button Classes="link" Content="忘记密码" FontSize="13"/>
+                </StackPanel>
+            </StackPanel>
+        </ScrollViewer>
+    </Grid>
+</UserControl>
