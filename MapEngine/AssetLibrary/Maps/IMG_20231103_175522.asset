@@ -1,0 +1,16 @@
+{
+  "Name": "IMG_20231103_175522",
+  "Type": "StaticObjectClass",
+  "Components": [
+    {
+      "Type": "Transform",
+      "Properties": {}
+    },
+    {
+      "Type": "SpriteRenderer",
+      "Properties": {
+        "sprite": "IMG_20231103_175522.jpg"
+      }
+    }
+  ]
+}

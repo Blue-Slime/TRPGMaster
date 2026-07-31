@@ -14,7 +14,14 @@ public sealed class MapSyncClient
     private int _localVersion;
     private readonly object _lock = new();
 
+    /// <summary>版本跳号或连接错误时触发，附带错误描述。</summary>
     public event EventHandler<string>? ConnectionError;
+
+    /// <summary>
+    /// 注入后，版本跳号时自动调用此回调请求全量同步。
+    /// 由 ChatRoomWindow 在 EnsureMapMounted 里赋值。
+    /// </summary>
+    public Func<Task>? RequestFullSyncAsync { get; set; }
 
     public MapSyncClient(World world, CommandBus commandBus, string myUserId)
     {
@@ -31,10 +38,13 @@ public sealed class MapSyncClient
     {
         lock (_lock)
         {
-            // 1. 检测版本跳号（需要全量同步）
+            // 1. 检测版本跳号 → 自动请求全量同步
             if (delta.Version != _localVersion + 1)
             {
-                ConnectionError?.Invoke(this, $"Version mismatch: expected {_localVersion + 1}, got {delta.Version}");
+                var msg = $"Version mismatch: expected {_localVersion + 1}, got {delta.Version}";
+                ConnectionError?.Invoke(this, msg);
+                if (RequestFullSyncAsync != null)
+                    _ = Task.Run(RequestFullSyncAsync);
                 return;
             }
 

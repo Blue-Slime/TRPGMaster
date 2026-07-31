@@ -1059,9 +1059,13 @@ public class IMClient : IDisposable
     /// 创建频道（归属当前连接所在房间）。只需传频道名——
     /// ChannelId 由服务端权威生成，客户端不再自造弱 ID。
     /// </summary>
-    public async Task CreateChannelAsync(string channelName)
+    public async Task CreateChannelAsync(string channelName, string? categoryName = null)
     {
-        await SendAsync(new Packet { T = "create_channel", P = new Channel { ChannelName = channelName } });
+        await SendAsync(new Packet
+        {
+            T = "create_channel",
+            P = new Channel { ChannelName = channelName, CategoryName = categoryName }
+        });
     }
 
     /// <summary>

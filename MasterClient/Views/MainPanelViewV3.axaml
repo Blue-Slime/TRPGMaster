@@ -487,13 +487,13 @@
                                 <StackPanel Spacing="6">
                                     <TextBlock Text="服务器地址" FontSize="12" Foreground="#a0b4c8"/>
                                     <TextBox Text="{Binding DirectConnectAddress, Mode=TwoWay}"
-                                             Watermark="ws://localhost:5000/im 或 localhost:5000"
+                                             PlaceholderText="ws://localhost:5000/im 或 localhost:5000"
                                              Classes="dark-input" FontSize="14" MinHeight="44"/>
                                 </StackPanel>
                                 <StackPanel Spacing="6">
                                     <TextBlock Text="房间ID" FontSize="12" Foreground="#a0b4c8"/>
                                     <TextBox Text="{Binding DirectRoomId, Mode=TwoWay}"
-                                             Watermark="room_001" Classes="dark-input" FontSize="14" MinHeight="44"/>
+                                             PlaceholderText="room_001" Classes="dark-input" FontSize="14" MinHeight="44"/>
                                 </StackPanel>
                                 <!-- 用户ID 已移到设置页全局配置，此处显示当前值 -->
                                 <StackPanel Spacing="6">
@@ -755,7 +755,7 @@
                                     <TextBlock Text="用户ID" FontSize="16" FontWeight="SemiBold" Foreground="White"/>
                                 </StackPanel>
                                 <TextBox Text="{Binding UserId, Mode=TwoWay}"
-                                         Watermark="例如 player_a" Classes="dark-input"
+                                         PlaceholderText="例如 player_a" Classes="dark-input"
                                          FontSize="14" MinHeight="44"/>
                                 <TextBlock Text="进入任何房间（造访新世界 / 记忆的世界）都用这个ID；修改后点下方「保存设置」生效"
                                            FontSize="12" Foreground="#6b7280" TextWrapping="Wrap"/>

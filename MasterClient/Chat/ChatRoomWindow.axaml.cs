@@ -42,13 +42,27 @@ public partial class ChatRoomWindow : Window
 
         // 初始收起：地图层下移一整屏（只露出底部圆按钮）
         UpdateOverlayPosition(open: false);
-        DataContextChanged += OnDataContextChanged;
 
         // 窗口尺寸变化时，若地图处于收起态则重新贴合底部（避免预载时 Bounds 未测量导致偏移）
         SizeChanged += (_, _) =>
         {
             if (DataContext is ChatRoomViewModel vm && !vm.IsMapOpen)
                 UpdateOverlayPosition(false);
+        };
+
+        // Opened：窗口首次显示后订阅 PropertyChanged（此时 DataContext 已赋值且窗口已进入视觉树）。
+        // 先用 DataContextChanged 订阅在构造器赋值时可能不可靠，改为在 Opened 里集中处理。
+        Opened += (_, _) =>
+        {
+            if (DataContext is not ChatRoomViewModel vm) return;
+
+            // 订阅 VM 属性变化（在此之后 IsMapLoaded = true 才会触发 EnsureMapMounted）
+            vm.PropertyChanged -= OnVmPropertyChanged; // 防止重复订阅
+            vm.PropertyChanged += OnVmPropertyChanged;
+
+            // 兜底：若 InitializeAsync 已在 Show 之前完成（极罕见），此处补触发
+            if (vm.IsMapLoaded)
+                EnsureMapMounted();
         };
     }
 
@@ -73,12 +87,46 @@ public partial class ChatRoomWindow : Window
     private void EnsureMapMounted()
     {
         if (_mapMounted || _mapHost is null) return;
-        _mapMounted = true;
 
         if (DataContext is not ChatRoomViewModel chatVm) return;
 
-        var mapVm = new MainWindowViewModel();
-        _mapHost.Content = new MapEditorView { DataContext = mapVm };
+        MainWindowViewModel mapVm;
+        try
+        {
+            mapVm = new MainWindowViewModel();
+        }
+        catch (Exception ex)
+        {
+            var logPath = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                "TRPGMaster", "map_mount_error.txt");
+            Directory.CreateDirectory(Path.GetDirectoryName(logPath)!);
+            File.WriteAllText(logPath,
+                $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] MainWindowViewModel 构造失败:\n{ex}\n");
+            System.Diagnostics.Debug.WriteLine($"[MapMount] 构造失败，详情见: {logPath}");
+            // 不设 _mapMounted，允许下次重试
+            return;
+        }
+
+        MapEditorView mapView;
+        try
+        {
+            mapView = new MapEditorView { DataContext = mapVm };
+        }
+        catch (Exception ex)
+        {
+            var logPath2 = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                "TRPGMaster", "map_mount_error.txt");
+            Directory.CreateDirectory(Path.GetDirectoryName(logPath2)!);
+            File.WriteAllText(logPath2,
+                $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] MapEditorView 构造失败:\n{ex}\n");
+            System.Diagnostics.Debug.WriteLine($"[MapMount] MapEditorView 构造失败，详情见: {logPath2}");
+            return;
+        }
+
+        _mapMounted = true;
+        _mapHost.Content = mapView;
 
         // ── 地图 WebSocket 同步初始化 ──────────────────────────────────────
         // Step 1: 注入 Host（用于流式数据发送 + 日志）
@@ -92,11 +140,21 @@ public partial class ChatRoomWindow : Window
         // Step 3: 创建本地同步器（应用来自其他客户端的 Delta）
         _mapSyncClient = new MapSyncClient(mapVm.World, mapVm.CommandBus, chatVm.UserId);
 
+        // Step 3b: 注入全量同步回调 —— 版本跳号时自动触发
+        _mapSyncClient.RequestFullSyncAsync = chatVm.Client.RequestMapFullSyncAsync;
+
+        // Step 3c: 订阅连接错误（版本跳号日志）
+        _mapSyncClient.ConnectionError += (_, msg) =>
+            System.Diagnostics.Debug.WriteLine($"[MapSync] {msg}");
+
         // Step 4: 订阅 Delta 事件（先订阅再请求全量，防止全量响应到达前 Delta 漏掉）
         chatVm.Client.OnMapDeltaJson += OnMapDelta;
 
         // Step 5: 订阅全量同步事件
         chatVm.Client.OnMapFullSyncJson += OnMapFullSync;
+
+        // Step 5b: 断线重连后重新请求全量同步
+        chatVm.Client.OnReconnected += OnReconnected;
 
         // Step 6: 订阅流式实时数据（拖拽预览、光标等）
         chatVm.Client.OnStreamReceived += OnStreamReceived;
@@ -129,20 +187,20 @@ public partial class ChatRoomWindow : Window
                 new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
             if (fullSync is null) return;
 
-            // 用全量状态重置本地 World
-            var docJson = JsonSerializer.Serialize(fullSync.Document);
-            if (_mapHost?.Content is MapEditorView { DataContext: MainWindowViewModel mapVm })
-            {
-                mapVm.World.LoadFromJson(docJson);
-            }
-
-            // 同步客户端版本号
-            _mapSyncClient?.SetInitialVersion(fullSync.Version);
+            // 统一走 MapSyncClient.ApplyFullSync（负责清场、重建 World、更新版本号、清 Undo 栈）
+            _mapSyncClient?.ApplyFullSync(fullSync);
         }
         catch (Exception ex)
         {
             System.Diagnostics.Debug.WriteLine($"[MapSync] FullSync 处理失败: {ex.Message}");
         }
+    }
+
+    /// <summary>断线重连成功后重新拉取全量状态。</summary>
+    private void OnReconnected()
+    {
+        if (DataContext is ChatRoomViewModel chatVm)
+            _ = chatVm.Client.RequestMapFullSyncAsync();
     }
 
     /// <summary>展开=归零铺满，收起=下移一整屏高度（露出底部圆按钮）。</summary>
@@ -196,6 +254,7 @@ public partial class ChatRoomWindow : Window
             vm.Client.OnMapDeltaJson -= OnMapDelta;
             vm.Client.OnMapFullSyncJson -= OnMapFullSync;
             vm.Client.OnStreamReceived -= OnStreamReceived;
+            vm.Client.OnReconnected -= OnReconnected;
         }
         (DataContext as ChatRoomViewModel)?.Dispose();
     }

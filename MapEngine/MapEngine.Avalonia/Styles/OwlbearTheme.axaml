@@ -1,0 +1,140 @@
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!-- ════════════════════════════════════════════════════════════════
+         Owlbear Rodeo 2 设计 token
+         ════════════════════════════════════════════════════════════════ -->
+
+    <!-- ── 背景层级 ────────────────────────────────────────────────── -->
+    <Color x:Key="AppBackgroundColor">#1A1B1E</Color>
+    <Color x:Key="ToolbarBackgroundColor">#141517</Color>
+    <Color x:Key="DrawerBackgroundColor">#25262B</Color>
+    <Color x:Key="DrawerHeaderColor">#2C2E33</Color>
+    <Color x:Key="PanelElevatedColor">#2C2E33</Color>
+    <Color x:Key="InputBackgroundColor">#1A1B1E</Color>
+    <Color x:Key="CardBackgroundColor">#2C2E33</Color>
+    <Color x:Key="ThumbnailBackgroundColor">#373A40</Color>
+
+    <!-- ── 强调色（Mantine violet）────────────────────────────────── -->
+    <Color x:Key="AccentColor">#845EF7</Color>
+    <Color x:Key="AccentHoverColor">#9775FA</Color>
+    <Color x:Key="AccentMutedColor">#5F3DC4</Color>
+    <Color x:Key="SelectionColor">#3B3F76</Color>
+    <Color x:Key="HoverColor">#2C2E33</Color>
+
+    <!-- ── 边框 ────────────────────────────────────────────────────── -->
+    <Color x:Key="BorderColor">#373A40</Color>
+    <Color x:Key="BorderSubtleColor">#2C2E33</Color>
+
+    <!-- ── 文字层级 ────────────────────────────────────────────────── -->
+    <Color x:Key="TextPrimaryColor">#F8F9FA</Color>
+    <Color x:Key="TextSecondaryColor">#C1C2C5</Color>
+    <Color x:Key="TextTertiaryColor">#909296</Color>
+    <Color x:Key="TextMutedColor">#5C5F66</Color>
+
+    <!-- ── 语义色 ──────────────────────────────────────────────────── -->
+    <Color x:Key="FolderAccentColor">#74C0FC</Color>
+    <Color x:Key="SuccessColor">#51CF66</Color>
+    <Color x:Key="DangerColor">#FF6B6B</Color>
+
+    <!-- ── Brush 映射 ──────────────────────────────────────────────── -->
+    <SolidColorBrush x:Key="AppBackgroundBrush"       Color="{StaticResource AppBackgroundColor}"/>
+    <SolidColorBrush x:Key="ToolbarBackgroundBrush"   Color="{StaticResource ToolbarBackgroundColor}"/>
+    <SolidColorBrush x:Key="DrawerBackgroundBrush"    Color="{StaticResource DrawerBackgroundColor}"/>
+    <SolidColorBrush x:Key="DrawerHeaderBrush"        Color="{StaticResource DrawerHeaderColor}"/>
+    <SolidColorBrush x:Key="PanelElevatedBrush"       Color="{StaticResource PanelElevatedColor}"/>
+    <SolidColorBrush x:Key="InputBackgroundBrush"     Color="{StaticResource InputBackgroundColor}"/>
+    <SolidColorBrush x:Key="CardBackgroundBrush"      Color="{StaticResource CardBackgroundColor}"/>
+    <SolidColorBrush x:Key="ThumbnailBackgroundBrush" Color="{StaticResource ThumbnailBackgroundColor}"/>
+
+    <SolidColorBrush x:Key="AccentBrush"              Color="{StaticResource AccentColor}"/>
+    <SolidColorBrush x:Key="AccentHoverBrush"         Color="{StaticResource AccentHoverColor}"/>
+    <SolidColorBrush x:Key="AccentMutedBrush"         Color="{StaticResource AccentMutedColor}"/>
+    <SolidColorBrush x:Key="SelectionBrush"           Color="{StaticResource SelectionColor}"/>
+    <SolidColorBrush x:Key="HoverBrush"               Color="{StaticResource HoverColor}"/>
+
+    <SolidColorBrush x:Key="BorderBrushToken"         Color="{StaticResource BorderColor}"/>
+    <SolidColorBrush x:Key="BorderSubtleBrush"        Color="{StaticResource BorderSubtleColor}"/>
+
+    <SolidColorBrush x:Key="TextPrimaryBrush"         Color="{StaticResource TextPrimaryColor}"/>
+    <SolidColorBrush x:Key="TextSecondaryBrush"       Color="{StaticResource TextSecondaryColor}"/>
+    <SolidColorBrush x:Key="TextTertiaryBrush"        Color="{StaticResource TextTertiaryColor}"/>
+    <SolidColorBrush x:Key="TextMutedBrush"           Color="{StaticResource TextMutedColor}"/>
+
+    <SolidColorBrush x:Key="FolderAccentBrush"        Color="{StaticResource FolderAccentColor}"/>
+    <SolidColorBrush x:Key="SuccessBrush"             Color="{StaticResource SuccessColor}"/>
+    <SolidColorBrush x:Key="DangerBrush"              Color="{StaticResource DangerColor}"/>
+
+    <!-- 半透明浮窗底色 -->
+    <SolidColorBrush x:Key="FloatingPanelBrush"       Color="#25262B" Opacity="0.92"/>
+
+    <!-- ── 毛玻璃胶囊 token ────────────────────────────────────────── -->
+    <!-- 工具栏胶囊：深色 + 轻微透明 -->
+    <SolidColorBrush x:Key="CapsuleToolbarBrush"      Color="#1C1D21" Opacity="0.96"/>
+    <!-- 功能胶囊（底部）：略浅一档 -->
+    <SolidColorBrush x:Key="CapsuleActionBrush"       Color="#25262B" Opacity="0.96"/>
+    <!-- 胶囊描边：细蓝紫微光 -->
+    <SolidColorBrush x:Key="CapsuleBorderBrush"       Color="#845EF7" Opacity="0.20"/>
+    <!-- 胶囊内分隔线 -->
+    <SolidColorBrush x:Key="CapsuleDividerBrush"      Color="#373A40" Opacity="0.80"/>
+    <!-- 悬停内圈高亮 -->
+    <SolidColorBrush x:Key="CapsuleHoverBrush"        Color="#845EF7" Opacity="0.12"/>
+    <!-- 选中内圈 -->
+    <SolidColorBrush x:Key="CapsuleSelectedBrush"     Color="#845EF7" Opacity="0.28"/>
+    <!-- 激活态图标填色（实紫） -->
+    <SolidColorBrush x:Key="CapsulePurpleBrush"       Color="#845EF7"/>
+
+    <!-- 胶囊外阴影 -->
+    <BoxShadows x:Key="ShadowCapsule">0 8 32 0 #B3000000, 0 2 8 0 #40845EF7</BoxShadows>
+    <!-- 功能胶囊阴影（偏蓝调） -->
+    <BoxShadows x:Key="ShadowCapsuleAction">0 6 24 0 #A0000000, 0 1 6 0 #30845EF7</BoxShadows>
+
+    <!-- ── 尺寸 token ──────────────────────────────────────────────── -->
+    <CornerRadius x:Key="RadiusSm">4</CornerRadius>
+    <CornerRadius x:Key="RadiusMd">8</CornerRadius>
+    <CornerRadius x:Key="RadiusLg">12</CornerRadius>
+    <CornerRadius x:Key="RadiusPill">20</CornerRadius>
+
+    <x:Double x:Key="FontSizeSm">11</x:Double>
+    <x:Double x:Key="FontSizeMd">13</x:Double>
+    <x:Double x:Key="FontSizeLg">15</x:Double>
+
+    <BoxShadows x:Key="ShadowFloating">0 4 12 0 #80000000</BoxShadows>
+
+    <!-- ════════════════════════════════════════════════════════════════
+         SVG 图标（Material Design Icons，24x24 viewBox）
+         ════════════════════════════════════════════════════════════════ -->
+
+    <!-- 模式切换 -->
+    <StreamGeometry x:Key="IconPencil">M20.71,7.04C21.1,6.65 21.1,6 20.71,5.63L18.37,3.29C18,2.9 17.35,2.9 16.96,3.29L15.12,5.12L18.87,8.87M3,17.25V21H6.75L17.81,9.93L14.06,6.18L3,17.25Z</StreamGeometry>
+    <StreamGeometry x:Key="IconPlay">M8,5.14V19.14L19,12.14L8,5.14Z</StreamGeometry>
+
+    <!-- 侧栏切换 -->
+    <StreamGeometry x:Key="IconFolderMultiple">M22,4H14L12,2H6A2,2 0 0,0 4,4V16A2,2 0 0,0 6,18H22A2,2 0 0,0 24,16V6A2,2 0 0,0 22,4M2,6H0V11H0V20A2,2 0 0,0 2,22H20V20H2V6Z</StreamGeometry>
+    <StreamGeometry x:Key="IconLayers">M12,16L19.36,10.27L21,9L12,2L3,9L4.63,10.27M12,18.54L4.62,12.81L3,14.07L12,21.07L21,14.07L19.37,12.81L12,18.54Z</StreamGeometry>
+    <StreamGeometry x:Key="IconTune">M3,17V19H9V17H3M3,5V7H13V5H3M13,21V19H21V17H13V15H11V21H13M7,9V11H3V13H7V15H9V9H7M21,13V11H11V13H21M15,9H17V7H21V5H17V3H15V9Z</StreamGeometry>
+
+    <!-- 操作 -->
+    <StreamGeometry x:Key="IconSave">M15,9H5V5H15M12,19A3,3 0 0,1 9,16A3,3 0 0,1 12,13A3,3 0 0,1 15,16A3,3 0 0,1 12,19M17,3H5C3.89,3 3,3.9 3,5V19A2,2 0 0,0 5,21H19A2,2 0 0,0 21,19V7L17,3Z</StreamGeometry>
+    <StreamGeometry x:Key="IconCloudUpload">M14,13V17H10V13H7L12,8L17,13M19.35,10.03C18.67,6.59 15.64,4 12,4C9.11,4 6.6,5.64 5.35,8.03C2.34,8.36 0,10.9 0,14A6,6 0 0,0 6,20H19A5,5 0 0,0 24,15C24,12.36 21.95,10.22 19.35,10.03Z</StreamGeometry>
+    <StreamGeometry x:Key="IconCog">M12,15.5A3.5,3.5 0 0,1 8.5,12A3.5,3.5 0 0,1 12,8.5A3.5,3.5 0 0,1 15.5,12A3.5,3.5 0 0,1 12,15.5M19.43,12.97C19.47,12.65 19.5,12.33 19.5,12C19.5,11.67 19.47,11.34 19.43,11L21.54,9.37C21.73,9.22 21.78,8.95 21.66,8.73L19.66,5.27C19.54,5.05 19.27,4.96 19.05,5.05L16.56,6.05C16.04,5.66 15.5,5.32 14.87,5.07L14.5,2.42C14.46,2.18 14.25,2 14,2H10C9.75,2 9.54,2.18 9.5,2.42L9.13,5.07C8.5,5.32 7.96,5.66 7.44,6.05L4.95,5.05C4.73,4.96 4.46,5.05 4.34,5.27L2.34,8.73C2.21,8.95 2.27,9.22 2.46,9.37L4.57,11C4.53,11.34 4.5,11.67 4.5,12C4.5,12.33 4.53,12.65 4.57,12.97L2.46,14.63C2.27,14.78 2.21,15.05 2.34,15.27L4.34,18.73C4.46,18.95 4.73,19.03 4.95,18.95L7.44,17.94C7.96,18.34 8.5,18.68 9.13,18.93L9.5,21.58C9.54,21.82 9.75,22 10,22H14C14.25,22 14.46,21.82 14.5,21.58L14.87,18.93C15.5,18.67 16.04,18.34 16.56,17.94L19.05,18.95C19.27,19.03 19.54,18.95 19.66,18.73L21.66,15.27C21.78,15.05 21.73,14.78 21.54,14.63L19.43,12.97Z</StreamGeometry>
+
+    <!-- 视口控件 -->
+    <StreamGeometry x:Key="IconGrid">M10,4V8H14V4H10M16,4V8H20V4H16M16,10V14H20V10H16M16,16V20H20V16H16M14,20V16H10V20H14M8,20V16H4V20H8M8,14V10H4V14H8M8,8V4H4V8H8M10,14H14V10H10V14M4,2H20A2,2 0 0,1 22,4V20A2,2 0 0,1 20,22H4C2.92,22 2,21.1 2,20V4A2,2 0 0,1 4,2Z</StreamGeometry>
+    <StreamGeometry x:Key="IconGridOff">M0,2.77L1.28,1.5L22.5,22.72L21.23,24L19.23,22H4A2,2 0 0,1 2,20V4.77L0,2.77M10,4V7.68L8,5.68V4H6.32L4.32,2H20A2,2 0 0,1 22,4V19.7L20,17.7V16H18.32L16.32,14H20V10H16V13.68L14,11.68V10H12.32L10.32,8H14V4H10M16,4V8H20V4H16M4,8H8V11.68L4,7.68V8M20,20L4,20V20L20,20M4,16H7.68L4,12.32V16M14,20V16.32L13.5,16H14V15.5L17.68,20H14M10,20V16H11.68L10,14.32V20Z</StreamGeometry>
+    <StreamGeometry x:Key="IconMagnet">M4,3A2,2 0 0,0 2,5V11C2,15.42 5.58,19 10,19V21H14V19C18.42,19 22,15.42 22,11V5A2,2 0 0,0 20,3H16A2,2 0 0,0 14,5V11A2,2 0 0,0 16,13H17C16.55,14.3 15.36,15.26 13.9,15.8L12,16L10.1,15.8C8.64,15.26 7.45,14.3 7,13H8A2,2 0 0,0 10,11V5A2,2 0 0,0 8,3H4M4,5H8V11H4V5M16,5H20V11H16V5Z</StreamGeometry>
+    <StreamGeometry x:Key="IconMagnetOff">M2.39,1.73L1.11,3L3,4.9V5A2,2 0 0,0 3,5V11C3,15.42 6.58,19 11,19V21H15V19C19.42,19 23,15.42 23,11V5A2,2 0 0,0 21,3H17A2,2 0 0,0 15,5V11A2,2 0 0,0 17,13H18C17.55,14.3 16.36,15.26 14.9,15.8L13,16L11.1,15.8C9.64,15.26 8.45,14.3 8,13H9A2,2 0 0,0 10.41,12.59L2.39,4.58V1.73M5,5H9V8.11L5,4.11V5M17,5H21V11H17V5M5,10.88V11H9V9.12L5,5.12V10.88Z</StreamGeometry>
+    <StreamGeometry x:Key="IconCrosshairsGps">M12,8A4,4 0 0,1 16,12A4,4 0 0,1 12,16A4,4 0 0,1 8,12A4,4 0 0,1 12,8M3.05,13H1V11H3.05C3.5,6.83 6.83,3.5 11,3.05V1H13V3.05C17.17,3.5 20.5,6.83 20.95,11H23V13H20.95C20.5,17.17 17.17,20.5 13,20.95V23H11V20.95C6.83,20.5 3.5,17.17 3.05,13Z</StreamGeometry>
+    <StreamGeometry x:Key="IconMinus">M19,13H5V11H19V13Z</StreamGeometry>
+    <StreamGeometry x:Key="IconPlus">M19,13H13V19H11V13H5V11H11V5H13V11H19V13Z</StreamGeometry>
+    <StreamGeometry x:Key="IconCrosshairs">M3.05,13H1V11H3.05C3.5,6.83 6.83,3.5 11,3.05V1H13V3.05C17.17,3.5 20.5,6.83 20.95,11H23V13H20.95C20.5,17.17 17.17,20.5 13,20.95V23H11V20.95C6.83,20.5 3.5,17.17 3.05,13M12,5A7,7 0 0,0 5,12A7,7 0 0,0 12,19A7,7 0 0,0 19,12A7,7 0 0,0 12,5Z</StreamGeometry>
+
+    <!-- 内容 -->
+    <StreamGeometry x:Key="IconFolder">M10,4H4C2.89,4 2,4.89 2,6V18A2,2 0 0,0 4,20H20A2,2 0 0,0 22,18V8C22,6.89 21.1,6 20,6H12L10,4Z</StreamGeometry>
+    <StreamGeometry x:Key="IconWall">M4,5V19H20V5H4M11,7H18V11H11V7M6,7H9V11H6V7M13,13H18V17H13V13M6,13H11V17H6V13Z</StreamGeometry>
+    <StreamGeometry x:Key="IconClose">M19,6.41L17.59,5L12,10.59L6.41,5L5,6.41L10.59,12L5,17.59L6.41,19L12,13.41L17.59,19L19,17.59L13.41,12L19,6.41Z</StreamGeometry>
+    <StreamGeometry x:Key="IconChevronDown">M7.41,8.58L12,13.17L16.59,8.58L18,10L12,16L6,10L7.41,8.58Z</StreamGeometry>
+    <StreamGeometry x:Key="IconChevronRight">M8.59,16.58L13.17,12L8.59,7.41L10,6L16,12L10,18L8.59,16.58Z</StreamGeometry>
+    <StreamGeometry x:Key="IconDotsVertical">M12,16A2,2 0 0,1 14,18A2,2 0 0,1 12,20A2,2 0 0,1 10,18A2,2 0 0,1 12,16M12,10A2,2 0 0,1 14,12A2,2 0 0,1 12,14A2,2 0 0,1 10,12A2,2 0 0,1 12,10M12,4A2,2 0 0,1 14,6A2,2 0 0,1 12,8A2,2 0 0,1 10,6A2,2 0 0,1 12,4Z</StreamGeometry>
+
+</ResourceDictionary>

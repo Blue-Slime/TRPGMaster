@@ -1,0 +1,16 @@
+{
+  "Name": "流式刃LOGO",
+  "Type": "StaticObjectClass",
+  "Components": [
+    {
+      "Type": "Transform",
+      "Properties": {}
+    },
+    {
+      "Type": "SpriteRenderer",
+      "Properties": {
+        "sprite": "流式刃LOGO.png"
+      }
+    }
+  ]
+}

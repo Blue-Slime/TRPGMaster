@@ -104,6 +104,48 @@ public static class SceneSerializer
                 props["initiativeOrder"] = tk.InitiativeOrder;
                 props["isPlayerControlled"] = tk.IsPlayerControlled;
                 props["movementSpeed"] = tk.MovementSpeed;
+                props["currentHP"] = tk.CurrentHP;
+                props["maxHP"] = tk.MaxHP;
+                props["isInInitiativeTracker"] = tk.IsInInitiativeTracker;
+                if (tk.Conditions.Count > 0)
+                    props["conditions"] = tk.Conditions.Select(c => new ConditionData
+                    {
+                        Id = c.Id,
+                        Name = c.Name,
+                        Icon = c.Icon,
+                        StackCount = c.StackCount,
+                        RemainingRounds = c.RemainingRounds,
+                        ColorHex = c.ColorHex
+                    }).ToList();
+                break;
+            case ShapeComponent sh:
+                props["shapeType"] = sh.ShapeType;
+                props["width"] = sh.Width;
+                props["height"] = sh.Height;
+                props["x2"] = sh.X2;
+                props["y2"] = sh.Y2;
+                // ValueTuple 不被 System.Text.Json 序列化，投影成 PointData
+                if (sh.Points.Count > 0)
+                    props["points"] = sh.Points
+                        .Select(p => new PointData { X = p.X, Y = p.Y })
+                        .ToList();
+                props["coneAngle"] = sh.ConeAngle;
+                props["coneRadius"] = sh.ConeRadius;
+                props["rotation"] = sh.Rotation;
+                props["strokeColor"] = sh.StrokeColor;
+                props["fillColor"] = sh.FillColor;
+                props["strokeWidth"] = sh.StrokeWidth;
+                props["isFilled"] = sh.IsFilled;
+                props["strokeStyle"] = (int)sh.StrokeStyle;
+                break;
+            case TextComponent tx:
+                props["text"] = tx.Text;
+                props["fontSize"] = tx.FontSize;
+                props["color"] = tx.Color;
+                props["backgroundColor"] = tx.BackgroundColor;
+                props["isBold"] = tx.IsBold;
+                props["isItalic"] = tx.IsItalic;
+                props["align"] = (int)tx.Align;
                 break;
         }
         return new ComponentData { Type = component.TypeName, Properties = props };
@@ -199,10 +241,55 @@ public static class SceneSerializer
                 TokenName = GetString(data, "tokenName"),
                 InitiativeOrder = (int)GetDouble(data, "initiativeOrder"),
                 IsPlayerControlled = GetBool(data, "isPlayerControlled"),
-                MovementSpeed = GetDouble(data, "movementSpeed", 30)
+                MovementSpeed = GetDouble(data, "movementSpeed", 30),
+                CurrentHP = (int)GetDouble(data, "currentHP", 100),
+                MaxHP = (int)GetDouble(data, "maxHP", 100),
+                IsInInitiativeTracker = GetBool(data, "isInInitiativeTracker", false),
+                Conditions = GetConditions(data)
+            },
+            "Shape" => new ShapeComponent
+            {
+                ShapeType = GetString(data, "shapeType", "rect"),
+                Width = GetDouble(data, "width", 60),
+                Height = GetDouble(data, "height", 60),
+                X2 = GetDouble(data, "x2"),
+                Y2 = GetDouble(data, "y2"),
+                Points = GetPoints(data),
+                ConeAngle = GetDouble(data, "coneAngle", 30),
+                ConeRadius = GetDouble(data, "coneRadius", 120),
+                Rotation = GetDouble(data, "rotation"),
+                StrokeColor = GetString(data, "strokeColor", "#845EF7"),
+                FillColor = GetString(data, "fillColor", "#40845EF7"),
+                StrokeWidth = GetDouble(data, "strokeWidth", 2),
+                IsFilled = GetBool(data, "isFilled", true),
+                StrokeStyle = (StrokeStyle)(int)GetDouble(data, "strokeStyle")
+            },
+            "Text" => new TextComponent
+            {
+                Text = GetString(data, "text"),
+                FontSize = GetDouble(data, "fontSize", 16),
+                Color = GetString(data, "color", "#F8F9FA"),
+                BackgroundColor = GetString(data, "backgroundColor", "#A0000000"),
+                IsBold = GetBool(data, "isBold"),
+                IsItalic = GetBool(data, "isItalic"),
+                Align = (TextAlign)(int)GetDouble(data, "align", 1)
             },
             _ => null
         };
+    }
+
+    private static List<(double X, double Y)> GetPoints(ComponentData data)
+    {
+        if (!data.Properties.TryGetValue("points", out var raw)) return [];
+        if (raw is not JsonElement el || el.ValueKind != JsonValueKind.Array) return [];
+        var result = new List<(double, double)>();
+        foreach (var item in el.EnumerateArray())
+        {
+            var x = item.TryGetProperty("x", out var xEl) && xEl.TryGetDouble(out var xv) ? xv : 0;
+            var y = item.TryGetProperty("y", out var yEl) && yEl.TryGetDouble(out var yv) ? yv : 0;
+            result.Add((x, y));
+        }
+        return result;
     }
 
     private static List<VisionConeData> GetVisionCones(ComponentData data)
@@ -220,6 +307,26 @@ public static class SceneSerializer
                 Range = item.TryGetProperty("range", out var rEl) && rEl.TryGetDouble(out var r) ? r : 12,
                 FieldOfView = item.TryGetProperty("fieldOfView", out var fovEl) && fovEl.TryGetDouble(out var fov) ? fov : 90,
                 IsEnabled = item.TryGetProperty("isEnabled", out var enEl) && enEl.ValueKind == JsonValueKind.True
+            });
+        }
+        return result;
+    }
+
+    private static List<ConditionEntry> GetConditions(ComponentData data)
+    {
+        if (!data.Properties.TryGetValue("conditions", out var raw)) return [];
+        if (raw is not JsonElement el || el.ValueKind != JsonValueKind.Array) return [];
+        var result = new List<ConditionEntry>();
+        foreach (var item in el.EnumerateArray())
+        {
+            result.Add(new ConditionEntry
+            {
+                Id = item.TryGetProperty("id", out var idEl) ? idEl.GetString() ?? Guid.NewGuid().ToString("N") : Guid.NewGuid().ToString("N"),
+                Name = item.TryGetProperty("name", out var nEl) ? nEl.GetString() ?? "" : "",
+                Icon = item.TryGetProperty("icon", out var iEl) ? iEl.GetString() ?? "🎭" : "🎭",
+                StackCount = item.TryGetProperty("stackCount", out var scEl) && scEl.TryGetInt32(out var sc) ? sc : 1,
+                RemainingRounds = item.TryGetProperty("remainingRounds", out var rrEl) && rrEl.TryGetInt32(out var rr) ? rr : -1,
+                ColorHex = item.TryGetProperty("colorHex", out var chEl) ? chEl.GetString() ?? "#10B981" : "#10B981"
             });
         }
         return result;

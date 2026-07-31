@@ -1,0 +1,16 @@
+{
+  "Name": "Vaporwave众筹页",
+  "Type": "StaticObjectClass",
+  "Components": [
+    {
+      "Type": "Transform",
+      "Properties": {}
+    },
+    {
+      "Type": "SpriteRenderer",
+      "Properties": {
+        "sprite": "Vaporwave众筹页.png"
+      }
+    }
+  ]
+}

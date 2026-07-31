@@ -1,0 +1,16 @@
+{
+  "Name": "推理机",
+  "Type": "StaticObjectClass",
+  "Components": [
+    {
+      "Type": "Transform",
+      "Properties": {}
+    },
+    {
+      "Type": "SpriteRenderer",
+      "Properties": {
+        "sprite": "推理机.png"
+      }
+    }
+  ]
+}

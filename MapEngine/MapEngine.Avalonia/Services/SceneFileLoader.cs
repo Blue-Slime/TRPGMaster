@@ -57,6 +57,8 @@ public static class SceneFileLoader
         var transform = go.GetComponent<TransformComponent>();
         var sprite = go.GetComponent<SpriteRendererComponent>();
         var vision = go.GetComponent<VisionComponent>();
+        var shape = go.GetComponent<ShapeComponent>();
+        var text = go.GetComponent<TextComponent>();
 
         return new HierarchyNodeDto
         {
@@ -82,6 +84,8 @@ public static class SceneFileLoader
             SourceAssetName = sprite?.SourceAssetName ?? string.Empty,
             VisionEnabled = vision?.Enabled ?? false,
             VisionRadius = vision?.Radius ?? 0,
+            ShapeV2 = shape is null ? null : LegacyMigrator.ToShapeData(shape),
+            TextV2 = text is null ? null : LegacyMigrator.ToTextData(text),
             Tags = [.. go.Tags],
             Children = go.Children.Select(GameObjectToDto).ToList()
         };

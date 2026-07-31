@@ -97,7 +97,7 @@
                 <Grid ColumnDefinitions="*,Auto" IsVisible="{Binding IsEditing}">
                     <TextBox Grid.Column="0" Name="EditBox" Classes="chatInput"
                              Text="{Binding EditInput}"
-                             Watermark="编辑消息... (Enter 提交，Esc 取消)"
+                             PlaceholderText="编辑消息... (Enter 提交，Esc 取消)"
                              AcceptsReturn="True" TextWrapping="Wrap"
                              MinHeight="44" MaxHeight="120"/>
                     <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="4" Margin="8,0,0,0">
@@ -113,7 +113,7 @@
                     <Panel Grid.Column="0">
                         <TextBox Name="MessageInput" Classes="chatInput"
                                  Text="{Binding MessageInput}"
-                                 Watermark="发送消息... (Enter 发送，Shift+Enter 换行)"
+                                 PlaceholderText="发送消息... (Enter 发送，Shift+Enter 换行)"
                                  AcceptsReturn="True" TextWrapping="Wrap"
                                  MinHeight="44" MaxHeight="120"/>
                         <!-- @提及候选浮层（InputChanged 在 code-behind 里触发） -->

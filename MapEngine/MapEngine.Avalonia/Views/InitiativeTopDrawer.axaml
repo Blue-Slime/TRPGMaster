@@ -1,0 +1,192 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:MapEngine.Avalonia.ViewModels"
+             xmlns:converters="using:MapEngine.Avalonia.Converters"
+             x:Class="MapEngine.Avalonia.Views.InitiativeTopDrawer"
+             x:DataType="vm:InitiativeTrackerViewModel">
+
+    <UserControl.Resources>
+        <converters:PercentToWidthConverter x:Key="PercentToWidthConverter"/>
+        <converters:HexToBrushConverter x:Key="HexToBrushConverter"/>
+    </UserControl.Resources>
+
+    <!-- 顶部滑动抽屉：简洁设计 -->
+    <Border x:Name="TopDrawer"
+            HorizontalAlignment="Center" VerticalAlignment="Top"
+            Margin="0,14,0,0"
+            MaxWidth="1400"
+            CornerRadius="12"
+            Background="#E0161D2B"
+            BorderBrush="#3B6DFF"
+            BorderThickness="1"
+            BoxShadow="0 4 16 0 #60000000"
+            Padding="20,14">
+
+        <Grid RowDefinitions="Auto,Auto">
+            <!-- 回合控制栏 -->
+            <StackPanel Grid.Row="0" Orientation="Horizontal" HorizontalAlignment="Center" Spacing="12" Margin="0,0,0,14">
+                <!-- 回合计数器 -->
+                <Border Background="#1E2636" CornerRadius="8" Padding="16,6" BorderBrush="#3B6DFF" BorderThickness="1">
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <TextBlock Text="⚔️" FontSize="16" VerticalAlignment="Center"/>
+                        <TextBlock Text="第" Foreground="#9CA3AF" FontSize="12" VerticalAlignment="Center"/>
+                        <TextBlock Text="{Binding TurnCounter}" Foreground="#FFFFFF" FontWeight="Bold" FontSize="18" VerticalAlignment="Center"/>
+                        <TextBlock Text="回合" Foreground="#9CA3AF" FontSize="12" VerticalAlignment="Center"/>
+                    </StackPanel>
+                </Border>
+
+                <!-- 上一回合 -->
+                <Button Command="{Binding PreviousTurnCommand}"
+                        Width="38" Height="38" Padding="0"
+                        CornerRadius="8"
+                        Background="#1E2636"
+                        BorderBrush="#3B6DFF" BorderThickness="1"
+                        ToolTip.Tip="上一回合">
+                    <Button.Styles>
+                        <Style Selector="Button:pointerover">
+                            <Setter Property="Background" Value="#2A3647"/>
+                        </Style>
+                    </Button.Styles>
+                    <TextBlock Text="◀" Foreground="#FFFFFF" FontSize="14" FontWeight="Bold"
+                               HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                </Button>
+
+                <!-- 下一回合 -->
+                <Button Command="{Binding NextTurnCommand}"
+                        Width="38" Height="38" Padding="0"
+                        CornerRadius="8"
+                        Background="#3B6DFF"
+                        BorderBrush="#3B6DFF" BorderThickness="1"
+                        ToolTip.Tip="下一回合">
+                    <Button.Styles>
+                        <Style Selector="Button:pointerover">
+                            <Setter Property="Background" Value="#5078FF"/>
+                        </Style>
+                    </Button.Styles>
+                    <TextBlock Text="▶" Foreground="#FFFFFF" FontSize="14" FontWeight="Bold"
+                               HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                </Button>
+
+                <!-- 重置 -->
+                <Button Command="{Binding ResetTurnCommand}"
+                        Width="38" Height="38" Padding="0"
+                        CornerRadius="8"
+                        Background="#1E2636"
+                        BorderBrush="#3B6DFF" BorderThickness="1"
+                        ToolTip.Tip="重置回合">
+                    <Button.Styles>
+                        <Style Selector="Button:pointerover">
+                            <Setter Property="Background" Value="#2A3647"/>
+                        </Style>
+                    </Button.Styles>
+                    <TextBlock Text="🔄" FontSize="16"
+                               HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                </Button>
+            </StackPanel>
+
+            <!-- 先攻卡片横向滑动 -->
+            <Grid Grid.Row="1">
+                <!-- 卡片轨道 -->
+                <ScrollViewer HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Disabled">
+                    <ItemsControl ItemsSource="{Binding Entries}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <StackPanel Orientation="Horizontal" Spacing="12" HorizontalAlignment="Center"/>
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate DataType="vm:InitiativeEntryViewModel">
+                                <!-- 每张卡片 -->
+                                <Border Width="88" Padding="8"
+                                        Background="#1E2636"
+                                        BorderBrush="#4B5563"
+                                        BorderThickness="1"
+                                        CornerRadius="8"
+                                        Cursor="Hand"
+                                        PointerPressed="Entry_PointerPressed">
+                                    <Border.Styles>
+                                        <!-- 普通状态 -->
+                                        <Style Selector="Border">
+                                            <Setter Property="Background" Value="#1E2636"/>
+                                            <Setter Property="BorderBrush" Value="#4B5563"/>
+                                        </Style>
+                                        <!-- 当前回合高亮 -->
+                                        <Style Selector="Border[Tag=True]">
+                                            <Setter Property="Background" Value="#2A3647"/>
+                                            <Setter Property="BorderBrush" Value="#3B6DFF"/>
+                                            <Setter Property="BorderThickness" Value="2"/>
+                                        </Style>
+                                        <!-- Hover -->
+                                        <Style Selector="Border:pointerover">
+                                            <Setter Property="Background" Value="#2A3647"/>
+                                            <Setter Property="BorderBrush" Value="#6B7280"/>
+                                        </Style>
+                                        <Style Selector="Border[Tag=True]:pointerover">
+                                            <Setter Property="Background" Value="#2A3647"/>
+                                            <Setter Property="BorderBrush" Value="#5078FF"/>
+                                        </Style>
+                                    </Border.Styles>
+                                    <Border.Tag>
+                                        <Binding Path="IsCurrentTurn"/>
+                                    </Border.Tag>
+
+                                    <StackPanel Spacing="6">
+                                        <!-- 图标 -->
+                                        <TextBlock Text="{Binding Icon}" FontSize="28"
+                                                   HorizontalAlignment="Center"/>
+
+                                        <!-- 先攻值圆圈 -->
+                                        <Border Width="36" Height="36" CornerRadius="18"
+                                                Background="#0F131C"
+                                                BorderBrush="#3B6DFF" BorderThickness="1"
+                                                HorizontalAlignment="Center">
+                                            <TextBlock Text="{Binding InitiativeOrder}"
+                                                       Foreground="#FFFFFF"
+                                                       FontWeight="Bold" FontSize="16"
+                                                       HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                        </Border>
+
+                                        <!-- 名称 -->
+                                        <TextBlock Text="{Binding Name}"
+                                                   Foreground="#E5E7EB"
+                                                   FontSize="11" FontWeight="SemiBold"
+                                                   TextAlignment="Center" TextTrimming="CharacterEllipsis"
+                                                   MaxWidth="72"/>
+
+                                        <!-- HP 条 -->
+                                        <Border Height="4" CornerRadius="2"
+                                                Background="#0F131C"
+                                                ClipToBounds="True">
+                                            <Border Width="{Binding HPPercent, Converter={StaticResource PercentToWidthConverter}}"
+                                                    HorizontalAlignment="Left"
+                                                    CornerRadius="2"
+                                                    Background="#10B981"/>
+                                        </Border>
+
+                                        <!-- 状态徽章 -->
+                                        <ItemsControl ItemsSource="{Binding TokenConditions}" Margin="0,2">
+                                            <ItemsControl.ItemsPanel>
+                                                <ItemsPanelTemplate>
+                                                    <WrapPanel Orientation="Horizontal" HorizontalAlignment="Center"/>
+                                                </ItemsPanelTemplate>
+                                            </ItemsControl.ItemsPanel>
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate>
+                                                    <Border Margin="1" Padding="3,1" CornerRadius="4"
+                                                            Background="{Binding ColorHex, Converter={StaticResource HexToBrushConverter}}"
+                                                            ToolTip.Tip="{Binding Name}">
+                                                        <TextBlock Text="{Binding Icon}" FontSize="8"/>
+                                                    </Border>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                    </StackPanel>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </ScrollViewer>
+            </Grid>
+        </Grid>
+    </Border>
+</UserControl>

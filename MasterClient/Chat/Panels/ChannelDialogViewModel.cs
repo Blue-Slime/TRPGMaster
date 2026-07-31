@@ -6,6 +6,7 @@ namespace MasterClient.Chat.Panels;
 
 /// <summary>
 /// 频道 新建/编辑 对话框 VM（复用一个）。
+/// Confirmed 事件回传 (channelName, categoryName)。
 /// </summary>
 public partial class ChannelDialogViewModel : ObservableObject
 {
@@ -17,24 +18,27 @@ public partial class ChannelDialogViewModel : ObservableObject
     public string? ChannelId { get; }
 
     [ObservableProperty] private string _channelName = string.Empty;
+    [ObservableProperty] private string _categoryName = string.Empty;
     [ObservableProperty] private string _errorMessage = string.Empty;
 
-    /// <summary>确认：回传频道名（编辑模式另有 ChannelId）</summary>
-    public event Action<string>? Confirmed;
+    /// <summary>确认：回传 (channelName, categoryName)</summary>
+    public event Action<string, string?>? Confirmed;
     public event Action? Cancelled;
 
     /// <summary>新建模式</summary>
-    public ChannelDialogViewModel()
+    public ChannelDialogViewModel(string? categoryName = null)
     {
         IsEditMode = false;
+        _categoryName = categoryName ?? string.Empty;
     }
 
     /// <summary>编辑模式</summary>
-    public ChannelDialogViewModel(string channelId, string channelName)
+    public ChannelDialogViewModel(string channelId, string channelName, string? categoryName = null)
     {
         IsEditMode = true;
         ChannelId = channelId;
         ChannelName = channelName;
+        _categoryName = categoryName ?? string.Empty;
     }
 
     [RelayCommand]
@@ -46,7 +50,8 @@ public partial class ChannelDialogViewModel : ObservableObject
             return;
         }
         ErrorMessage = string.Empty;
-        Confirmed?.Invoke(ChannelName.Trim());
+        var cat = string.IsNullOrWhiteSpace(CategoryName) ? null : CategoryName.Trim();
+        Confirmed?.Invoke(ChannelName.Trim(), cat);
     }
 
     [RelayCommand]

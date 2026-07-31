@@ -51,6 +51,41 @@ public static class LegacyMigrator
             });
         }
 
+        if (dto.ShapeV2 is { } sd)
+        {
+            go.AddComponent(new ShapeComponent
+            {
+                ShapeType = sd.ShapeType,
+                Width = sd.Width,
+                Height = sd.Height,
+                X2 = sd.X2,
+                Y2 = sd.Y2,
+                Points = sd.Points is null ? [] : sd.Points.Select(p => (p.X, p.Y)).ToList(),
+                ConeAngle = sd.ConeAngle,
+                ConeRadius = sd.ConeRadius,
+                Rotation = sd.Rotation,
+                StrokeColor = sd.StrokeColor,
+                FillColor = sd.FillColor,
+                StrokeWidth = sd.StrokeWidth,
+                IsFilled = sd.IsFilled,
+                StrokeStyle = (StrokeStyle)sd.StrokeStyle
+            });
+        }
+
+        if (dto.TextV2 is { } td)
+        {
+            go.AddComponent(new TextComponent
+            {
+                Text = td.Text ?? string.Empty,
+                FontSize = td.FontSize,
+                Color = td.Color,
+                BackgroundColor = td.BackgroundColor,
+                IsBold = td.IsBold,
+                IsItalic = td.IsItalic,
+                Align = (TextAlign)td.Align
+            });
+        }
+
         foreach (var childDto in dto.Children)
         {
             var child = FromHierarchyNodeDto(childDto);
@@ -66,6 +101,8 @@ public static class LegacyMigrator
         var transform = go.GetComponent<TransformComponent>();
         var sprite = go.GetComponent<SpriteRendererComponent>();
         var vision = go.GetComponent<VisionComponent>();
+        var shape = go.GetComponent<ShapeComponent>();
+        var text = go.GetComponent<TextComponent>();
 
         return new HierarchyNodeDto
         {
@@ -91,8 +128,41 @@ public static class LegacyMigrator
             SourceAssetName = sprite?.SourceAssetName ?? string.Empty,
             VisionEnabled = vision?.Enabled ?? false,
             VisionRadius = vision?.Radius ?? 0,
+            ShapeV2 = shape is null ? null : ToShapeData(shape),
+            TextV2 = text is null ? null : ToTextData(text),
             Tags = [.. go.Tags],
             Children = go.Children.Select(ToHierarchyNodeDto).ToList()
         };
     }
+
+    internal static MapEngine.Core.Data.ShapeData ToShapeData(ShapeComponent shape) => new()
+    {
+        ShapeType = shape.ShapeType,
+        Width = shape.Width,
+        Height = shape.Height,
+        X2 = shape.X2,
+        Y2 = shape.Y2,
+        Points = shape.Points
+            .Select(p => new MapEngine.Core.Data.PointData { X = p.X, Y = p.Y })
+            .ToList(),
+        ConeAngle = shape.ConeAngle,
+        ConeRadius = shape.ConeRadius,
+        Rotation = shape.Rotation,
+        StrokeColor = shape.StrokeColor,
+        FillColor = shape.FillColor,
+        StrokeWidth = shape.StrokeWidth,
+        IsFilled = shape.IsFilled,
+        StrokeStyle = (int)shape.StrokeStyle
+    };
+
+    internal static MapEngine.Core.Data.TextData ToTextData(TextComponent text) => new()
+    {
+        Text = text.Text,
+        FontSize = text.FontSize,
+        Color = text.Color,
+        BackgroundColor = text.BackgroundColor,
+        IsBold = text.IsBold,
+        IsItalic = text.IsItalic,
+        Align = (int)text.Align
+    };
 }

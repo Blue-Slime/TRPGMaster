@@ -1,0 +1,16 @@
+{
+  "Name": "推理机7+LOGO",
+  "Type": "StaticObjectClass",
+  "Components": [
+    {
+      "Type": "Transform",
+      "Properties": {}
+    },
+    {
+      "Type": "SpriteRenderer",
+      "Properties": {
+        "sprite": "推理机7+LOGO.png"
+      }
+    }
+  ]
+}

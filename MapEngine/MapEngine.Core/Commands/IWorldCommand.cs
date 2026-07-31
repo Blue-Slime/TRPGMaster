@@ -25,3 +25,9 @@ public interface IWorldCommand
     /// <summary>撤销命令,恢复 World 到执行前状态。</summary>
     void Undo(World world);
 }
+
+/// <summary>
+/// 标记接口：纯 ViewModel 层命令，不走网络，CommandBus 跳过序列化。
+/// 所有 Vm*Command 都实现此接口。
+/// </summary>
+public interface ILocalOnlyCommand : IWorldCommand { }

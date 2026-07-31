@@ -151,6 +151,26 @@ public sealed class HierarchyNodeDto
     /// </summary>
     public VisionData? VisionV2 { get; set; }
 
+    /// <summary>
+    /// 矢量形状数据（ObjectType == "Shape" 时存在）
+    /// </summary>
+    public ShapeData? ShapeV2 { get; set; }
+
+    /// <summary>
+    /// 文本标注数据（ObjectType == "Text" 时存在）
+    /// </summary>
+    public TextData? TextV2 { get; set; }
+
+    /// <summary>
+    /// Token 状态列表（ObjectType == "Token" 时存在）
+    /// </summary>
+    public List<ConditionData>? ConditionsV2 { get; set; }
+
+    /// <summary>
+    /// Token 核心数据（InitiativeOrder/HP 等，ObjectType == "Token" 时存在）
+    /// </summary>
+    public TokenData? TokenV2 { get; set; }
+
     public List<string> Tags { get; set; } = [];
 
     public List<HierarchyNodeDto> Children { get; set; } = [];

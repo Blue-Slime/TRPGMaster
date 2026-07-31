@@ -1,0 +1,196 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:MapEngine.Avalonia.ViewModels"
+             x:Class="MapEngine.Avalonia.Views.InitiativeTrackerPanel"
+             x:DataType="vm:InitiativeTrackerViewModel">
+    <Grid RowDefinitions="Auto,*">
+        <!-- 顶部控制栏：回合计数器 + 控制按钮 -->
+        <Border Grid.Row="0" Background="{StaticResource CapsuleActionBrush}"
+                BorderBrush="{StaticResource CapsuleBorderBrush}" BorderThickness="0,0,0,1"
+                Padding="16,10">
+            <Grid ColumnDefinitions="Auto,*,Auto,Auto,Auto">
+                <!-- 左侧：回合计数器 -->
+                <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                    <TextBlock Text="⚔️" FontSize="16" VerticalAlignment="Center"/>
+                    <TextBlock Text="回合" Foreground="{StaticResource TextTertiaryBrush}" FontSize="11" VerticalAlignment="Center"/>
+                    <Border Background="{StaticResource ToolbarBackgroundBrush}"
+                            BorderBrush="{StaticResource BorderBrushToken}" BorderThickness="1"
+                            CornerRadius="12" Padding="10,4">
+                        <TextBlock Text="{Binding TurnCounter}" Foreground="{StaticResource TextPrimaryBrush}"
+                                   FontWeight="Bold" FontSize="16"/>
+                    </Border>
+                </StackPanel>
+
+                <!-- 右侧：回合控制按钮 -->
+                <Button Grid.Column="2" Content="◀" ToolTip.Tip="上一回合"
+                        Command="{Binding PreviousTurnCommand}"
+                        Width="36" Height="36" Padding="0" Margin="6,0"
+                        Background="{StaticResource ToolbarBackgroundBrush}"
+                        BorderBrush="{StaticResource BorderBrushToken}" BorderThickness="1"
+                        Foreground="{StaticResource TextPrimaryBrush}"
+                        CornerRadius="18" FontSize="14" FontWeight="Bold"/>
+                <Button Grid.Column="3" Content="▶" ToolTip.Tip="下一回合"
+                        Command="{Binding NextTurnCommand}"
+                        Width="36" Height="36" Padding="0" Margin="6,0"
+                        Background="{StaticResource ToolbarBackgroundBrush}"
+                        BorderBrush="{StaticResource BorderBrushToken}" BorderThickness="1"
+                        Foreground="{StaticResource TextPrimaryBrush}"
+                        CornerRadius="18" FontSize="14" FontWeight="Bold"/>
+                <Button Grid.Column="4" Content="🔄" ToolTip.Tip="重置回合"
+                        Command="{Binding ResetTurnCommand}"
+                        Width="36" Height="36" Padding="0" Margin="6,0"
+                        Background="{StaticResource ToolbarBackgroundBrush}"
+                        BorderBrush="{StaticResource BorderBrushToken}" BorderThickness="1"
+                        Foreground="{StaticResource TextTertiaryBrush}"
+                        CornerRadius="18" FontSize="14"/>
+            </Grid>
+        </Border>
+
+        <!-- 先攻卡片横向滑动栏（居中对齐，Owlbear Rodeo 2 风格）-->
+        <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled"
+                      Background="{StaticResource DrawerBackgroundBrush}"
+                      Padding="20,16">
+            <ItemsControl ItemsSource="{Binding Entries}">
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <StackPanel Orientation="Horizontal" Spacing="12" HorizontalAlignment="Center"/>
+                    </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate DataType="vm:InitiativeEntryViewModel">
+                        <!-- 每个卡片：圆角矩形，显示图标/先攻值/名称/HP条/状态徽章 -->
+                        <Grid>
+                            <Border Width="180" Padding="12"
+                                    Background="{StaticResource AppBackgroundBrush}"
+                                    BorderBrush="{StaticResource BorderBrushToken}"
+                                    BorderThickness="2"
+                                    CornerRadius="12"
+                                    Cursor="Hand"
+                                    PointerPressed="Entry_PointerPressed"
+                                    ZIndex="0">
+                            <Border.Styles>
+                                <!-- 普通状态 -->
+                                <Style Selector="Border">
+                                    <Setter Property="BorderBrush" Value="{StaticResource BorderBrushToken}"/>
+                                    <Setter Property="Background" Value="{StaticResource AppBackgroundBrush}"/>
+                                </Style>
+                                <!-- 当前回合高亮：紫色边框 + 半透明紫色背景 -->
+                                <Style Selector="Border[Tag=True]">
+                                    <Setter Property="BorderBrush" Value="#845EF7"/>
+                                    <Setter Property="Background" Value="#18845EF7"/>
+                                </Style>
+                                <!-- Hover 效果 -->
+                                <Style Selector="Border:pointerover">
+                                    <Setter Property="Background" Value="{StaticResource PanelElevatedBrush}"/>
+                                </Style>
+                                <Style Selector="Border[Tag=True]:pointerover">
+                                    <Setter Property="Background" Value="#28845EF7"/>
+                                </Style>
+                            </Border.Styles>
+                            <Border.Tag>
+                                <Binding Path="IsCurrentTurn"/>
+                            </Border.Tag>
+                            <StackPanel Spacing="8">
+                                <!-- 顶部：图标 + 先攻值（居中排列）-->
+                                <Grid ColumnDefinitions="*,Auto,*">
+                                    <TextBlock Grid.Column="0" Text="{Binding Icon}" FontSize="32"
+                                               HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                                    <Border Grid.Column="1" Width="48" Height="48" CornerRadius="24"
+                                            Background="{StaticResource ToolbarBackgroundBrush}"
+                                            BorderBrush="{StaticResource BorderBrushToken}" BorderThickness="2">
+                                        <TextBlock Text="{Binding InitiativeOrder}"
+                                                   Foreground="{StaticResource TextPrimaryBrush}"
+                                                   FontWeight="Bold" FontSize="20"
+                                                   HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                    </Border>
+                                    <Border Grid.Column="2" Width="20" Height="20" CornerRadius="10"
+                                            Background="#845EF7"
+                                            IsVisible="{Binding IsCurrentTurn}"
+                                            HorizontalAlignment="Left" VerticalAlignment="Center" Margin="8,0,0,0">
+                                        <TextBlock Text="▶" Foreground="White" FontSize="8"
+                                                   HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                    </Border>
+                                </Grid>
+
+                                <!-- 名称 -->
+                                <TextBlock Text="{Binding Name}"
+                                           Foreground="{StaticResource TextPrimaryBrush}"
+                                           FontWeight="SemiBold" FontSize="13"
+                                           TextAlignment="Center" TextTrimming="CharacterEllipsis"/>
+
+                                <!-- 状态徽章栏（水平居中）-->
+                                <ItemsControl ItemsSource="{Binding TokenConditions}" Margin="0,2">
+                                    <ItemsControl.ItemsPanel>
+                                        <ItemsPanelTemplate>
+                                            <WrapPanel Orientation="Horizontal" HorizontalAlignment="Center"/>
+                                        </ItemsPanelTemplate>
+                                    </ItemsControl.ItemsPanel>
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Border Margin="2" Padding="4,2" CornerRadius="999"
+                                                    Background="{Binding ColorHex}"
+                                                    ToolTip.Tip="{Binding Name}">
+                                                <StackPanel Orientation="Horizontal" Spacing="2">
+                                                    <TextBlock Text="{Binding Icon}" FontSize="10"/>
+                                                    <TextBlock Text="{Binding StackCountText}"
+                                                               Foreground="White" FontSize="9" FontWeight="Bold"
+                                                               IsVisible="{Binding StackCount, Converter={x:Static ObjectConverters.IsNotNull}}"/>
+                                                </StackPanel>
+                                            </Border>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+
+                                <!-- HP 条 + 数值 -->
+                                <StackPanel Spacing="4">
+                                    <Border Height="6" CornerRadius="3"
+                                            Background="{StaticResource ThumbnailBackgroundBrush}"
+                                            ClipToBounds="True">
+                                        <Border Width="{Binding HPPercent, Converter={StaticResource PercentToWidthConverter}}"
+                                                HorizontalAlignment="Left"
+                                                CornerRadius="3">
+                                            <Border.Background>
+                                                <LinearGradientBrush StartPoint="0%,50%" EndPoint="100%,50%">
+                                                    <GradientStop Offset="0" Color="#51CF66"/>
+                                                    <GradientStop Offset="0.5" Color="#FFD43B"/>
+                                                    <GradientStop Offset="1" Color="#FF6B6B"/>
+                                                </LinearGradientBrush>
+                                            </Border.Background>
+                                        </Border>
+                                    </Border>
+                                    <TextBlock Foreground="{StaticResource TextTertiaryBrush}"
+                                               FontSize="10" HorizontalAlignment="Center">
+                                        <Run Text="{Binding CurrentHP}"/><Run Text="/"/><Run Text="{Binding MaxHP}"/>
+                                    </TextBlock>
+                                </StackPanel>
+                            </StackPanel>
+                        </Border>
+
+                            <!-- 删除按钮（右上角 X，放在 Border 后面确保在最上层）-->
+                            <Button Content="×" FontSize="18" FontWeight="Bold"
+                                    Width="28" Height="28" Padding="0"
+                                    CornerRadius="14"
+                                    Background="#60000000"
+                                    Foreground="#CCCCCC"
+                                    BorderThickness="0"
+                                    HorizontalAlignment="Right" VerticalAlignment="Top"
+                                    Margin="0,-10,-10,0"
+                                    Cursor="Hand"
+                                    ToolTip.Tip="从先攻表移除"
+                                    Click="RemoveEntry_Click"
+                                    Tag="{Binding}"
+                                    ZIndex="10">
+                                <Button.Styles>
+                                    <Style Selector="Button:pointerover">
+                                        <Setter Property="Background" Value="#D0FF0000"/>
+                                        <Setter Property="Foreground" Value="White"/>
+                                    </Style>
+                                </Button.Styles>
+                            </Button>
+                        </Grid>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </ScrollViewer>
+    </Grid>
+</UserControl>

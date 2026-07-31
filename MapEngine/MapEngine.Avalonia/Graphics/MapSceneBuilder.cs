@@ -1,8 +1,11 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using Avalonia;
 using Avalonia.Media;
+using MapEngine.Core.Components;
+using MapEngine.Core.Scene;
 using MapEngine.Render;
 using MapEngine.Avalonia.Services;
 using MapEngine.Avalonia.ViewModels;
@@ -50,8 +53,72 @@ public static class MapSceneBuilder
             VisionCones = visionCones,
             VisionFans = visionFans,
             WallLines = wallLines,
-            WallHandles = wallHandles
+            WallHandles = wallHandles,
+            SelectionHandles = BuildSelectionHandles(viewModel),
+            VectorShapes = BuildVectorShapes(viewModel),
+            LightSources = BuildLightSources(viewModel),
+            // ConditionBadges 已移至 TokenUIManager（Avalonia UI 层），此处不再在 GL 层渲染
+            ConditionBadges = Array.Empty<MapRenderConditionBadge>(),
+            FogEnabled = viewModel.IsFogEnabled,
+            FogRevealedPolygons = viewModel.IsFogEnabled
+                ? viewModel.FogRevealedRegions.Select(r => r.Points).ToList()
+                : Array.Empty<IReadOnlyList<(double, double)>>(),
         };
+    }
+
+    private static IReadOnlyList<MapRenderLight> BuildLightSources(MainWindowViewModel viewModel)
+    {
+        var lights = new List<MapRenderLight>();
+        foreach (var item in viewModel.MapRenderableItems)
+        {
+            if (!item.ShouldRenderOnMap) continue;
+            var light = item.GetComponent<LightComponent>();
+            if (light is null || light.BrightRadius <= 0 && light.DimRadius <= 0) continue;
+
+            var cx = item.MapLeft + (MapViewportConstants.CellSize * item.ScaleX) / 2.0;
+            var cy = item.MapTop  + (MapViewportConstants.CellSize * item.ScaleY) / 2.0;
+
+            var color = ParseHexColor(light.Color, defaultAlpha: 0.55f);
+
+            lights.Add(new MapRenderLight
+            {
+                CenterX      = cx,
+                CenterY      = cy,
+                BrightRadius = light.BrightRadius * MapViewportConstants.CellSize,
+                DimRadius    = light.DimRadius    * MapViewportConstants.CellSize,
+                Color        = color,
+                IsCone       = light.Shape == LightShape.Cone,
+                ConeDirection = light.ConeDirection,
+                ConeHalfAngle = light.ConeAngle / 2.0,
+            });
+        }
+        return lights;
+    }
+
+    /// <summary>解析 #RRGGBB 或 #AARRGGBB 颜色字符串为渲染色。解析失败返回暖黄色。</summary>
+    private static MapRenderColor ParseHexColor(string hex, float defaultAlpha)
+    {
+        try
+        {
+            var s = hex.TrimStart('#');
+            if (s.Length == 6)
+            {
+                var r = Convert.ToInt32(s[..2], 16) / 255f;
+                var g = Convert.ToInt32(s[2..4], 16) / 255f;
+                var b = Convert.ToInt32(s[4..6], 16) / 255f;
+                return new MapRenderColor(r, g, b, defaultAlpha);
+            }
+            if (s.Length == 8)
+            {
+                var a = Convert.ToInt32(s[..2], 16) / 255f;
+                var r = Convert.ToInt32(s[2..4], 16) / 255f;
+                var g = Convert.ToInt32(s[4..6], 16) / 255f;
+                var b = Convert.ToInt32(s[6..8], 16) / 255f;
+                return new MapRenderColor(r, g, b, a);
+            }
+        }
+        catch { /* fall through */ }
+        return new MapRenderColor(1f, 0.87f, 0.53f, defaultAlpha);
     }
 
     private static IReadOnlyList<MapRenderRect> BuildTileRects(MainWindowViewModel viewModel)
@@ -148,6 +215,13 @@ public static class MapSceneBuilder
                 continue;
             }
 
+            // Shape/Text 由专门的通道绘制（BuildVectorShapes / 文本覆盖层），
+            // 不能再叠一个 36px 占位方块，否则矢量图形上会糊一块纯色。
+            if (item.ObjectType is "Shape" or "Text")
+            {
+                continue;
+            }
+
             var spritePath = MapSpriteAssetResolver.ResolveSpritePath(item.SourceAssetPath, item.SourceAssetKind);
             if (!string.IsNullOrWhiteSpace(spritePath))
             {
@@ -163,13 +237,18 @@ public static class MapSceneBuilder
             }
 
             var accentColor = ResolveObjectColor(item);
+            // MapObjectSize(36) < SpriteWidth(50)；矩形必须在格子内居中，否则比格子小的矩形会偏向左上角
+            var bodySize   = MapViewportConstants.MapObjectSize;
+            var bodyOffset = (item.SpriteWidth  - bodySize) / 2.0;  // = (50-36)/2 = 7 at scale=1
+            var bodyOffY   = (item.SpriteHeight - bodySize) / 2.0;
             if (item.IsSelected || item.IsPreviewInstance)
             {
+                // 选框比 body 大 2px（各边），保持同一视觉中心
                 objects.Add(new MapRenderRect(
-                    item.MapLeft - 2,
-                    item.MapTop - 2,
-                    40,
-                    40,
+                    item.MapLeft + bodyOffset - 2,
+                    item.MapTop  + bodyOffY   - 2,
+                    bodySize + 4,
+                    bodySize + 4,
                     item.Rotation,
                     accentColor,
                     null,
@@ -178,10 +257,10 @@ public static class MapSceneBuilder
             else if (string.IsNullOrWhiteSpace(spritePath))
             {
                 objects.Add(new MapRenderRect(
-                    item.MapLeft,
-                    item.MapTop,
-                    36,
-                    36,
+                    item.MapLeft + bodyOffset,
+                    item.MapTop  + bodyOffY,
+                    bodySize,
+                    bodySize,
                     item.Rotation,
                     accentColor,
                     null,
@@ -510,6 +589,100 @@ public static class MapSceneBuilder
         return handles;
     }
 
+    /// <summary>
+    /// 为选中对象生成旋转 handle（正上方圆形占位矩形）和四角缩放 handle。
+    /// 每个选中对象生成 6 个 handle rect：
+    ///   [0]   旋转 handle（正上方，空心圆用细边框近似 = 两个重叠矩形）
+    ///   [1-4] 四角缩放 handle（左上/右上/右下/左下）
+    ///   [5]   旋转连线（精灵中心到旋转 handle 的细线）
+    /// 碰撞检测在 View 层用世界坐标进行，与渲染是独立的。
+    /// </summary>
+    private static IReadOnlyList<MapRenderRect> BuildSelectionHandles(MainWindowViewModel viewModel)
+    {
+        var handles = new List<MapRenderRect>();
+        var handleColor   = new MapRenderColor(1.0f, 1.0f, 1.0f, 1.0f);        // 白色填充
+        var handleBorder  = new MapRenderColor(0.10f, 0.55f, 0.90f, 1.0f);     // 蓝色边框
+        var lineColor     = new MapRenderColor(1.0f, 1.0f, 1.0f, 0.60f);       // 连接线半透明白
+        const double cornerSize  = 9.0;   // 四角 handle 边长（内容像素）
+        const double rotSize     = 10.0;  // 旋转 handle 直径
+        const double rotOffset   = 20.0;  // 距精灵顶边的距离
+        const double lineThick   = 2.0;   // 连接线粗细
+
+        foreach (var item in viewModel.MapRenderableItems)
+        {
+            if (!item.IsSelected || !item.ShouldRenderOnMap) continue;
+
+            var cx   = item.MapLeft + item.SpriteWidth  / 2.0;
+            var cy   = item.MapTop  + item.SpriteHeight / 2.0;
+            var hw   = item.SpriteWidth  / 2.0;
+            var hh   = item.SpriteHeight / 2.0;
+            var rotRad = item.Rotation * Math.PI / 180.0;
+            var rc   = Math.Cos(rotRad);
+            var rs   = Math.Sin(rotRad);
+
+            // ── 旋转连接线（精灵中心 → 旋转 handle 中心）──────────────────
+            // 旋转 handle 在精灵局部坐标 (0, -(hh + rotOffset + rotSize/2)) 处
+            var rotHandleLocalY = -(hh + rotOffset + rotSize / 2.0);
+            var rotHandleWorldX = cx + (0.0 * rc - rotHandleLocalY * rs);
+            var rotHandleWorldY = cy + (0.0 * rs + rotHandleLocalY * rc);
+
+            // 连线：从精灵顶边中点到旋转 handle 中心
+            var lineTopLocalY   = -hh;
+            var lineTopWorldX   = cx + (0.0 * rc - lineTopLocalY * rs);
+            var lineTopWorldY   = cy + (0.0 * rs + lineTopLocalY * rc);
+            var lineDx = rotHandleWorldX - lineTopWorldX;
+            var lineDy = rotHandleWorldY - lineTopWorldY;
+            var lineLen = Math.Sqrt(lineDx * lineDx + lineDy * lineDy);
+            if (lineLen > 1.0)
+            {
+                var lineAngle = Math.Atan2(lineDy, lineDx) * 180.0 / Math.PI;
+                handles.Add(new MapRenderRect(
+                    (lineTopWorldX + rotHandleWorldX) / 2.0 - lineLen / 2.0,
+                    (lineTopWorldY + rotHandleWorldY) / 2.0 - lineThick / 2.0,
+                    lineLen, lineThick, lineAngle, lineColor, null, 1.0f));
+            }
+
+            // ── 旋转 handle（外框蓝色 + 内填白色，模拟空心圆）─────────────
+            const double borderThick = 2.0;
+            handles.Add(new MapRenderRect(
+                rotHandleWorldX - rotSize / 2.0 - borderThick,
+                rotHandleWorldY - rotSize / 2.0 - borderThick,
+                rotSize + borderThick * 2.0, rotSize + borderThick * 2.0,
+                item.Rotation, handleBorder, null, 1.0f));
+            handles.Add(new MapRenderRect(
+                rotHandleWorldX - rotSize / 2.0,
+                rotHandleWorldY - rotSize / 2.0,
+                rotSize, rotSize,
+                item.Rotation, handleColor, null, 1.0f));
+
+            // ── 四角缩放 handle ────────────────────────────────────────────
+            // 局部坐标的四个角：(-hw,-hh) (hw,-hh) (hw,hh) (-hw,hh)
+            var corners = new[]
+            {
+                (-hw, -hh), (hw, -hh), (hw, hh), (-hw, hh)
+            };
+            foreach (var (lx, ly) in corners)
+            {
+                var wx = cx + (lx * rc - ly * rs);
+                var wy = cy + (lx * rs + ly * rc);
+                // 蓝色边框
+                handles.Add(new MapRenderRect(
+                    wx - cornerSize / 2.0 - borderThick,
+                    wy - cornerSize / 2.0 - borderThick,
+                    cornerSize + borderThick * 2.0, cornerSize + borderThick * 2.0,
+                    item.Rotation, handleBorder, null, 1.0f));
+                // 白色填充
+                handles.Add(new MapRenderRect(
+                    wx - cornerSize / 2.0,
+                    wy - cornerSize / 2.0,
+                    cornerSize, cornerSize,
+                    item.Rotation, handleColor, null, 1.0f));
+            }
+        }
+
+        return handles;
+    }
+
     private static MapRenderColor ResolveObjectColor(HierarchyItemViewModel item)
         => item.IsSelected
             ? SelectedObjectColor
@@ -522,6 +695,124 @@ public static class MapSceneBuilder
                     "Prop" or "StaticObject" => PropColor,
                     _ => DefaultObjectColor
                 };
+
+    private static IReadOnlyList<MapVectorShape> BuildVectorShapes(MainWindowViewModel viewModel)
+    {
+        var shapes = new List<MapVectorShape>();
+
+        foreach (var item in viewModel.MapRenderableItems)
+        {
+            if (!item.ShouldRenderOnMap || item.ObjectType != "Shape")
+                continue;
+
+            var comp = item.GetComponent<ShapeComponent>();
+            if (comp == null) continue;
+
+            var stroke = ParseColor(comp.StrokeColor);
+            var fill   = ParseColor(comp.FillColor);
+            var cx = MapViewportConstants.WorldOriginContent + item.X;
+            var cy = MapViewportConstants.WorldOriginContent - item.Y;
+
+            var shapeType = comp.ShapeType switch
+            {
+                "line"     => VectorShapeType.Line,
+                "ellipse"  => VectorShapeType.Ellipse,
+                "circle"   => VectorShapeType.Ellipse,
+                "cone"     => VectorShapeType.Cone,
+                "wedge"    => VectorShapeType.Wedge,
+                "polygon"  => VectorShapeType.Polygon,
+                "freehand" => VectorShapeType.Freehand,
+                _          => VectorShapeType.Rect,
+            };
+
+            var strokeStyle = comp.StrokeStyle switch
+            {
+                StrokeStyle.Dashed => VectorStrokeStyle.Dashed,
+                StrokeStyle.Dotted => VectorStrokeStyle.Dotted,
+                _                  => VectorStrokeStyle.Solid,
+            };
+
+            // 多边形/自由笔触：顶点转为绝对内容坐标
+            var absPoints = comp.Points.Count > 0
+                ? comp.Points.Select(p => (cx + p.X, cy - p.Y)).ToList()
+                : (IReadOnlyList<(double, double)>)Array.Empty<(double, double)>();
+
+            shapes.Add(new MapVectorShape
+            {
+                Type        = shapeType,
+                CenterX     = cx,
+                CenterY     = cy,
+                Width       = comp.Width,
+                Height      = comp.Height,
+                X2          = cx + comp.X2,
+                Y2          = cy - comp.Y2,
+                Points      = absPoints,
+                Direction   = comp.Rotation,
+                HalfAngle   = comp.ConeAngle,
+                Radius      = comp.ConeRadius,
+                StrokeColor = stroke,
+                FillColor   = fill,
+                StrokeWidth = (float)comp.StrokeWidth,
+                IsFilled    = comp.IsFilled,
+                StrokeStyle = strokeStyle,
+            });
+        }
+
+        return shapes;
+    }
+
+    /// <summary>
+    /// 【已废弃】构建 Token 状态徽章 - 已移至 TokenUIManager（Avalonia UI 层）。
+    /// GL 层不再渲染徽章，改由 UI overlay 层渲染 emoji 文本。
+    /// </summary>
+    [Obsolete("ConditionBadges 已移至 TokenUIManager，此方法保留供参考")]
+    private static IReadOnlyList<MapRenderConditionBadge> BuildConditionBadges(MainWindowViewModel viewModel)
+    {
+        var badges = new List<MapRenderConditionBadge>();
+        const double badgeSize = 28.0;    // 徽章圆角矩形边长（世界单位）
+        const double badgeSpacing = 4.0;  // 徽章之间的间距
+        const double badgeOffset = 8.0;   // Token 底边到徽章顶边的距离
+        const int maxVisibleBadges = 5;   // 最多显示 5 个徽章
+
+        foreach (var item in viewModel.MapRenderableItems)
+        {
+            if (!item.ShouldRenderOnMap) continue;
+            var token = item.GetComponent<TokenComponent>();
+            if (token is null || token.Conditions.Count == 0) continue;
+
+            // Token 底边中心点
+            var tokenBottom = item.MapTop + item.SpriteHeight;
+            var tokenCenterX = item.MapLeft + item.SpriteWidth / 2.0;
+
+            // 显示的状态数量（最多 5 个）
+            var visibleCount = Math.Min(token.Conditions.Count, maxVisibleBadges);
+            var totalWidth = visibleCount * badgeSize + (visibleCount - 1) * badgeSpacing;
+            var startX = tokenCenterX - totalWidth / 2.0;
+
+            // 绘制前 5 个状态徽章
+            for (var i = 0; i < visibleCount; i++)
+            {
+                var condition = token.Conditions[i];
+                var badgeX = startX + i * (badgeSize + badgeSpacing);
+                var badgeY = tokenBottom + badgeOffset;
+
+                var bgColor = ParseHexColor(condition.ColorHex, defaultAlpha: 0.9f);
+
+                badges.Add(new MapRenderConditionBadge(
+                    badgeX,
+                    badgeY,
+                    badgeSize,
+                    condition.Icon,
+                    condition.StackCount,
+                    bgColor
+                ));
+            }
+
+            // TODO: 超出 5 个时显示 +N 徽章（需要额外渲染逻辑支持文本）
+        }
+
+        return badges;
+    }
 
     private static MapRenderColor ParseColor(string value)
     {

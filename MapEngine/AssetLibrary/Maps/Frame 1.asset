@@ -1,0 +1,16 @@
+{
+  "Name": "Frame 1",
+  "Type": "StaticObjectClass",
+  "Components": [
+    {
+      "Type": "Transform",
+      "Properties": {}
+    },
+    {
+      "Type": "SpriteRenderer",
+      "Properties": {
+        "sprite": "Frame 1.png"
+      }
+    }
+  ]
+}

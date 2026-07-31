@@ -2,13 +2,18 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              x:Class="MapEngine.Shell.App"
              xmlns:local="using:MapEngine.Avalonia"
+             xmlns:converters="using:MapEngine.Avalonia.Converters"
              RequestedThemeVariant="Default">
              <!-- "Default" ThemeVariant follows system theme variant. "Dark" or "Light" are other available options. -->
+
+    <Application.Resources>
+        <converters:StringEqualsConverter x:Key="StringEqualsConverter"/>
+    </Application.Resources>
 
     <Application.DataTemplates>
         <local:ViewLocator/>
     </Application.DataTemplates>
-  
+
     <Application.Styles>
         <FluentTheme />
     </Application.Styles>

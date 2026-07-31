@@ -43,7 +43,7 @@
         <!-- 关键字 + 搜索按钮 -->
         <Grid Grid.Row="0" ColumnDefinitions="*,8,Auto">
             <TextBox Grid.Column="0" Text="{Binding Keyword, Mode=TwoWay}"
-                     Watermark="搜索消息内容（可留空，按其它条件筛选）">
+                     PlaceholderText="搜索消息内容（可留空，按其它条件筛选）">
                 <TextBox.KeyBindings>
                     <KeyBinding Gesture="Enter" Command="{Binding SearchCommand}"/>
                 </TextBox.KeyBindings>

@@ -1,0 +1,16 @@
+{
+  "Name": "二寸证件照",
+  "Type": "StaticObjectClass",
+  "Components": [
+    {
+      "Type": "Transform",
+      "Properties": {}
+    },
+    {
+      "Type": "SpriteRenderer",
+      "Properties": {
+        "sprite": "二寸证件照.jpg"
+      }
+    }
+  ]
+}

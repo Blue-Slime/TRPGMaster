@@ -1,0 +1,16 @@
+{
+  "Name": "准考证照片小",
+  "Type": "StaticObjectClass",
+  "Components": [
+    {
+      "Type": "Transform",
+      "Properties": {}
+    },
+    {
+      "Type": "SpriteRenderer",
+      "Properties": {
+        "sprite": "准考证照片小.jpg"
+      }
+    }
+  ]
+}

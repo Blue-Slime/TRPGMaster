@@ -1,0 +1,16 @@
+{
+  "Name": "身份证(2)",
+  "Type": "StaticObjectClass",
+  "Components": [
+    {
+      "Type": "Transform",
+      "Properties": {}
+    },
+    {
+      "Type": "SpriteRenderer",
+      "Properties": {
+        "sprite": "身份证(2).jpg"
+      }
+    }
+  ]
+}

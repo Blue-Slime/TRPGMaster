@@ -3,7 +3,7 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:panels="using:MasterClient.Chat.Panels"
-        mc:Ignorable="d" d:DesignWidth="380" d:DesignHeight="240"
+        mc:Ignorable="d" d:DesignWidth="380" d:DesignHeight="280"
         x:Class="MasterClient.Chat.Panels.ChannelDialog"
         x:DataType="panels:ChannelDialogViewModel"
         Title="{Binding DialogTitle}"
@@ -28,7 +28,12 @@
 
             <StackPanel Spacing="6">
                 <TextBlock Text="频道名称" FontSize="13" Foreground="#b5bac1"/>
-                <TextBox Text="{Binding ChannelName, Mode=TwoWay}" Watermark="例如 大厅 / 战斗 / 场外"/>
+                <TextBox Text="{Binding ChannelName, Mode=TwoWay}" PlaceholderText="例如 大厅 / 战斗 / 场外"/>
+            </StackPanel>
+
+            <StackPanel Spacing="6">
+                <TextBlock Text="分类（留空则归入默认分类）" FontSize="13" Foreground="#b5bac1"/>
+                <TextBox Text="{Binding CategoryName, Mode=TwoWay}" PlaceholderText="例如 文字频道 / 语音频道"/>
             </StackPanel>
 
             <TextBlock Text="{Binding ErrorMessage}" Foreground="#ED4245" FontSize="12"

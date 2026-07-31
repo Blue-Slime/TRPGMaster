@@ -6,6 +6,9 @@
     <RootNamespace>MapEngine.Agent</RootNamespace>
   </PropertyGroup>
   <ItemGroup>
+    <PackageReference Include="Avalonia" Version="12.1.0" />
+  </ItemGroup>
+  <ItemGroup>
     <ProjectReference Include="..\MapEngine.Core\MapEngine.Core.csproj" />
   </ItemGroup>
 </Project>

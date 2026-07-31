@@ -6,6 +6,7 @@ using MasterClient.Models;
 using MasterClient.Services;
 using MapEngine.Avalonia.Hosting;
 using MapEngine.Core.Hosting;
+using Avalonia.Input.Platform;
 
 namespace MasterClient.ViewModels;
 

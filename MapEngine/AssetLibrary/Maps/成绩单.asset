@@ -1,0 +1,16 @@
+{
+  "Name": "成绩单",
+  "Type": "StaticObjectClass",
+  "Components": [
+    {
+      "Type": "Transform",
+      "Properties": {}
+    },
+    {
+      "Type": "SpriteRenderer",
+      "Properties": {
+        "sprite": "成绩单.jpg"
+      }
+    }
+  ]
+}

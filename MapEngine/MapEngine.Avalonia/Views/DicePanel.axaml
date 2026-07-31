@@ -1,0 +1,194 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:MapEngine.Avalonia.ViewModels"
+             xmlns:converters="using:MapEngine.Avalonia.Converters"
+             x:Class="MapEngine.Avalonia.Views.DicePanel"
+             x:DataType="vm:DicePanelViewModel">
+
+    <UserControl.Resources>
+        <converters:HexToBrushConverter x:Key="HexToBrushConverter"/>
+    </UserControl.Resources>
+
+    <!-- 右侧浮动面板，宽 280，从顶部滑入 -->
+    <Border x:Name="PanelRoot"
+            HorizontalAlignment="Right" VerticalAlignment="Top"
+            Margin="0,14,60,0"
+            Width="280"
+            CornerRadius="12"
+            Background="#E0161D2B"
+            BorderBrush="#F59E0B"
+            BorderThickness="1"
+            BoxShadow="0 4 16 0 #60000000"
+            Padding="16,14">
+
+        <StackPanel Spacing="12">
+
+            <!-- ── 标题栏 ──────────────────────────────────────────── -->
+            <StackPanel Orientation="Horizontal" Spacing="8">
+                <TextBlock Text="🎲" FontSize="18" VerticalAlignment="Center"/>
+                <TextBlock Text="骰子" Foreground="#F3F4F6" FontSize="15"
+                           FontWeight="SemiBold" VerticalAlignment="Center"/>
+            </StackPanel>
+
+            <!-- ── 快捷骰按钮区 ───────────────────────────────────── -->
+            <ItemsControl ItemsSource="{x:Static vm:DicePanelViewModel.Presets}">
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <WrapPanel Orientation="Horizontal" HorizontalAlignment="Center"/>
+                    </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate DataType="vm:DicePreset">
+                        <Button Width="34" Height="34" Margin="3"
+                                Padding="0"
+                                CornerRadius="8"
+                                Background="{Binding ColorHex, Converter={StaticResource HexToBrushConverter}, ConverterParameter=33}"
+                                BorderBrush="{Binding ColorHex, Converter={StaticResource HexToBrushConverter}}"
+                                BorderThickness="1"
+                                ToolTip.Tip="{Binding Label}"
+                                Command="{Binding $parent[UserControl].((vm:DicePanelViewModel)DataContext).RollPresetCommand}"
+                                CommandParameter="{Binding Formula}">
+                            <Button.Styles>
+                                <Style Selector="Button:pointerover /template/ ContentPresenter">
+                                    <Setter Property="Opacity" Value="0.85"/>
+                                </Style>
+                            </Button.Styles>
+                            <TextBlock Text="{Binding Label}"
+                                       Foreground="#F3F4F6" FontSize="10" FontWeight="Bold"
+                                       HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Button>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+
+            <!-- ── 分隔线 ─────────────────────────────────────────── -->
+            <Border Height="1" Background="#2D3748"/>
+
+            <!-- ── 公式输入 + 投掷按钮 ────────────────────────────── -->
+            <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto">
+                <TextBox Grid.Column="0" Grid.Row="0"
+                         Text="{Binding Formula, Mode=TwoWay}"
+                         PlaceholderText="公式，如 2d6+3、4d6kh3"
+                         FontSize="13"
+                         Background="#1E2636"
+                         Foreground="#F3F4F6"
+                         BorderBrush="#4B5563" BorderThickness="1"
+                         CornerRadius="8" Padding="8,6"
+                         VerticalContentAlignment="Center">
+                    <TextBox.KeyBindings>
+                        <KeyBinding Gesture="Return" Command="{Binding RollCommand}"/>
+                    </TextBox.KeyBindings>
+                </TextBox>
+
+                <Button Grid.Column="1" Grid.Row="0"
+                        Width="52" Height="34" Margin="6,0,0,0"
+                        CornerRadius="8"
+                        Background="#F59E0B"
+                        BorderThickness="0"
+                        Command="{Binding RollCommand}"
+                        ToolTip.Tip="投掷 (Enter)">
+                    <Button.Styles>
+                        <Style Selector="Button:pointerover /template/ ContentPresenter">
+                            <Setter Property="Background" Value="#FBBF24"/>
+                        </Style>
+                        <Style Selector="Button:disabled /template/ ContentPresenter">
+                            <Setter Property="Background" Value="#6B5020"/>
+                            <Setter Property="Opacity" Value="0.5"/>
+                        </Style>
+                    </Button.Styles>
+                    <TextBlock Text="投！" Foreground="#1F2937" FontWeight="Bold"
+                               FontSize="12"
+                               HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                </Button>
+
+                <!-- 错误提示 -->
+                <TextBlock Grid.Column="0" Grid.Row="1" Grid.ColumnSpan="2"
+                           Text="{Binding ErrorMessage}"
+                           Foreground="#EF4444" FontSize="11"
+                           IsVisible="{Binding ErrorMessage, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                           Margin="0,4,0,0" TextWrapping="Wrap"/>
+            </Grid>
+
+            <!-- ── 最新结果大展示 ─────────────────────────────────── -->
+            <Border Background="#1E2636" CornerRadius="10" Padding="12,10"
+                    IsVisible="{Binding LastResult, Converter={x:Static ObjectConverters.IsNotNull}}">
+                <Grid ColumnDefinitions="*,Auto">
+                    <StackPanel Grid.Column="0" Spacing="2">
+                        <TextBlock Text="{Binding LastResult.Formula}"
+                                   Foreground="#9CA3AF" FontSize="11"/>
+                        <TextBlock Text="{Binding LastResult.DetailDisplay}"
+                                   Foreground="#D1D5DB" FontSize="11"
+                                   TextWrapping="Wrap"/>
+                    </StackPanel>
+                    <!-- 总数 -->
+                    <Border Grid.Column="1" CornerRadius="8" Padding="10,4"
+                            Background="#0F131C"
+                            BorderBrush="#F59E0B" BorderThickness="1"
+                            VerticalAlignment="Center" Margin="8,0,0,0">
+                        <TextBlock Text="{Binding LastResult.TotalDisplay}"
+                                   Foreground="#F59E0B" FontWeight="Bold" FontSize="26"
+                                   HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Border>
+                </Grid>
+            </Border>
+
+            <!-- ── 历史记录 ───────────────────────────────────────── -->
+            <StackPanel Spacing="4" IsVisible="{Binding History.Count, Converter={x:Static ObjectConverters.IsNotNull}}">
+                <!-- 历史标题 + 清除按钮 -->
+                <Grid ColumnDefinitions="*,Auto">
+                    <TextBlock Grid.Column="0" Text="历史" Foreground="#6B7280" FontSize="11"
+                               VerticalAlignment="Center"/>
+                    <Button Grid.Column="1" Height="20" Padding="6,0"
+                            FontSize="10" CornerRadius="4"
+                            Background="Transparent" Foreground="#6B7280"
+                            BorderThickness="0"
+                            Command="{Binding ClearHistoryCommand}"
+                            ToolTip.Tip="清空历史">
+                        <Button.Styles>
+                            <Style Selector="Button:pointerover /template/ ContentPresenter">
+                                <Setter Property="Background" Value="#2D3748"/>
+                            </Style>
+                        </Button.Styles>
+                        <TextBlock Text="清空"/>
+                    </Button>
+                </Grid>
+
+                <!-- 历史列表（最多显示 8 条）-->
+                <ScrollViewer MaxHeight="200" VerticalScrollBarVisibility="Auto">
+                    <ItemsControl ItemsSource="{Binding History}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate DataType="vm:DiceResultViewModel">
+                                <Border Margin="0,1" Padding="8,5" CornerRadius="6"
+                                        Background="#131927">
+                                    <Grid ColumnDefinitions="Auto,*,Auto">
+                                        <!-- 时间戳 -->
+                                        <TextBlock Grid.Column="0"
+                                                   Text="{Binding TimestampDisplay}"
+                                                   Foreground="#4B5563" FontSize="10"
+                                                   VerticalAlignment="Center"
+                                                   Width="50"/>
+                                        <!-- 公式 + 详情 -->
+                                        <StackPanel Grid.Column="1" Spacing="1" Margin="6,0">
+                                            <TextBlock Text="{Binding Formula}"
+                                                       Foreground="#9CA3AF" FontSize="10"/>
+                                            <TextBlock Text="{Binding DetailDisplay}"
+                                                       Foreground="#6B7280" FontSize="10"
+                                                       TextWrapping="Wrap"/>
+                                        </StackPanel>
+                                        <!-- 总数 -->
+                                        <TextBlock Grid.Column="2"
+                                                   Text="{Binding TotalDisplay}"
+                                                   FontWeight="Bold" FontSize="15"
+                                                   VerticalAlignment="Center"
+                                                   Foreground="#E5E7EB"/>
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </ScrollViewer>
+            </StackPanel>
+
+        </StackPanel>
+    </Border>
+</UserControl>

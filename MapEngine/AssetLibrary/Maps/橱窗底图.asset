@@ -1,0 +1,16 @@
+{
+  "Name": "橱窗底图",
+  "Type": "StaticObjectClass",
+  "Components": [
+    {
+      "Type": "Transform",
+      "Properties": {}
+    },
+    {
+      "Type": "SpriteRenderer",
+      "Properties": {
+        "sprite": "橱窗底图.png"
+      }
+    }
+  ]
+}

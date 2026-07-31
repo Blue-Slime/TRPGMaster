@@ -1,6 +1,7 @@
 using Avalonia;
 using Avalonia.Diagnostics;
 using System;
+using System.Linq;
 
 namespace MapEngine.Shell;
 
@@ -10,8 +11,20 @@ sealed class Program
     // SynchronizationContext-reliant code before AppMain is called: things aren't initialized
     // yet and stuff might break.
     [STAThread]
-    public static void Main(string[] args) => BuildAvaloniaApp()
-        .StartWithClassicDesktopLifetime(args);
+    public static void Main(string[] args)
+    {
+        // 命令行工具模式
+        if (args.Length > 0 && args[0] == "import-assets")
+        {
+            var sourcePath = args.Length > 1 ? args[1] : null;
+            var targetRoot = args.Length > 2 ? args[2] : null;
+            ImportAssetsCommand.Execute(sourcePath, targetRoot);
+            return;
+        }
+
+        // 默认 Avalonia UI 模式
+        BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
+    }
 
     // Avalonia configuration, don't remove; also used by visual designer.
     public static AppBuilder BuildAvaloniaApp()

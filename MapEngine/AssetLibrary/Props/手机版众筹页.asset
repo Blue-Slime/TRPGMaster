@@ -1,0 +1,16 @@
+{
+  "Name": "手机版众筹页",
+  "Type": "StaticObjectClass",
+  "Components": [
+    {
+      "Type": "Transform",
+      "Properties": {}
+    },
+    {
+      "Type": "SpriteRenderer",
+      "Properties": {
+        "sprite": "手机版众筹页.png"
+      }
+    }
+  ]
+}

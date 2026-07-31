@@ -161,4 +161,83 @@ public class ComponentSystemTests
         Assert.True(backDto.VisionEnabled);
         Assert.Contains("enemy", backDto.Tags);
     }
+
+    [Fact]
+    public void SceneSerializer_RoundTrip_PreservesShapeAndText()
+    {
+        var shapeGo = new GameObject { Name = "Cone", ObjectType = "Shape" };
+        shapeGo.AddComponent(new TransformComponent { X = 12, Y = -8 });
+        shapeGo.AddComponent(new ShapeComponent
+        {
+            ShapeType = "cone",
+            ConeAngle = 45,
+            ConeRadius = 200,
+            Rotation = 90,
+            StrokeColor = "#FF6B6B",
+            FillColor = "#40FF6B6B",
+            StrokeWidth = 4,
+            IsFilled = false,
+            StrokeStyle = StrokeStyle.Dashed,
+            Points = [(1, 2), (3, 4)]
+        });
+
+        var textGo = new GameObject { Name = "Label", ObjectType = "Text" };
+        textGo.AddComponent(new TransformComponent { X = -5, Y = 5 });
+        textGo.AddComponent(new TextComponent
+        {
+            Text = "宝箱在这里",
+            FontSize = 28,
+            Color = "#FFD43B",
+            BackgroundColor = "#00000000",
+            IsBold = true,
+            IsItalic = true,
+            Align = TextAlign.Right
+        });
+
+        var json = SceneSerializer.Serialize(SceneSerializer.ToDocument([shapeGo, textGo]));
+        var restored = SceneSerializer.FromDocument(SceneSerializer.Deserialize(json)!);
+
+        var shape = restored[0].GetComponent<ShapeComponent>()!;
+        Assert.Equal("cone", shape.ShapeType);
+        Assert.Equal(45.0, shape.ConeAngle);
+        Assert.Equal(200.0, shape.ConeRadius);
+        Assert.Equal(90.0, shape.Rotation);
+        Assert.Equal("#FF6B6B", shape.StrokeColor);
+        Assert.Equal(4.0, shape.StrokeWidth);
+        Assert.False(shape.IsFilled);
+        Assert.Equal(StrokeStyle.Dashed, shape.StrokeStyle);
+        Assert.Equal([(1.0, 2.0), (3.0, 4.0)], shape.Points);
+
+        var text = restored[1].GetComponent<TextComponent>()!;
+        Assert.Equal("宝箱在这里", text.Text);
+        Assert.Equal(28.0, text.FontSize);
+        Assert.Equal("#FFD43B", text.Color);
+        Assert.Equal("#00000000", text.BackgroundColor);
+        Assert.True(text.IsBold);
+        Assert.True(text.IsItalic);
+        Assert.Equal(TextAlign.Right, text.Align);
+    }
+
+    [Fact]
+    public void LegacyMigrator_RoundTrip_PreservesShapeAndText()
+    {
+        var go = new GameObject { Name = "Blast", ObjectType = "Shape" };
+        go.AddComponent(new TransformComponent { X = 3, Y = 4 });
+        go.AddComponent(new ShapeComponent { ShapeType = "circle", Width = 88, Points = [(9, 9)] });
+        go.AddComponent(new TextComponent { Text = "AoE", FontSize = 12 });
+
+        var dto = LegacyMigrator.ToHierarchyNodeDto(go);
+        Assert.NotNull(dto.ShapeV2);
+        Assert.NotNull(dto.TextV2);
+
+        var back = LegacyMigrator.FromHierarchyNodeDto(dto);
+        var shape = back.GetComponent<ShapeComponent>()!;
+        Assert.Equal("circle", shape.ShapeType);
+        Assert.Equal(88.0, shape.Width);
+        Assert.Equal([(9.0, 9.0)], shape.Points);
+
+        var text = back.GetComponent<TextComponent>()!;
+        Assert.Equal("AoE", text.Text);
+        Assert.Equal(12.0, text.FontSize);
+    }
 }

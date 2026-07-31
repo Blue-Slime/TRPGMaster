@@ -38,9 +38,19 @@ public class ChannelStore
                 RoomId TEXT NOT NULL,
                 ChannelName TEXT NOT NULL,
                 CreateTime TEXT NOT NULL,
-                SortOrder INTEGER NOT NULL DEFAULT 0
+                SortOrder INTEGER NOT NULL DEFAULT 0,
+                CategoryName TEXT
             )";
         cmd.ExecuteNonQuery();
+
+        // 迁移：老库无 CategoryName 列时补加
+        try
+        {
+            var alterCmd = conn.CreateCommand();
+            alterCmd.CommandText = "ALTER TABLE Channels ADD COLUMN CategoryName TEXT";
+            alterCmd.ExecuteNonQuery();
+        }
+        catch (SqliteException) { /* 列已存在，忽略 */ }
     }
 
     private static Channel ReadChannel(SqliteDataReader reader)
@@ -51,7 +61,10 @@ public class ChannelStore
             RoomId = reader.GetString(reader.GetOrdinal("RoomId")),
             ChannelName = reader.GetString(reader.GetOrdinal("ChannelName")),
             CreateTime = DateTime.Parse(reader.GetString(reader.GetOrdinal("CreateTime"))),
-            SortOrder = reader.GetInt32(reader.GetOrdinal("SortOrder"))
+            SortOrder = reader.GetInt32(reader.GetOrdinal("SortOrder")),
+            CategoryName = reader.IsDBNull(reader.GetOrdinal("CategoryName"))
+                ? null
+                : reader.GetString(reader.GetOrdinal("CategoryName"))
         };
     }
 
@@ -92,14 +105,15 @@ public class ChannelStore
         // 纯 INSERT：ChannelId 是主键，撞车会抛 SqliteException（不静默覆盖）
         var cmd = conn.CreateCommand();
         cmd.CommandText = @"
-            INSERT INTO Channels (ChannelId, RoomId, ChannelName, CreateTime, SortOrder)
-            VALUES (@id, @roomId, @name, @created, @sort)";
+            INSERT INTO Channels (ChannelId, RoomId, ChannelName, CreateTime, SortOrder, CategoryName)
+            VALUES (@id, @roomId, @name, @created, @sort, @category)";
 
         cmd.Parameters.AddWithValue("@id", channel.ChannelId);
         cmd.Parameters.AddWithValue("@roomId", channel.RoomId);
         cmd.Parameters.AddWithValue("@name", channel.ChannelName);
         cmd.Parameters.AddWithValue("@created", channel.CreateTime.ToString("O"));
         cmd.Parameters.AddWithValue("@sort", channel.SortOrder);
+        cmd.Parameters.AddWithValue("@category", (object?)channel.CategoryName ?? DBNull.Value);
 
         await cmd.ExecuteNonQueryAsync();
         return channel;
@@ -183,9 +197,10 @@ public class ChannelStore
             throw new InvalidOperationException($"频道名已存在：{channel.ChannelName}");
 
         var cmd = conn.CreateCommand();
-        cmd.CommandText = "UPDATE Channels SET ChannelName=@name WHERE ChannelId=@id";
+        cmd.CommandText = "UPDATE Channels SET ChannelName=@name, CategoryName=@category WHERE ChannelId=@id";
         cmd.Parameters.AddWithValue("@id", channel.ChannelId);
         cmd.Parameters.AddWithValue("@name", channel.ChannelName);
+        cmd.Parameters.AddWithValue("@category", (object?)channel.CategoryName ?? DBNull.Value);
 
         await cmd.ExecuteNonQueryAsync();
     }

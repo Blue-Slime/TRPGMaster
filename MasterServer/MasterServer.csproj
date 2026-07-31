@@ -8,6 +8,10 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="Avalonia" Version="12.1.0" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\MasterIM\Master.IM.Server\MasterIM.Server.csproj" />
     <ProjectReference Include="..\MasterIM\Master.IM.Models\Master.IM.Models.csproj" />
   </ItemGroup>

@@ -1,0 +1,16 @@
+{
+  "Name": "跑团大师桌面壁纸",
+  "Type": "StaticObjectClass",
+  "Components": [
+    {
+      "Type": "Transform",
+      "Properties": {}
+    },
+    {
+      "Type": "SpriteRenderer",
+      "Properties": {
+        "sprite": "跑团大师桌面壁纸.png"
+      }
+    }
+  ]
+}

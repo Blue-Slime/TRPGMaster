@@ -55,14 +55,9 @@ public partial class App : Application
         services.AddSingleton<MainWindowViewModel>();
     }
 
-    private void DisableAvaloniaDataAnnotationValidation()
+    private static void DisableAvaloniaDataAnnotationValidation()
     {
-        var dataValidationPluginsToRemove =
-            BindingPlugins.DataValidators.OfType<DataAnnotationsValidationPlugin>().ToArray();
-
-        foreach (var plugin in dataValidationPluginsToRemove)
-        {
-            BindingPlugins.DataValidators.Remove(plugin);
-        }
+        // Avalonia 12: BindingPlugins is internal; DataAnnotations validation is disabled
+        // by default when using CompiledBindings, so this is no longer needed.
     }
 }

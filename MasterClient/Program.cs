@@ -1,21 +1,27 @@
-﻿using Avalonia;
-using System;
+using Avalonia;
+using Avalonia.Win32;
 
 namespace MasterClient;
 
 sealed class Program
 {
-    // Initialization code. Don't use any Avalonia, third-party APIs or any
-    // SynchronizationContext-reliant code before AppMain is called: things aren't initialized
-    // yet and stuff might break.
     [STAThread]
     public static void Main(string[] args) => BuildAvaloniaApp()
         .StartWithClassicDesktopLifetime(args);
 
-    // Avalonia configuration, don't remove; also used by visual designer.
     public static AppBuilder BuildAvaloniaApp()
         => AppBuilder.Configure<App>()
             .UsePlatformDetect()
+            .With(new Win32PlatformOptions
+            {
+                // 原生 WGL 优先，ANGLE EGL 备用，最后 Software
+                RenderingMode =
+                [
+                    Win32RenderingMode.Wgl,
+                    Win32RenderingMode.AngleEgl,
+                    Win32RenderingMode.Software,
+                ]
+            })
             .WithInterFont()
             .LogToTrace();
 }

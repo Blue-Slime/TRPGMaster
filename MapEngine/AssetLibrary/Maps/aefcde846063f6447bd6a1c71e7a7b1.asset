@@ -1,0 +1,16 @@
+{
+  "Name": "aefcde846063f6447bd6a1c71e7a7b1",
+  "Type": "StaticObjectClass",
+  "Components": [
+    {
+      "Type": "Transform",
+      "Properties": {}
+    },
+    {
+      "Type": "SpriteRenderer",
+      "Properties": {
+        "sprite": "aefcde846063f6447bd6a1c71e7a7b1.jpg"
+      }
+    }
+  ]
+}

@@ -30,7 +30,7 @@
                 <StackPanel Spacing="8">
                     <TextBlock Text="账号/邮箱" FontSize="13" FontWeight="SemiBold" Foreground="#9ca3af"/>
                     <TextBox Text="{Binding Account, Mode=TwoWay}"
-                             Watermark="请输入账号或邮箱"
+                             PlaceholderText="请输入账号或邮箱"
                              Classes="dark-input"
                              IsEnabled="{Binding IsLoggingIn, Converter={StaticResource InverseBoolConverter}}"/>
                 </StackPanel>
@@ -40,7 +40,7 @@
                     <TextBlock Text="密码" FontSize="13" FontWeight="SemiBold" Foreground="#9ca3af"/>
                     <TextBox Text="{Binding Password, Mode=TwoWay}"
                              PasswordChar="●"
-                             Watermark="请输入密码"
+                             PlaceholderText="请输入密码"
                              Classes="dark-input"
                              IsEnabled="{Binding IsLoggingIn, Converter={StaticResource InverseBoolConverter}}"/>
                 </StackPanel>

@@ -90,7 +90,7 @@ public partial class ChatRoomViewModel : ObservableObject, IDisposable
         }
 
         // 自动选中第一个频道并加载其历史
-        var first = ChannelList.Channels.FirstOrDefault();
+        var first = ChannelList.AllChannels.FirstOrDefault();
         if (first != null)
         {
             ChannelList.SelectedChannel = first;
@@ -113,7 +113,7 @@ public partial class ChatRoomViewModel : ObservableObject, IDisposable
 
     private void OnChannelSelected(string channelId)
     {
-        var ch = ChannelList.Channels.FirstOrDefault(c => c.ChannelId == channelId);
+        var ch = ChannelList.AllChannels.FirstOrDefault(c => c.ChannelId == channelId);
         if (ch == null) return;
 
         // 清当前频道未读
@@ -140,7 +140,7 @@ public partial class ChatRoomViewModel : ObservableObject, IDisposable
         // 若不是当前频道，给频道条目亮未读红点
         if (channelId != MessageArea.CurrentChannelId)
         {
-            var channelItem = ChannelList.Channels.FirstOrDefault(c => c.ChannelId == channelId);
+            var channelItem = ChannelList.AllChannels.FirstOrDefault(c => c.ChannelId == channelId);
             if (channelItem != null)
                 Avalonia.Threading.Dispatcher.UIThread.Post(() => channelItem.HasUnread = true);
         }
@@ -151,7 +151,7 @@ public partial class ChatRoomViewModel : ObservableObject, IDisposable
     [RelayCommand] private void InsertLink() => FeatureHint = "插入链接待接入";
     [RelayCommand] private void InvokeRule() => FeatureHint = "规则调用待接入";
     [RelayCommand] private void OpenCharacterCard() => FeatureHint = "角色卡待接入";
-    [RelayCommand] private void OpenMap() => FeatureHint = "地图待接入";
+    [RelayCommand] private void OpenMap() => ToggleMap();
     [RelayCommand] private void OpenNotes() => FeatureHint = "笔记待接入";
 
     /// <summary>@提及：在输入框当前位置插入 @ 符，触发 MessageArea 的候选浮层逻辑。</summary>
@@ -222,13 +222,13 @@ public partial class ChatRoomViewModel : ObservableObject, IDisposable
     [RelayCommand]
     private async Task OpenPinned()
     {
-        var name = ChannelList.Channels.FirstOrDefault(c => c.ChannelId == MessageArea.CurrentChannelId)?.ChannelName
+        var name = ChannelList.AllChannels.FirstOrDefault(c => c.ChannelId == MessageArea.CurrentChannelId)?.ChannelName
                    ?? MessageArea.CurrentChannelName;
         var vm = new Pins.PinnedPanelViewModel(_client, MessageArea.CurrentChannelId, name);
         vm.NavigateRequested += (channelId, channelName, msgId) =>
             Avalonia.Threading.Dispatcher.UIThread.Post(async () =>
             {
-                var item = ChannelList.Channels.FirstOrDefault(c => c.ChannelId == channelId);
+                var item = ChannelList.AllChannels.FirstOrDefault(c => c.ChannelId == channelId);
                 if (item != null) ChannelList.SelectedChannel = item;
                 await MessageArea.NavigateToMessageAsync(channelId, channelName, msgId);
             });
@@ -241,7 +241,7 @@ public partial class ChatRoomViewModel : ObservableObject, IDisposable
     [RelayCommand]
     private void OpenSearch()
     {
-        var channels = ChannelList.Channels.Select(c => (c.ChannelId, c.ChannelName)).ToList();
+        var channels = ChannelList.AllChannels.Select(c => (c.ChannelId, c.ChannelName)).ToList();
         var members = MemberPanel.Members.Select(m => (m.UserId, m.DisplayName)).ToList();
 
         var vm = new Search.MessageSearchViewModel(
@@ -251,10 +251,10 @@ public partial class ChatRoomViewModel : ObservableObject, IDisposable
             Avalonia.Threading.Dispatcher.UIThread.Post(async () =>
             {
                 // 结果列表若只有 channelId（全频道搜到别的频道），用本地频道名兜底
-                var name = ChannelList.Channels.FirstOrDefault(c => c.ChannelId == channelId)?.ChannelName
+                var name = ChannelList.AllChannels.FirstOrDefault(c => c.ChannelId == channelId)?.ChannelName
                            ?? channelName;
                 // 同步左栏选中态到目标频道
-                var item = ChannelList.Channels.FirstOrDefault(c => c.ChannelId == channelId);
+                var item = ChannelList.AllChannels.FirstOrDefault(c => c.ChannelId == channelId);
                 if (item != null) ChannelList.SelectedChannel = item;
                 await MessageArea.NavigateToMessageAsync(channelId, name, msgId);
             });

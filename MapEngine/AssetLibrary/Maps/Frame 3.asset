@@ -1,0 +1,16 @@
+{
+  "Name": "Frame 3",
+  "Type": "StaticObjectClass",
+  "Components": [
+    {
+      "Type": "Transform",
+      "Properties": {}
+    },
+    {
+      "Type": "SpriteRenderer",
+      "Properties": {
+        "sprite": "Frame 3.png"
+      }
+    }
+  ]
+}

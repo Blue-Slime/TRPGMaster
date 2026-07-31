@@ -1,12 +1,18 @@
 using System;
 using System.Collections.Generic;
+using MapEngine.Core;
 using MapEngine.Core.Commands;
+using MapEngine.Core.Components;
 using MapEngine.Avalonia.Services;
 using MapEngine.Avalonia.ViewModels;
 
 namespace MapEngine.Avalonia.Commands;
 
-public sealed class VmAddEmptyObjectCommand : ICommand
+/// <summary>
+/// 在层级树中创建新的空对象或 Asset 实例。
+/// World 参数在此不使用：HierarchyItemViewModel 是运行时权威。
+/// </summary>
+public sealed class VmAddEmptyObjectCommand : ILocalOnlyCommand
 {
     private readonly MainWindowViewModel _vm;
     private readonly string _parentId;
@@ -22,7 +28,7 @@ public sealed class VmAddEmptyObjectCommand : ICommand
 
     public string Description => $"添加对象 {_dto.Name}";
 
-    public void Execute(ISceneState state)
+    public void Execute(World world)
     {
         var parent = _vm.FindHierarchyById(_parentId);
         if (parent is null) return;
@@ -35,7 +41,7 @@ public sealed class VmAddEmptyObjectCommand : ICommand
         _createdId = child.Id;
     }
 
-    public void Undo(ISceneState state)
+    public void Undo(World world)
     {
         if (_createdId is null) return;
         var item = _vm.FindHierarchyById(_createdId);
@@ -48,7 +54,8 @@ public sealed class VmAddEmptyObjectCommand : ICommand
     }
 }
 
-public sealed class VmDeleteHierarchyItemCommand : ICommand
+/// <summary>从层级树删除对象（可 Undo）</summary>
+public sealed class VmDeleteHierarchyItemCommand : ILocalOnlyCommand
 {
     private readonly MainWindowViewModel _vm;
     private readonly string _itemId;
@@ -64,7 +71,7 @@ public sealed class VmDeleteHierarchyItemCommand : ICommand
 
     public string Description => $"删除对象 {_snapshot?.Name ?? _itemId}";
 
-    public void Execute(ISceneState state)
+    public void Execute(World world)
     {
         var item = _vm.FindHierarchyById(_itemId);
         if (item?.Parent is null) return;
@@ -79,7 +86,7 @@ public sealed class VmDeleteHierarchyItemCommand : ICommand
         _vm.SelectedHierarchyItem = _vm.FindHierarchyById(_parentId);
     }
 
-    public void Undo(ISceneState state)
+    public void Undo(World world)
     {
         if (_snapshot is null || _parentId is null) return;
         var parent = _vm.FindHierarchyById(_parentId);
@@ -94,7 +101,8 @@ public sealed class VmDeleteHierarchyItemCommand : ICommand
     }
 }
 
-public sealed class VmRenameCommand : ICommand
+/// <summary>重命名层级节点</summary>
+public sealed class VmRenameCommand : ILocalOnlyCommand
 {
     private readonly MainWindowViewModel _vm;
     private readonly string _itemId;
@@ -110,7 +118,7 @@ public sealed class VmRenameCommand : ICommand
 
     public string Description => $"重命名为 {_newName}";
 
-    public void Execute(ISceneState state)
+    public void Execute(World world)
     {
         var item = _vm.FindHierarchyById(_itemId);
         if (item is null) return;
@@ -118,7 +126,7 @@ public sealed class VmRenameCommand : ICommand
         item.Name = _newName;
     }
 
-    public void Undo(ISceneState state)
+    public void Undo(World world)
     {
         if (_oldName is null) return;
         var item = _vm.FindHierarchyById(_itemId);
@@ -127,7 +135,8 @@ public sealed class VmRenameCommand : ICommand
     }
 }
 
-public sealed class VmSetPropertyCommand : ICommand
+/// <summary>通用属性赋值（支持 Transform + 外观 + 视野属性）</summary>
+public sealed class VmSetPropertyCommand : ILocalOnlyCommand
 {
     private readonly MainWindowViewModel _vm;
     private readonly string _itemId;
@@ -145,7 +154,7 @@ public sealed class VmSetPropertyCommand : ICommand
 
     public string Description => $"设置 {_property}";
 
-    public void Execute(ISceneState state)
+    public void Execute(World world)
     {
         var item = _vm.FindHierarchyById(_itemId);
         if (item is null) return;
@@ -153,7 +162,7 @@ public sealed class VmSetPropertyCommand : ICommand
         SetProp(item, _newValue);
     }
 
-    public void Undo(ISceneState state)
+    public void Undo(World world)
     {
         var item = _vm.FindHierarchyById(_itemId);
         if (item is null) return;
@@ -162,53 +171,61 @@ public sealed class VmSetPropertyCommand : ICommand
 
     private object? GetProp(HierarchyItemViewModel item) => _property switch
     {
-        "X" => item.X, "Y" => item.Y, "Z" => item.Z,
-        "Rotation" => item.Rotation,
-        "ScaleX" => item.ScaleX, "ScaleY" => item.ScaleY,
-        "Opacity" => item.Opacity,
-        "IsActive" => item.IsActive, "IsLocked" => item.IsLocked,
-        "SortOrder" => item.SortOrder,
-        "ObjectType" => item.ObjectType,
-        "SpriteColor" => item.SpriteColor,
+        "X"             => item.X,
+        "Y"             => item.Y,
+        "Z"             => item.Z,
+        "Rotation"      => item.Rotation,
+        "ScaleX"        => item.ScaleX,
+        "ScaleY"        => item.ScaleY,
+        "Opacity"       => item.Opacity,
+        "IsActive"      => item.IsActive,
+        "IsLocked"      => item.IsLocked,
+        "SortOrder"     => item.SortOrder,
+        "ObjectType"    => item.ObjectType,
+        "SpriteColor"   => item.SpriteColor,
         "VisionEnabled" => item.VisionEnabled,
-        "VisionRadius" => item.VisionRadius,
-        "Orientation" => item.Orientation,
-        _ => null
+        "VisionRadius"  => item.VisionRadius,
+        "Orientation"   => item.Orientation,
+        _               => null
     };
 
     private void SetProp(HierarchyItemViewModel item, object? value)
     {
         switch (_property)
         {
-            case "X": item.X = Convert.ToDouble(value); break;
-            case "Y": item.Y = Convert.ToDouble(value); break;
-            case "Z": item.Z = Convert.ToDouble(value); break;
-            case "Rotation": item.Rotation = Convert.ToDouble(value); break;
-            case "ScaleX": item.ScaleX = Convert.ToDouble(value); break;
-            case "ScaleY": item.ScaleY = Convert.ToDouble(value); break;
-            case "Opacity": item.Opacity = Convert.ToDouble(value); break;
-            case "IsActive": item.IsActive = Convert.ToBoolean(value); break;
-            case "IsLocked": item.IsLocked = Convert.ToBoolean(value); break;
-            case "SortOrder": item.SortOrder = Convert.ToInt32(value); break;
-            case "ObjectType": item.ObjectType = (string)(value ?? "Empty"); break;
-            case "SpriteColor": item.SpriteColor = (string)(value ?? "#FF4444"); break;
+            case "X":             item.X             = Convert.ToDouble(value);  break;
+            case "Y":             item.Y             = Convert.ToDouble(value);  break;
+            case "Z":             item.Z             = Convert.ToDouble(value);  break;
+            case "Rotation":      item.Rotation      = Convert.ToDouble(value);  break;
+            case "ScaleX":        item.ScaleX        = Convert.ToDouble(value);  break;
+            case "ScaleY":        item.ScaleY        = Convert.ToDouble(value);  break;
+            case "Opacity":       item.Opacity       = Convert.ToDouble(value);  break;
+            case "IsActive":      item.IsActive      = Convert.ToBoolean(value); break;
+            case "IsLocked":      item.IsLocked      = Convert.ToBoolean(value); break;
+            case "SortOrder":     item.SortOrder     = Convert.ToInt32(value);   break;
+            case "ObjectType":    item.ObjectType    = (string)(value ?? "Empty"); break;
+            case "SpriteColor":   item.SpriteColor   = (string)(value ?? "#FF4444"); break;
             case "VisionEnabled": item.VisionEnabled = Convert.ToBoolean(value); break;
-            case "VisionRadius": item.VisionRadius = Convert.ToDouble(value); break;
-            case "Orientation": item.Orientation = Convert.ToDouble(value); break;
+            case "VisionRadius":  item.VisionRadius  = Convert.ToDouble(value);  break;
+            case "Orientation":   item.Orientation   = Convert.ToDouble(value);  break;
         }
     }
 }
 
-public sealed class VmMoveObjectCommand : ICommand
+/// <summary>移动对象（及子树）到新位置</summary>
+public sealed class VmMoveObjectCommand : ILocalOnlyCommand
 {
     private readonly MainWindowViewModel _vm;
     private readonly string _itemId;
     private readonly double _newX, _newY;
     private readonly double _oldX, _oldY;
     private readonly bool _oldHasMapPosition;
-    private List<(string Id, double OldX, double OldY, double NewX, double NewY)>? _childMoves;
+    private readonly List<(string Id, double OldX, double OldY, double NewX, double NewY)>? _childMoves;
 
-    public VmMoveObjectCommand(MainWindowViewModel vm, string itemId, double oldX, double oldY, double newX, double newY)
+    public VmMoveObjectCommand(
+        MainWindowViewModel vm, string itemId,
+        double oldX, double oldY,
+        double newX, double newY)
     {
         _vm = vm;
         _itemId = itemId;
@@ -218,11 +235,11 @@ public sealed class VmMoveObjectCommand : ICommand
         _newY = newY;
         _oldHasMapPosition = vm.FindHierarchyById(itemId)?.HasMapPosition ?? false;
 
-        var deltaX = newX - oldX;
-        var deltaY = newY - oldY;
         var item = vm.FindHierarchyById(itemId);
         if (item is not null)
         {
+            var deltaX = newX - oldX;
+            var deltaY = newY - oldY;
             _childMoves = [];
             CollectChildMoves(item, deltaX, deltaY, _childMoves);
         }
@@ -230,7 +247,7 @@ public sealed class VmMoveObjectCommand : ICommand
 
     public string Description => $"移动到 ({_newX:F0}, {_newY:F0})";
 
-    public void Execute(ISceneState state)
+    public void Execute(World world)
     {
         var item = _vm.FindHierarchyById(_itemId);
         if (item is null) return;
@@ -249,7 +266,7 @@ public sealed class VmMoveObjectCommand : ICommand
         }
     }
 
-    public void Undo(ISceneState state)
+    public void Undo(World world)
     {
         var item = _vm.FindHierarchyById(_itemId);
         if (item is null) return;
@@ -268,7 +285,9 @@ public sealed class VmMoveObjectCommand : ICommand
         }
     }
 
-    private static void CollectChildMoves(HierarchyItemViewModel parent, double dx, double dy, List<(string, double, double, double, double)> list)
+    private static void CollectChildMoves(
+        HierarchyItemViewModel parent, double dx, double dy,
+        List<(string, double, double, double, double)> list)
     {
         foreach (var child in parent.Children)
         {
@@ -279,7 +298,8 @@ public sealed class VmMoveObjectCommand : ICommand
     }
 }
 
-public sealed class VmCreateInstanceCommand : ICommand
+/// <summary>从 Asset 实例化对象到层级树</summary>
+public sealed class VmCreateInstanceCommand : ILocalOnlyCommand
 {
     private readonly MainWindowViewModel _vm;
     private readonly string _parentId;
@@ -295,7 +315,7 @@ public sealed class VmCreateInstanceCommand : ICommand
 
     public string Description => $"实例化 {_dto.SourceAssetName ?? _dto.Name}";
 
-    public void Execute(ISceneState state)
+    public void Execute(World world)
     {
         var parent = _vm.FindHierarchyById(_parentId);
         if (parent is null) return;
@@ -308,7 +328,7 @@ public sealed class VmCreateInstanceCommand : ICommand
         _createdId = instance.Id;
     }
 
-    public void Undo(ISceneState state)
+    public void Undo(World world)
     {
         if (_createdId is null) return;
         var item = _vm.FindHierarchyById(_createdId);

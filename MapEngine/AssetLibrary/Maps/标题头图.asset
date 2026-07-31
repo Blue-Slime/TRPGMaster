@@ -1,0 +1,16 @@
+{
+  "Name": "标题头图",
+  "Type": "StaticObjectClass",
+  "Components": [
+    {
+      "Type": "Transform",
+      "Properties": {}
+    },
+    {
+      "Type": "SpriteRenderer",
+      "Properties": {
+        "sprite": "标题头图.png"
+      }
+    }
+  ]
+}
