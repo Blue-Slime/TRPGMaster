@@ -24,9 +24,20 @@ public sealed class InitiativeEntryViewModel : ObservableObject
             else if (e.PropertyName == nameof(_source.InitiativeOrder))
                 OnPropertyChanged(nameof(InitiativeOrder));
             else if (e.PropertyName == nameof(_source.CurrentHP))
+            {
                 OnPropertyChanged(nameof(CurrentHP));
+                OnPropertyChanged(nameof(HPPercent));
+            }
             else if (e.PropertyName == nameof(_source.MaxHP))
+            {
                 OnPropertyChanged(nameof(MaxHP));
+                OnPropertyChanged(nameof(HPPercent));
+            }
+            else if (e.PropertyName == "Components")
+            {
+                // Token 组件变化时刷新状态列表
+                OnPropertyChanged(nameof(TokenConditions));
+            }
         };
     }
 
@@ -38,17 +49,48 @@ public sealed class InitiativeEntryViewModel : ObservableObject
 
     public int CurrentHP
     {
-        get => _source.CurrentHP;
-        set => _source.CurrentHP = value;
+        get
+        {
+            // 防御性：如果 Token 组件被删除，返回默认值
+            var tokenComp = _source.GetComponent<MapEngine.Core.Components.TokenComponent>();
+            return tokenComp?.CurrentHP ?? 0;
+        }
+        set
+        {
+            var tokenComp = _source.GetComponent<MapEngine.Core.Components.TokenComponent>();
+            if (tokenComp != null)
+            {
+                _source.CurrentHP = value;
+            }
+        }
     }
 
     public int MaxHP
     {
-        get => _source.MaxHP;
-        set => _source.MaxHP = value;
+        get
+        {
+            // 防御性：如果 Token 组件被删除，返回默认值
+            var tokenComp = _source.GetComponent<MapEngine.Core.Components.TokenComponent>();
+            return tokenComp?.MaxHP ?? 100;
+        }
+        set
+        {
+            var tokenComp = _source.GetComponent<MapEngine.Core.Components.TokenComponent>();
+            if (tokenComp != null)
+            {
+                _source.MaxHP = value;
+            }
+        }
     }
 
-    public double HPPercent => MaxHP > 0 ? (double)CurrentHP / MaxHP : 0.0;
+    public double HPPercent
+    {
+        get
+        {
+            var maxHP = MaxHP;
+            return maxHP > 0 ? (double)CurrentHP / maxHP : 0.0;
+        }
+    }
 
     public bool IsCurrentTurn
     {
@@ -56,11 +98,18 @@ public sealed class InitiativeEntryViewModel : ObservableObject
         set => SetProperty(ref _isCurrentTurn, value);
     }
 
-    /// <summary>Token 状态列表（来自 TokenComponent.Conditions）</summary>
+    /// <summary>Token 状态列表（来自 TokenComponent.Conditions）。防御性：组件缺失时返回空集合。</summary>
     public ObservableCollection<ConditionEntryViewModel> TokenConditions
     {
         get
         {
+            // 防御性检查：如果 Token 组件被删除，返回空集合
+            var tokenComp = _source.GetComponent<MapEngine.Core.Components.TokenComponent>();
+            if (tokenComp == null)
+            {
+                return new ObservableCollection<ConditionEntryViewModel>();
+            }
+
             var tokenEditor = _source.ComponentEditors
                 .OfType<TokenComponentEditor>()
                 .FirstOrDefault();

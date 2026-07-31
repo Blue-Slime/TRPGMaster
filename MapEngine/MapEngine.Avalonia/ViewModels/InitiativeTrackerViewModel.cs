@@ -71,27 +71,41 @@ public sealed class InitiativeTrackerViewModel : ObservableObject
         Entries.Clear();
 
         // 过滤所有 Token 对象且 IsInInitiativeTracker = true
+        // 防御性编程：过滤掉 Token 组件缺失或对象状态异常的情况
         var tokens = _mainWindow.HierarchyItems
-            .Where(x => x.ObjectType == "Token")
-            .Where(x => x.GetComponent<MapEngine.Core.Components.TokenComponent>()?.IsInInitiativeTracker == true)
+            .Where(x => x != null && x.ObjectType == "Token")
+            .Select(x => new
+            {
+                Item = x,
+                TokenComp = x.GetComponent<MapEngine.Core.Components.TokenComponent>()
+            })
+            .Where(x => x.TokenComp != null && x.TokenComp.IsInInitiativeTracker)
+            .Select(x => x.Item)
             .OrderByDescending(x => x.InitiativeOrder)
-            .ThenBy(x => x.DisplayName);
+            .ThenBy(x => x.DisplayName)
+            .ToList(); // 立即求值，避免延迟执行时组件状态变化
 
-        System.Diagnostics.Debug.WriteLine($"[RefreshEntries] 扫描到 {_mainWindow.HierarchyItems.Count()} 个对象，其中 {tokens.Count()} 个在先攻表中");
-        foreach (var item in _mainWindow.HierarchyItems.Where(x => x.ObjectType == "Token"))
+        System.Diagnostics.Debug.WriteLine($"[RefreshEntries] 扫描到 {_mainWindow.HierarchyItems.Count()} 个对象，其中 {tokens.Count} 个在先攻表中");
+        foreach (var item in _mainWindow.HierarchyItems.Where(x => x != null && x.ObjectType == "Token"))
         {
             var tokenComp = item.GetComponent<MapEngine.Core.Components.TokenComponent>();
-            System.Diagnostics.Debug.WriteLine($"  - {item.Name}: ObjectType='{item.ObjectType}', IsInInitiativeTracker={tokenComp?.IsInInitiativeTracker}");
+            System.Diagnostics.Debug.WriteLine($"  - {item.Name}: ObjectType='{item.ObjectType}', IsInInitiativeTracker={tokenComp?.IsInInitiativeTracker ?? false}");
         }
 
         foreach (var token in tokens)
         {
-            var entry = new InitiativeEntryViewModel(token);
-            SubscribeToEntry(entry);
-            Entries.Add(entry);
+            // 二次检查：确保 Token 组件仍然存在
+            var tokenComp = token.GetComponent<MapEngine.Core.Components.TokenComponent>();
+            if (tokenComp != null && tokenComp.IsInInitiativeTracker)
+            {
+                var entry = new InitiativeEntryViewModel(token);
+                SubscribeToEntry(entry);
+                Entries.Add(entry);
+            }
         }
 
-        ResetTurn();
+        // 刷新后调整当前回合索引，防止越界
+        AdjustCurrentTurnAfterRemoval();
         NextTurnCommand.NotifyCanExecuteChanged();
         PreviousTurnCommand.NotifyCanExecuteChanged();
     }
@@ -118,6 +132,15 @@ public sealed class InitiativeTrackerViewModel : ObservableObject
         // 监听 TokenComponent 的任何属性变化（包括 IsInInitiativeTracker）
         if (e.PropertyName == "Components")
         {
+            // 防御性检查：如果是 Token 组件被删除导致的变化，刷新列表
+            if (sender is HierarchyItemViewModel item)
+            {
+                var tokenComp = item.GetComponent<MapEngine.Core.Components.TokenComponent>();
+                if (tokenComp == null)
+                {
+                    System.Diagnostics.Debug.WriteLine($"[OnEntryPropertyChanged] {item.Name} 的 Token 组件已被删除，刷新先攻表");
+                }
+            }
             RefreshEntries();
         }
     }
@@ -282,7 +305,18 @@ public sealed class InitiativeTrackerViewModel : ObservableObject
         if (e.PropertyName == "Components")
         {
             var item = sender as HierarchyItemViewModel;
-            System.Diagnostics.Debug.WriteLine($"[OnComponentsPropertyChanged] {item?.Name} Components 变化，触发 RefreshEntries");
+            if (item != null)
+            {
+                var tokenComp = item.GetComponent<MapEngine.Core.Components.TokenComponent>();
+                if (tokenComp == null)
+                {
+                    System.Diagnostics.Debug.WriteLine($"[OnComponentsPropertyChanged] {item.Name} Token 组件已删除或缺失，触发 RefreshEntries");
+                }
+                else
+                {
+                    System.Diagnostics.Debug.WriteLine($"[OnComponentsPropertyChanged] {item.Name} Components 变化 (IsInInitiativeTracker={tokenComp.IsInInitiativeTracker})，触发 RefreshEntries");
+                }
+            }
             RefreshEntries();
         }
     }
