@@ -1197,8 +1197,8 @@
              迷雾子工具胶囊（仅 fog 工具激活时显示）
              ══════════════════════════════════════════════════════════════ -->
         <Border x:Name="FogSubToolCapsule"
-                HorizontalAlignment="Left" VerticalAlignment="Bottom"
-                Margin="10,0,0,10"
+                HorizontalAlignment="Left" VerticalAlignment="Center"
+                Margin="70,0,0,0" ZIndex="45"
                 CornerRadius="20"
                 Background="{StaticResource CapsuleActionBrush}"
                 BorderBrush="{StaticResource CapsuleBorderBrush}" BorderThickness="1"
