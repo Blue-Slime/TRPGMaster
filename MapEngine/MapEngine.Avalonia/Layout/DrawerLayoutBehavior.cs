@@ -93,28 +93,32 @@ public sealed class DrawerLayoutBehavior : IDisposable
             _lastBottomH   = bottomH;
 
             // ── 计算底部空间占用 ─────────────────────────────────────────
-            // 1. BottomDrawer 打开时占用的空间
+            // 1. BottomDrawer 打开时占用的空间（不含 EdgeMargin，各元素自行加边距）
             double bottomDrawerSpace = bottom ? bottomH + LayoutConstants.EdgeMargin : 0.0;
 
-            // 2. ActionCapsule 底边距：BottomDrawer 关闭时贴底 EdgeMargin，打开时上移
+            // 2. 左右抽屉底边距：
+            //    - 未开启下栏：距窗口底边 EdgeMargin
+            //    - 开启下栏：距 BottomDrawer 顶边 EdgeMargin（即 bottomDrawerSpace + EdgeMargin）
+            double verticalBottom = LayoutConstants.EdgeMargin + bottomDrawerSpace;
+
+            // 3. ActionCapsule 底边距：与左右抽屉相同的基准，贴在抽屉底边对齐位置
+            //    额外再往上抬一点（EdgeMargin），与抽屉底边有间距
             double actionBottom = LayoutConstants.EdgeMargin + bottomDrawerSpace;
 
-            // 3. 读取 ActionCapsule 实际高度（动态，万一用户以后改了胶囊大小）
-            double actionH = ActualHeight("ActionCapsule", LayoutConstants.ActionCapsuleHeight);
+            // 4. 读取 ActionCapsule 实际宽度（用于 StatusBarCapsule 左边距计算）
+            double actionW = ActualWidth("ActionCapsule", LayoutConstants.ActionCapsuleHeight);
 
-            // 4. 左右抽屉和竖向工具条的底边距：给 ActionCapsule + 边距 + BottomDrawer 让位
-            double verticalBottom = LayoutConstants.EdgeMargin + actionH + LayoutConstants.EdgeMargin + bottomDrawerSpace;
-
-            // 5. StatusBar / Viewport 的底边距：紧贴 ActionCapsule 上边缘 + 间距，跟随 ActionCapsule 移动
-            double floatingBottom = actionBottom + actionH + LayoutConstants.EdgeMargin;
+            // 5. StatusBar / Viewport 与 ActionCapsule 底边对齐（同一行），统一 floatingBottom
+            double floatingBottom = actionBottom;
 
             // ── open/close class（保留 XAML 动画）───────────────────────
             SyncClass("LeftDrawer",   "open", left);
             SyncClass("RightDrawer",  "open", right);
             SyncClass("BottomDrawer", "open", bottom);
 
-            // ── ActionCapsule：BottomDrawer 打开时向上推 ─────────────────
-            SetMargin("ActionCapsule", LayoutConstants.EdgeMargin, 0, 0, actionBottom);
+            // ── ActionCapsule：随 LeftDrawer 右移 + BottomDrawer 上推 ────
+            double actionLeft = LayoutConstants.EdgeMargin + (left ? leftW + LayoutConstants.CapsuleGap : 0);
+            SetMargin("ActionCapsule", actionLeft, 0, 0, actionBottom);
 
             // ── 左抽屉 ──────────────────────────────────────────────────
             SetMargin("LeftDrawer",  0, LayoutConstants.EdgeMargin, 0, verticalBottom);
@@ -135,8 +139,11 @@ public sealed class DrawerLayoutBehavior : IDisposable
             double panelRight = LayoutConstants.EdgeMargin + (right ? rightW + LayoutConstants.CapsuleGap : 0);
             SetMargin("PanelToggleCapsule", 0, LayoutConstants.EdgeMargin, panelRight, verticalBottom);
 
-            // ── StatusBarCapsule：随 LeftDrawer 右移 + ActionCapsule 上移 ──
-            double statusLeft = LayoutConstants.EdgeMargin + actionH + LayoutConstants.EdgeMargin + (left ? leftW + LayoutConstants.CapsuleGap : 0);
+            // ── DicePanel：随 RightDrawer 左移，顶边对齐 ─────────────────
+            SetMarginRightOnly("DicePanel", panelRight);
+
+            // ── StatusBarCapsule：ActionCapsule 右侧 + CapsuleGap，底边对齐 ActionCapsule ──
+            double statusLeft = actionLeft + actionW + LayoutConstants.CapsuleGap;
             SetMargin("StatusBarCapsule", statusLeft, 0, 0, floatingBottom);
 
             // ── ViewportCapsule：随 RightDrawer 左移 + ActionCapsule 上移 ──
@@ -179,6 +186,15 @@ public sealed class DrawerLayoutBehavior : IDisposable
         var m = ctrl.Margin;
         if (Math.Abs(m.Left - left) < 0.5) return;
         ctrl.Margin = new Thickness(left, m.Top, m.Right, m.Bottom);
+    }
+
+    /// <summary>只更新 Margin.Right，保留 Left/Top/Bottom。</summary>
+    private void SetMarginRightOnly(string name, double right)
+    {
+        if (_root.FindControl<Control>(name) is not { } ctrl) return;
+        var m = ctrl.Margin;
+        if (Math.Abs(m.Right - right) < 0.5) return;
+        ctrl.Margin = new Thickness(m.Left, m.Top, right, m.Bottom);
     }
 
     private void SyncClass(string name, string cls, bool active)

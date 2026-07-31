@@ -965,14 +965,17 @@
         </views:InitiativeTopDrawer>
 
         <!-- ══ 骰子面板（右侧弹出浮层）══════════════════════════════════ -->
-        <views:DicePanel DataContext="{Binding Dice}"
+        <views:DicePanel x:Name="DicePanel"
+                         DataContext="{Binding Dice}"
                          ZIndex="50"
+                         Margin="0,14,14,0"
                          IsVisible="{Binding $parent[UserControl].DataContext.IsDicePanelOpen}"
                          HorizontalAlignment="Right" VerticalAlignment="Top">
             <views:DicePanel.Transitions>
                 <Transitions>
                     <DoubleTransition Property="Opacity" Duration="0:0:0.18"/>
                     <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.18" Easing="CubicEaseOut"/>
+                    <ThicknessTransition Property="Margin" Duration="0:0:0.22" Easing="CubicEaseOut"/>
                 </Transitions>
             </views:DicePanel.Transitions>
             <views:DicePanel.Styles>
@@ -1096,9 +1099,13 @@
              四类：直线 / 常用形状 / 桌游常用形状 / 锚点多边形
              ════════════════════════════════════════════════════════════ -->
         <Border x:Name="ShapeSubToolCapsule"
-                Classes="sub-tool-capsule"
                 layout:SubToolLayout.TriggerKey="shape"
                 ZIndex="45"
+                HorizontalAlignment="Left" VerticalAlignment="Top"
+                CornerRadius="24"
+                Background="{StaticResource CapsuleToolbarBrush}"
+                BorderBrush="{StaticResource CapsuleBorderBrush}" BorderThickness="1"
+                BoxShadow="{StaticResource ShadowCapsule}"
                 Padding="6,8"
                 IsVisible="{Binding IsShapeToolActive}">
 
@@ -1163,9 +1170,13 @@
              迷雾子工具胶囊（仅 fog 工具激活时显示）
              ══════════════════════════════════════════════════════════════ -->
         <Border x:Name="FogSubToolCapsule"
-                Classes="sub-tool-capsule"
                 layout:SubToolLayout.TriggerKey="fog"
                 ZIndex="45"
+                HorizontalAlignment="Left" VerticalAlignment="Top"
+                CornerRadius="24"
+                Background="{StaticResource CapsuleToolbarBrush}"
+                BorderBrush="{StaticResource CapsuleBorderBrush}" BorderThickness="1"
+                BoxShadow="{StaticResource ShadowCapsule}"
                 Padding="6,8"
                 IsVisible="{Binding IsFogToolActive}">
             <StackPanel Orientation="Vertical" Spacing="2">
@@ -1719,7 +1730,7 @@
              ════════════════════════════════════════════════════════════════ -->
         <Border x:Name="BottomDrawer"
                 HorizontalAlignment="Stretch" VerticalAlignment="Bottom"
-                Height="280" Margin="62,0,14,14" ZIndex="10"
+                Height="280" Margin="14,0,14,14" ZIndex="10"
                 CornerRadius="14"
                 Background="{StaticResource DrawerBackgroundBrush}"
                 BorderBrush="{StaticResource CapsuleBorderBrush}" BorderThickness="1"
