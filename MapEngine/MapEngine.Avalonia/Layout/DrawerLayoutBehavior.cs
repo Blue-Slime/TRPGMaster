@@ -8,32 +8,20 @@ namespace MapEngine.Avalonia.Layout;
 
 /// <summary>
 /// 统一管理三个抽屉开关时所有浮动元素的推移。
-///
-/// 死循环防护：
-///   - _isSyncing 标志：Sync() 执行期间屏蔽所有来自 BoundsProperty 的再入回调
-///   - OnBottomDrawerBoundsChanged 只监听 BottomDrawer 的高度真正稳定后的第一次变化，
-///     不在 Sync() 内部写 Margin 的过程中重新触发
-///   - SetMargin / SetMarginLeftOnly 在值未变时跳过写入，彻底切断写→触发→写的链条
+/// 抽屉使用 RenderTransform 动画（不改变布局 Bounds），推移计算基于 ViewModel bool 属性 + 常量尺寸。
 /// </summary>
 public sealed class DrawerLayoutBehavior : IDisposable
 {
     private readonly UserControl _root;
     private readonly ViewModels.MainWindowViewModel _vm;
     private bool _disposed;
-    private bool _isSyncing;           // 防止 Sync() 内部触发的 Bounds 变化再次入队
-    private bool _syncPending;         // 防止同一帧多次入队
-    private double _lastBottomH = -1;  // 记录上次 BottomDrawer 高度，真正变化时才重算
+    private bool _syncPending;  // 防止同一帧多次入队
 
     public DrawerLayoutBehavior(UserControl root, ViewModels.MainWindowViewModel vm)
     {
         _root = root;
         _vm   = vm;
         _vm.PropertyChanged += OnVmPropertyChanged;
-
-        // 仅监听 BottomDrawer 高度稳定后（动画结束）的尺寸变化
-        if (_root.FindControl<Border>("BottomDrawer") is { } bd)
-            bd.PropertyChanged += OnBottomDrawerBoundsChanged;
-
         Sync();
     }
 
@@ -46,21 +34,6 @@ public sealed class DrawerLayoutBehavior : IDisposable
         {
             ScheduleSync();
         }
-    }
-
-    private void OnBottomDrawerBoundsChanged(object? sender, AvaloniaPropertyChangedEventArgs e)
-    {
-        // 过滤条件：
-        // 1. 只关心 BoundsProperty
-        // 2. Sync() 正在执行时不重入
-        // 3. BottomDrawer 高度没有真正变化时跳过
-        if (e.Property != Visual.BoundsProperty) return;
-        if (_isSyncing) return;
-
-        var newH = _root.FindControl<Border>("BottomDrawer")?.Bounds.Height ?? 0;
-        if (Math.Abs(newH - _lastBottomH) < 0.5) return;  // 高度变化 < 0.5px 忽略
-
-        ScheduleSync();
     }
 
     /// <summary>防抖：同一帧只入队一次 Sync。</summary>
@@ -79,81 +52,59 @@ public sealed class DrawerLayoutBehavior : IDisposable
     public void Sync()
     {
         if (_disposed) return;
-        _isSyncing = true;
-        try
-        {
-            bool left   = _vm.IsLeftDrawerOpen;
-            bool right  = _vm.IsRightDrawerOpen;
-            bool bottom = _vm.IsBottomDrawerOpen;
 
-            // ── 读取实际尺寸（Bounds 未测量时回落到 Constants）──────────
-            double leftW   = ActualWidth("LeftDrawer",    LayoutConstants.LeftDrawerWidth);
-            double rightW  = ActualWidth("RightDrawer",   LayoutConstants.RightDrawerWidth);
-            double bottomH = ActualHeight("BottomDrawer", LayoutConstants.BottomDrawerHeight);
-            _lastBottomH   = bottomH;
+        bool left   = _vm.IsLeftDrawerOpen;
+        bool right  = _vm.IsRightDrawerOpen;
+        bool bottom = _vm.IsBottomDrawerOpen;
 
-            // ── 计算底部空间占用 ─────────────────────────────────────────
-            // 1. BottomDrawer 打开时占用的空间（不含 EdgeMargin，各元素自行加边距）
-            double bottomDrawerSpace = bottom ? bottomH + LayoutConstants.EdgeMargin : 0.0;
+        // ── 使用常量尺寸（抽屉宽高固定，动画是 RenderTransform 不改变 Bounds）──
+        double leftW   = LayoutConstants.LeftDrawerWidth;
+        double rightW  = LayoutConstants.RightDrawerWidth;
+        double bottomH = LayoutConstants.BottomDrawerHeight;
 
-            // 2. 左右抽屉底边距：
-            //    - 未开启下栏：距窗口底边 EdgeMargin
-            //    - 开启下栏：距 BottomDrawer 顶边 EdgeMargin（即 bottomDrawerSpace + EdgeMargin）
-            double verticalBottom = LayoutConstants.EdgeMargin + bottomDrawerSpace;
+        // ── 计算底部空间占用 ─────────────────────────────────────────
+        double bottomDrawerSpace = bottom ? bottomH + LayoutConstants.EdgeMargin : 0.0;
+        double verticalBottom = LayoutConstants.EdgeMargin + bottomDrawerSpace;
+        double actionBottom = LayoutConstants.EdgeMargin + bottomDrawerSpace;
 
-            // 3. ActionCapsule 底边距：与左右抽屉相同的基准，贴在抽屉底边对齐位置
-            //    额外再往上抬一点（EdgeMargin），与抽屉底边有间距
-            double actionBottom = LayoutConstants.EdgeMargin + bottomDrawerSpace;
+        // ActionCapsule 宽度用实际测量（胶囊内容是动态的）
+        double actionW = ActualWidth("ActionCapsule", LayoutConstants.ActionCapsuleHeight);
+        double floatingBottom = actionBottom;
 
-            // 4. 读取 ActionCapsule 实际宽度（用于 StatusBarCapsule 左边距计算）
-            double actionW = ActualWidth("ActionCapsule", LayoutConstants.ActionCapsuleHeight);
+        // ── open/close class（触发 XAML RenderTransform 动画）───────
+        SyncClass("LeftDrawer",   "open", left);
+        SyncClass("RightDrawer",  "open", right);
+        SyncClass("BottomDrawer", "open", bottom);
 
-            // 5. StatusBar / Viewport 与 ActionCapsule 底边对齐（同一行），统一 floatingBottom
-            double floatingBottom = actionBottom;
+        // ── ActionCapsule：随 LeftDrawer 右移 + BottomDrawer 上推 ────
+        double actionLeft = LayoutConstants.EdgeMargin + (left ? leftW + LayoutConstants.CapsuleGap : 0);
+        SetMargin("ActionCapsule", actionLeft, 0, 0, actionBottom);
 
-            // ── open/close class（保留 XAML 动画）───────────────────────
-            SyncClass("LeftDrawer",   "open", left);
-            SyncClass("RightDrawer",  "open", right);
-            SyncClass("BottomDrawer", "open", bottom);
+        // ── 左右抽屉：底边跟随 BottomDrawer ───────────────────────────
+        SetMargin("LeftDrawer",  0, LayoutConstants.EdgeMargin, 0, verticalBottom);
+        SetMargin("RightDrawer", 0, LayoutConstants.EdgeMargin, LayoutConstants.EdgeMargin, verticalBottom);
 
-            // ── ActionCapsule：随 LeftDrawer 右移 + BottomDrawer 上推 ────
-            double actionLeft = LayoutConstants.EdgeMargin + (left ? leftW + LayoutConstants.CapsuleGap : 0);
-            SetMargin("ActionCapsule", actionLeft, 0, 0, actionBottom);
+        // ── ToolbarCapsule：随 LeftDrawer 右移 ───────────────────────
+        double toolbarLeft = LayoutConstants.EdgeMargin + (left ? leftW + LayoutConstants.CapsuleGap : 0);
+        SetMargin("ToolbarCapsule", toolbarLeft, LayoutConstants.EdgeMargin, 0, verticalBottom);
 
-            // ── 左抽屉 ──────────────────────────────────────────────────
-            SetMargin("LeftDrawer",  0, LayoutConstants.EdgeMargin, 0, verticalBottom);
+        // ── 子工具胶囊：Margin.Left 跟随 ToolbarCapsule 右边缘 ───────
+        double subLeft = toolbarLeft + LayoutConstants.ToolbarCapsuleWidth + LayoutConstants.CapsuleGap;
+        SetMarginLeftOnly("ShapeSubToolCapsule", subLeft);
+        SetMarginLeftOnly("FogSubToolCapsule",   subLeft);
 
-            // ── 右抽屉 ──────────────────────────────────────────────────
-            SetMargin("RightDrawer", 0, LayoutConstants.EdgeMargin, LayoutConstants.EdgeMargin, verticalBottom);
+        // ── PanelToggleCapsule + DicePanel：随 RightDrawer 左移 ─────
+        double panelRight = LayoutConstants.EdgeMargin + (right ? rightW + LayoutConstants.CapsuleGap : 0);
+        SetMargin("PanelToggleCapsule", 0, LayoutConstants.EdgeMargin, panelRight, verticalBottom);
+        SetMarginRightOnly("DicePanel", panelRight);
 
-            // ── ToolbarCapsule：随 LeftDrawer 右移 ───────────────────────
-            double toolbarLeft = LayoutConstants.EdgeMargin + (left ? leftW + LayoutConstants.CapsuleGap : 0);
-            SetMargin("ToolbarCapsule", toolbarLeft, LayoutConstants.EdgeMargin, 0, verticalBottom);
+        // ── StatusBarCapsule：ActionCapsule 右侧，底边对齐 ───────────
+        double statusLeft = actionLeft + actionW + LayoutConstants.CapsuleGap;
+        SetMargin("StatusBarCapsule", statusLeft, 0, 0, floatingBottom);
 
-            // ── 子工具胶囊：Margin.Left 跟随 ToolbarCapsule 右边缘 ───────
-            double subLeft = toolbarLeft + LayoutConstants.ToolbarCapsuleWidth + LayoutConstants.CapsuleGap;
-            SetMarginLeftOnly("ShapeSubToolCapsule", subLeft);
-            SetMarginLeftOnly("FogSubToolCapsule",   subLeft);
-
-            // ── PanelToggleCapsule：随 RightDrawer 左移 ──────────────────
-            double panelRight = LayoutConstants.EdgeMargin + (right ? rightW + LayoutConstants.CapsuleGap : 0);
-            SetMargin("PanelToggleCapsule", 0, LayoutConstants.EdgeMargin, panelRight, verticalBottom);
-
-            // ── DicePanel：随 RightDrawer 左移，顶边对齐 ─────────────────
-            SetMarginRightOnly("DicePanel", panelRight);
-
-            // ── StatusBarCapsule：ActionCapsule 右侧 + CapsuleGap，底边对齐 ActionCapsule ──
-            double statusLeft = actionLeft + actionW + LayoutConstants.CapsuleGap;
-            SetMargin("StatusBarCapsule", statusLeft, 0, 0, floatingBottom);
-
-            // ── ViewportCapsule：随 RightDrawer 左移 + ActionCapsule 上移 ──
-            double vpRight = LayoutConstants.EdgeMargin + (right ? rightW + LayoutConstants.CapsuleGap : 0);
-            SetMargin("ViewportCapsule", 0, 0, vpRight, floatingBottom);
-        }
-        finally
-        {
-            _isSyncing = false;
-        }
+        // ── ViewportCapsule：右侧，底边对齐 ActionCapsule ────────────
+        double vpRight = LayoutConstants.EdgeMargin + (right ? rightW + LayoutConstants.CapsuleGap : 0);
+        SetMargin("ViewportCapsule", 0, 0, vpRight, floatingBottom);
     }
 
     // ── 工具方法 ─────────────────────────────────────────────────────
@@ -161,12 +112,6 @@ public sealed class DrawerLayoutBehavior : IDisposable
     private double ActualWidth(string name, double fallback)
     {
         var b = _root.FindControl<Control>(name)?.Bounds.Width ?? 0;
-        return b > 1 ? b : fallback;
-    }
-
-    private double ActualHeight(string name, double fallback)
-    {
-        var b = _root.FindControl<Control>(name)?.Bounds.Height ?? 0;
         return b > 1 ? b : fallback;
     }
 
@@ -209,7 +154,5 @@ public sealed class DrawerLayoutBehavior : IDisposable
         if (_disposed) return;
         _disposed = true;
         _vm.PropertyChanged -= OnVmPropertyChanged;
-        if (_root.FindControl<Border>("BottomDrawer") is { } bd)
-            bd.PropertyChanged -= OnBottomDrawerBoundsChanged;
     }
 }

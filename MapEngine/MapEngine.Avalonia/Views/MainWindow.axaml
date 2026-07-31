@@ -1429,19 +1429,17 @@
                 </Transitions>
             </Border.Transitions>
             <Border.Styles>
-                <!-- 关闭态：向左平移整个宽度 + 透明 -->
                 <Style Selector="Border#LeftDrawer">
                     <Setter Property="RenderTransform" Value="translateX(-260px)"/>
                     <Setter Property="Opacity" Value="0"/>
                     <Setter Property="IsHitTestVisible" Value="False"/>
                 </Style>
-                <!-- 开启态：平移归零 + 完全不透明 -->
                 <Style Selector="Border#LeftDrawer.open">
                     <Setter Property="RenderTransform" Value="translateX(0px)"/>
                     <Setter Property="Opacity" Value="1"/>
                     <Setter Property="IsHitTestVisible" Value="True"/>
                 </Style>
-                <!-- Margin 由 DrawerLayoutBehavior 动态管理，不再写 compressed-bottom class -->
+                <!-- Margin 由 DrawerLayoutBehavior 动态管理 -->
             </Border.Styles>
             <Grid RowDefinitions="36,*,Auto">
                 <Border Grid.Row="0" Background="{StaticResource CapsuleActionBrush}" Padding="10,0"
@@ -1540,14 +1538,13 @@
                     <Setter Property="RenderTransform" Value="translateX(320px)"/>
                     <Setter Property="Opacity" Value="0"/>
                     <Setter Property="IsHitTestVisible" Value="False"/>
-                    <Setter Property="Margin" Value="0,14,14,62"/>
                 </Style>
                 <Style Selector="Border#RightDrawer.open">
                     <Setter Property="RenderTransform" Value="translateX(0px)"/>
                     <Setter Property="Opacity" Value="1"/>
                     <Setter Property="IsHitTestVisible" Value="True"/>
                 </Style>
-                <!-- BottomDrawer 打开时压缩底部：Margin 由 DrawerLayoutBehavior 动态管理 -->
+                <!-- Margin 由 DrawerLayoutBehavior 动态管理 -->
             </Border.Styles>
             <Grid RowDefinitions="36,*">
                 <Border Grid.Row="0" Background="{StaticResource CapsuleActionBrush}"
