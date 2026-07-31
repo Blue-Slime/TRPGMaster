@@ -92,14 +92,29 @@ public sealed class DrawerLayoutBehavior : IDisposable
             double bottomH = ActualHeight("BottomDrawer", LayoutConstants.BottomDrawerHeight);
             _lastBottomH   = bottomH;
 
-            // ── 计算 BottomDrawer 占用的底部空间 ─────────────────────────
-            double bottomExtra = bottom ? bottomH + LayoutConstants.EdgeMargin : 0.0;
-            double verticalBottom = LayoutConstants.BottomSafeMargin + bottomExtra;
+            // ── 计算底部空间占用 ─────────────────────────────────────────
+            // 1. BottomDrawer 打开时占用的空间
+            double bottomDrawerSpace = bottom ? bottomH + LayoutConstants.EdgeMargin : 0.0;
+
+            // 2. ActionCapsule 底边距：BottomDrawer 关闭时贴底 EdgeMargin，打开时上移
+            double actionBottom = LayoutConstants.EdgeMargin + bottomDrawerSpace;
+
+            // 3. 读取 ActionCapsule 实际高度（动态，万一用户以后改了胶囊大小）
+            double actionH = ActualHeight("ActionCapsule", LayoutConstants.ActionCapsuleHeight);
+
+            // 4. 左右抽屉和竖向工具条的底边距：给 ActionCapsule + 边距 + BottomDrawer 让位
+            double verticalBottom = LayoutConstants.EdgeMargin + actionH + LayoutConstants.EdgeMargin + bottomDrawerSpace;
+
+            // 5. StatusBar / Viewport 的底边距：紧贴 ActionCapsule 上边缘 + 间距，跟随 ActionCapsule 移动
+            double floatingBottom = actionBottom + actionH + LayoutConstants.EdgeMargin;
 
             // ── open/close class（保留 XAML 动画）───────────────────────
             SyncClass("LeftDrawer",   "open", left);
             SyncClass("RightDrawer",  "open", right);
             SyncClass("BottomDrawer", "open", bottom);
+
+            // ── ActionCapsule：BottomDrawer 打开时向上推 ─────────────────
+            SetMargin("ActionCapsule", LayoutConstants.EdgeMargin, 0, 0, actionBottom);
 
             // ── 左抽屉 ──────────────────────────────────────────────────
             SetMargin("LeftDrawer",  0, LayoutConstants.EdgeMargin, 0, verticalBottom);
@@ -120,14 +135,13 @@ public sealed class DrawerLayoutBehavior : IDisposable
             double panelRight = LayoutConstants.EdgeMargin + (right ? rightW + LayoutConstants.CapsuleGap : 0);
             SetMargin("PanelToggleCapsule", 0, LayoutConstants.EdgeMargin, panelRight, verticalBottom);
 
-            // ── StatusBarCapsule：随 LeftDrawer 右移 + BottomDrawer 上移 ─
-            double statusLeft   = LayoutConstants.BottomSafeMargin + (left ? leftW + LayoutConstants.CapsuleGap : 0);
-            double statusBottom = LayoutConstants.EdgeMargin + bottomExtra;
-            SetMargin("StatusBarCapsule", statusLeft, 0, 0, statusBottom);
+            // ── StatusBarCapsule：随 LeftDrawer 右移 + ActionCapsule 上移 ──
+            double statusLeft = LayoutConstants.EdgeMargin + actionH + LayoutConstants.EdgeMargin + (left ? leftW + LayoutConstants.CapsuleGap : 0);
+            SetMargin("StatusBarCapsule", statusLeft, 0, 0, floatingBottom);
 
-            // ── ViewportCapsule：随 RightDrawer 左移 + BottomDrawer 上移 ─
-            double vpRight  = LayoutConstants.EdgeMargin + (right ? rightW + LayoutConstants.CapsuleGap : 0);
-            SetMargin("ViewportCapsule", 0, 0, vpRight, LayoutConstants.EdgeMargin + bottomExtra);
+            // ── ViewportCapsule：随 RightDrawer 左移 + ActionCapsule 上移 ──
+            double vpRight = LayoutConstants.EdgeMargin + (right ? rightW + LayoutConstants.CapsuleGap : 0);
+            SetMargin("ViewportCapsule", 0, 0, vpRight, floatingBottom);
         }
         finally
         {

@@ -1238,7 +1238,7 @@
 
         <!-- ════════════════════════════════════════════════════════════
              左下设置胶囊（只含设置按钮）
-             固定不动，所有抽屉为它让位
+             随 BottomDrawer 开关向上推移，Margin 由 DrawerLayoutBehavior 管理
              ════════════════════════════════════════════════════════════ -->
         <Border x:Name="ActionCapsule"
                 HorizontalAlignment="Left" VerticalAlignment="Bottom"
@@ -1248,6 +1248,11 @@
                 BorderBrush="{StaticResource CapsuleBorderBrush}" BorderThickness="1"
                 BoxShadow="{StaticResource ShadowCapsuleAction}"
                 Padding="6,6">
+            <Border.Transitions>
+                <Transitions>
+                    <ThicknessTransition Property="Margin" Duration="0:0:0.22" Easing="CubicEaseOut"/>
+                </Transitions>
+            </Border.Transitions>
             <Border.Styles>
                 <Style Selector="Button">
                     <Setter Property="Background" Value="Transparent"/>
