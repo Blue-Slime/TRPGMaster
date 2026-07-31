@@ -7,7 +7,12 @@
              <!-- "Default" ThemeVariant follows system theme variant. "Dark" or "Light" are other available options. -->
 
     <Application.Resources>
-        <converters:StringEqualsConverter x:Key="StringEqualsConverter"/>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceInclude Source="avares://MapEngine.Avalonia/Styles/OwlbearTheme.axaml"/>
+            </ResourceDictionary.MergedDictionaries>
+            <converters:StringEqualsConverter x:Key="StringEqualsConverter"/>
+        </ResourceDictionary>
     </Application.Resources>
 
     <Application.DataTemplates>

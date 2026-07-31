@@ -1,6 +1,7 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:MapEngine.Avalonia.ViewModels"
+             xmlns:views="using:MapEngine.Avalonia.Views"
              xmlns:converters="using:MapEngine.Avalonia.Converters"
              x:Class="MapEngine.Avalonia.Views.DicePanel"
              x:DataType="vm:DicePanelViewModel">
@@ -46,7 +47,7 @@
                                 BorderBrush="{Binding ColorHex, Converter={StaticResource HexToBrushConverter}}"
                                 BorderThickness="1"
                                 ToolTip.Tip="{Binding Label}"
-                                Command="{Binding $parent[UserControl].((vm:DicePanelViewModel)DataContext).RollPresetCommand}"
+                                Command="{Binding $parent[views:DicePanel].((vm:DicePanelViewModel)DataContext).RollPresetCommand}"
                                 CommandParameter="{Binding Formula}">
                             <Button.Styles>
                                 <Style Selector="Button:pointerover /template/ ContentPresenter">
