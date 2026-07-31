@@ -1,5 +1,4 @@
 using System;
-using System.Linq;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Presenters;
@@ -11,18 +10,15 @@ namespace MapEngine.Avalonia.Layout;
 /// <summary>
 /// 子工具面板垂直对齐到触发按钮的中心线。
 ///
-/// 使用方式（XAML）：
-///   <Border x:Name="ShapeSubToolCapsule"
-///           layout:SubToolLayout.TriggerKey="shape"
-///           ... />
-///
-/// 原理：
-///   - 在 PrimaryToolsList（ItemsControl）中找到 Key == TriggerKey 的 ToolActionViewModel
-///   - TranslatePoint(0, height/2) 计算按钮中心相对于 RootGrid 的 Y 坐标
-///   - 更新 Capsule.Margin.Top，使其垂直居中对齐到按钮
+/// 死循环防护：
+///   - 胶囊不可见（IsVisible=false）时直接跳出，不重试
+///   - ItemsControl 未就绪时最多重试 MaxRetries 次
+///   - 只在 Margin.Top 实际需要变化时才写入
 /// </summary>
 public static class SubToolLayout
 {
+    private const int MaxRetries = 8;
+
     public static readonly AttachedProperty<string> TriggerKeyProperty =
         AvaloniaProperty.RegisterAttached<Control, string>("TriggerKey", typeof(SubToolLayout), "");
 
@@ -39,38 +35,41 @@ public static class SubToolLayout
         if (e.NewValue is not string key || string.IsNullOrEmpty(key))
             return;
 
-        // 延迟一帧：等 Visual Tree 构建完成
-        Dispatcher.UIThread.Post(() => AlignToTriggerButton(capsule, key), DispatcherPriority.Loaded);
+        Dispatcher.UIThread.Post(
+            () => AlignToTriggerButton(capsule, key, 0),
+            DispatcherPriority.Loaded);
     }
 
     /// <summary>
-    /// 公开静态方法：外部可手动调用重新对齐（比如 ViewModel.ActivePrimaryTools 变化时）。
+    /// 公开入口：外部可手动触发重新对齐（ViewModel.ActivePrimaryTools 变化时）。
     /// </summary>
     public static void AlignToTriggerButton(Control capsule, string triggerKey)
+        => AlignToTriggerButton(capsule, triggerKey, 0);
+
+    private static void AlignToTriggerButton(Control capsule, string triggerKey, int attempt)
     {
+        // ── 防护1：胶囊不可见时不操作，不重试 ──────────────────────────
+        if (!capsule.IsVisible) return;
+
+        // ── 防护2：重试超限时放弃 ────────────────────────────────────────
+        if (attempt >= MaxRetries) return;
+
+        // ── 找根 UserControl ─────────────────────────────────────────────
         var root = capsule.FindAncestorOfType<UserControl>();
         if (root is null) return;
 
         var toolsList = root.FindControl<ItemsControl>("PrimaryToolsList");
         if (toolsList is null) return;
 
-        // 等 ItemsControl 实现出容器
-        if (!toolsList.IsArrangeValid)
+        // ── ItemsControl 未完成 Arrange：延迟重试 ─────────────────────────
+        if (!toolsList.IsArrangeValid || toolsList.ItemsPanelRoot is not Panel panel || panel.Children.Count == 0)
         {
-            Dispatcher.UIThread.Post(() => AlignToTriggerButton(capsule, triggerKey), DispatcherPriority.Loaded);
+            Retry(capsule, triggerKey, attempt);
             return;
         }
 
-        var panel = toolsList.ItemsPanelRoot as Panel;
-        if (panel is null || panel.Children.Count == 0)
-        {
-            // 还没渲染：再试一次
-            Dispatcher.UIThread.Post(() => AlignToTriggerButton(capsule, triggerKey), DispatcherPriority.Loaded);
-            return;
-        }
-
-        // 找到 Key 匹配的容器
-        ContentPresenter? targetContainer = null;
+        // ── 找 Key 匹配的容器 ─────────────────────────────────────────────
+        Control? targetContainer = null;
         foreach (var child in panel.Children)
         {
             if (child is ContentPresenter cp &&
@@ -82,29 +81,36 @@ public static class SubToolLayout
             }
         }
 
-        if (targetContainer?.Bounds is not { Height: > 0 } btnBounds)
-            return;
-
-        // 按钮中心点（相对于 root）
-        var btnCenterLocal  = new Point(0, btnBounds.Height / 2.0);
-        var btnCenterGlobal = ((Visual)targetContainer).TranslatePoint(btnCenterLocal, root);
-        if (btnCenterGlobal is not { } center)
-            return;
-
-        // 子工具面板当前高度
-        var capsuleBounds = capsule.Bounds;
-        if (capsuleBounds.Height <= 0)
+        if (targetContainer is null || targetContainer.Bounds.Height <= 0)
         {
-            // 还没测量：延迟到下一帧
-            Dispatcher.UIThread.Post(() => AlignToTriggerButton(capsule, triggerKey), DispatcherPriority.Loaded);
+            Retry(capsule, triggerKey, attempt);
             return;
         }
 
-        // 让 capsule 垂直居中对齐到按钮中心
-        var newTop = center.Y - capsuleBounds.Height / 2.0;
+        // ── 胶囊高度还未测量：延迟重试 ──────────────────────────────────
+        if (capsule.Bounds.Height <= 0)
+        {
+            Retry(capsule, triggerKey, attempt);
+            return;
+        }
 
-        // 只更新 Margin.Top，保留 Left（由 DrawerLayoutBehavior 管理）
+        // ── 计算目标 Margin.Top ──────────────────────────────────────────
+        var btnCenterLocal  = new Point(0, targetContainer.Bounds.Height / 2.0);
+        var btnCenterGlobal = ((Visual)targetContainer).TranslatePoint(btnCenterLocal, root);
+        if (btnCenterGlobal is not { } center) return;
+
+        var newTop = center.Y - capsule.Bounds.Height / 2.0;
+
+        // ── 只在值真正变化时写入，避免触发多余的布局事件 ───────────────
         var m = capsule.Margin;
+        if (Math.Abs(m.Top - newTop) < 0.5) return;
         capsule.Margin = new Thickness(m.Left, newTop, m.Right, m.Bottom);
+    }
+
+    private static void Retry(Control capsule, string key, int attempt)
+    {
+        Dispatcher.UIThread.Post(
+            () => AlignToTriggerButton(capsule, key, attempt + 1),
+            DispatcherPriority.Loaded);
     }
 }
