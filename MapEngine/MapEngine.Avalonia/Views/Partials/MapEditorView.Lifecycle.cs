@@ -10,6 +10,7 @@ using Avalonia.Platform.Storage;
 using Avalonia.Threading;
 using MapEngine.Avalonia.Controls;
 using MapEngine.Avalonia.Graphics;
+using MapEngine.Avalonia.Layout;
 using MapEngine.Avalonia.Services;
 using MapEngine.Avalonia.ViewModels;
 
@@ -128,6 +129,9 @@ public partial class MapEditorView
             _viewModel.PropertyChanged -= OnViewModelPropertyChanged;
         }
 
+        _drawerLayout?.Dispose();
+        _drawerLayout = null;
+
         _mapDragFinalizeTimer.Stop();
 
         if (_mapSilkCanvas is not null)
@@ -148,6 +152,9 @@ public partial class MapEditorView
             _viewModel.PropertyChanged -= OnViewModelPropertyChanged;
         }
 
+        _drawerLayout?.Dispose();
+        _drawerLayout = null;
+
         _viewModel = DataContext as MainWindowViewModel;
         if (_viewModel is not null)
         {
@@ -159,10 +166,17 @@ public partial class MapEditorView
             _viewModel.PropertyChanged += OnViewModelPropertyChanged;
             _lastZoomScale = _viewModel.ZoomScale <= 0 ? 1.0 : _viewModel.ZoomScale;
 
-            // 初始化抽屉 CSS class
-            SyncDrawerClass(LeftDrawer,   _viewModel.IsLeftDrawerOpen);
-            SyncDrawerClass(RightDrawer,  _viewModel.IsRightDrawerOpen);
-            SyncDrawerClass(BottomDrawer, _viewModel.IsBottomDrawerOpen);
+            // 初始化动态布局 Behavior（替代旧的 SyncPushClasses 硬编码）
+            _drawerLayout = new MapEngine.Avalonia.Layout.DrawerLayoutBehavior(this, _viewModel);
+
+            // 初始化子工具面板对齐（延迟到 Visual Tree 构建完成后）
+            Dispatcher.UIThread.Post(() =>
+            {
+                if (this.FindControl<Border>("ShapeSubToolCapsule") is { } shapeCapsule)
+                    SubToolLayout.AlignToTriggerButton(shapeCapsule, "shape");
+                if (this.FindControl<Border>("FogSubToolCapsule") is { } fogCapsule)
+                    SubToolLayout.AlignToTriggerButton(fogCapsule, "fog");
+            }, DispatcherPriority.Loaded);
 
             if (_mapSilkCanvas?.RuntimeInfo is GraphicsRuntimeInfo runtimeInfo)
                 _viewModel.SetGraphicsRuntimeInfo(runtimeInfo);
@@ -247,15 +261,12 @@ public partial class MapEditorView
         {
             case nameof(MainWindowViewModel.IsLeftDrawerOpen):
                 SyncDrawerClass(LeftDrawer, _viewModel.IsLeftDrawerOpen);
-                SyncPushClasses();
                 break;
             case nameof(MainWindowViewModel.IsRightDrawerOpen):
                 SyncDrawerClass(RightDrawer, _viewModel.IsRightDrawerOpen);
-                SyncPushClasses();
                 break;
             case nameof(MainWindowViewModel.IsBottomDrawerOpen):
                 SyncDrawerClass(BottomDrawer, _viewModel.IsBottomDrawerOpen);
-                SyncPushClasses();
                 break;
             case nameof(MainWindowViewModel.ZoomScale):
                 var newZoomScale = _viewModel.ZoomScale <= 0 ? 1.0 : _viewModel.ZoomScale;
@@ -282,7 +293,6 @@ public partial class MapEditorView
         CenterMapOnOrigin();
     }
 
-    /// <summary>根据布尔开关给抽屉 Border 加/移除 "open" class，触发 XAML Transition 动画。</summary>
     private static void SyncDrawerClass(Border? drawer, bool isOpen)
     {
         if (drawer is null) return;
@@ -290,57 +300,7 @@ public partial class MapEditorView
         else        drawer.Classes.Remove("open");
     }
 
-    /// <summary>
-    /// 当抽屉状态变化时，同步 push/compressed class 到各浮动胶囊，避免遮挡。
-    /// 规则：
-    ///   LeftDrawer  打开 → ToolbarCapsule 向右 260px（pushed-right）
-    ///   RightDrawer 打开 → PanelToggleCapsule/ViewportCapsule 向左 320px（pushed-right）
-    ///   BottomDrawer 打开 → LeftDrawer/RightDrawer/ToolbarCapsule/PanelToggleCapsule 底部压缩（compressed-bottom）
-    ///   BottomDrawer 打开 → StatusBarCapsule/ViewportCapsule 向上（pushed-up）
-    ///   ActionCapsule 固定不动，所有抽屉为它让位（通过 Margin 留出空间）
-    /// </summary>
-    private void SyncPushClasses()
-    {
-        if (_viewModel is null) return;
-
-        var leftDrawer         = this.FindControl<Border>("LeftDrawer");
-        var rightDrawer        = this.FindControl<Border>("RightDrawer");
-        var toolbarCapsule     = this.FindControl<Border>("ToolbarCapsule");
-        var panelToggleCapsule = this.FindControl<Border>("PanelToggleCapsule");
-        var statusBar          = this.FindControl<Border>("StatusBarCapsule");
-        var viewportCapsule    = this.FindControl<Border>("ViewportCapsule");
-
-        bool leftOpen   = _viewModel.IsLeftDrawerOpen;
-        bool rightOpen  = _viewModel.IsRightDrawerOpen;
-        bool bottomOpen = _viewModel.IsBottomDrawerOpen;
-
-        // 左上工具胶囊：LeftDrawer 打开时向右推，BottomDrawer 打开时底部压缩
-        SyncClass(toolbarCapsule, "pushed-right",       leftOpen);
-        SyncClass(toolbarCapsule, "compressed-bottom",  bottomOpen);
-
-        // 右上面板切换胶囊：RightDrawer 打开时向左推，BottomDrawer 打开时底部压缩
-        SyncClass(panelToggleCapsule, "pushed-right",      rightOpen);
-        SyncClass(panelToggleCapsule, "compressed-bottom", bottomOpen);
-
-        // 左右抽屉：BottomDrawer 打开时底部压缩
-        SyncClass(leftDrawer,  "compressed-bottom", bottomOpen);
-        SyncClass(rightDrawer, "compressed-bottom", bottomOpen);
-
-        // 状态栏：随 LeftDrawer 右移 + BottomDrawer 上移（保持原有行为）
-        SyncClass(statusBar, "pushed-left", leftOpen);
-        SyncClass(statusBar, "pushed-up",   bottomOpen);
-
-        // 右下视口胶囊：随 RightDrawer 左移 + BottomDrawer 上移
-        SyncClass(viewportCapsule, "pushed-right", rightOpen);
-        SyncClass(viewportCapsule, "pushed-up",    bottomOpen);
-    }
-
-    private static void SyncClass(Control? control, string className, bool active)
-    {
-        if (control is null) return;
-        if (active) control.Classes.Add(className);
-        else        control.Classes.Remove(className);
-    }
+    // SyncPushClasses / SyncClass 已由 DrawerLayoutBehavior 接管，此处移除。
 
     private async void OnSaveSceneRequested(object? sender, SaveSceneRequestEventArgs e)
     {

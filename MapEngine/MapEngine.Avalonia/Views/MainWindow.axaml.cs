@@ -16,6 +16,7 @@ using MapEngine.Render;
 using MapEngine.Avalonia.Commands;
 using MapEngine.Avalonia.Controls;
 using MapEngine.Avalonia.Graphics;
+using MapEngine.Avalonia.Layout;
 using MapEngine.Avalonia.Services;
 using MapEngine.Avalonia.ViewModels;
 
@@ -68,6 +69,9 @@ public partial class MapEditorView : UserControl
     private TokenUIManager? _tokenUIManager;
     private Canvas? _mapTextOverlay;
     private MapTextManager? _mapTextManager;
+
+    // 动态布局 Behavior（替代硬编码 CSS push/compressed class）
+    private MapEngine.Avalonia.Layout.DrawerLayoutBehavior? _drawerLayout;
 
     // 工具 overlay（Measure / Laser / Shape preview）
     private Canvas? _toolOverlayCanvas;

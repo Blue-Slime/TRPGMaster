@@ -5,6 +5,7 @@
              xmlns:views="using:MapEngine.Avalonia.Views"
              xmlns:controls="using:MapEngine.Avalonia.Controls"
              xmlns:converters="using:MapEngine.Avalonia.Converters"
+             xmlns:layout="using:MapEngine.Avalonia.Layout"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              mc:Ignorable="d"
@@ -1002,28 +1003,10 @@
                 Padding="5,10">
             <Border.Transitions>
                 <Transitions>
-                    <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.22" Easing="CubicEaseOut"/>
                     <ThicknessTransition Property="Margin" Duration="0:0:0.22" Easing="CubicEaseOut"/>
                 </Transitions>
             </Border.Transitions>
             <Border.Styles>
-                <Style Selector="Border#ToolbarCapsule">
-                    <Setter Property="RenderTransform" Value="translateX(0px)"/>
-                    <Setter Property="Margin" Value="14,14,0,62"/>
-                </Style>
-                <!-- LeftDrawer 打开时向右推 260px -->
-                <Style Selector="Border#ToolbarCapsule.pushed-right">
-                    <Setter Property="RenderTransform" Value="translateX(260px)"/>
-                </Style>
-                <!-- BottomDrawer 打开时压缩底部 margin（给底抽屉让位 294px） -->
-                <Style Selector="Border#ToolbarCapsule.compressed-bottom">
-                    <Setter Property="Margin" Value="14,14,0,356"/>
-                </Style>
-                <!-- 两者同时 -->
-                <Style Selector="Border#ToolbarCapsule.pushed-right.compressed-bottom">
-                    <Setter Property="RenderTransform" Value="translateX(260px)"/>
-                    <Setter Property="Margin" Value="14,14,0,356"/>
-                </Style>
                 <Style Selector="Button">
                     <Setter Property="Background" Value="Transparent"/>
                     <Setter Property="BorderThickness" Value="0"/>
@@ -1113,28 +1096,11 @@
              四类：直线 / 常用形状 / 桌游常用形状 / 锚点多边形
              ════════════════════════════════════════════════════════════ -->
         <Border x:Name="ShapeSubToolCapsule"
-                HorizontalAlignment="Left" VerticalAlignment="Center"
-                Margin="70,0,0,0" ZIndex="45"
-                CornerRadius="20"
-                Background="{StaticResource CapsuleActionBrush}"
-                BorderBrush="{StaticResource CapsuleBorderBrush}" BorderThickness="1"
-                BoxShadow="{StaticResource ShadowCapsuleAction}"
+                Classes="sub-tool-capsule"
+                layout:SubToolLayout.TriggerKey="shape"
+                ZIndex="45"
                 Padding="6,8"
                 IsVisible="{Binding IsShapeToolActive}">
-            <Border.Styles>
-                <Style Selector="Button">
-                    <Setter Property="Background" Value="Transparent"/>
-                    <Setter Property="BorderThickness" Value="0"/>
-                    <Setter Property="Padding" Value="0"/>
-                    <Setter Property="CornerRadius" Value="10"/>
-                </Style>
-                <Style Selector="Button:pointerover /template/ ContentPresenter">
-                    <Setter Property="Background" Value="{StaticResource CapsuleHoverBrush}"/>
-                </Style>
-                <Style Selector="Button:pressed /template/ ContentPresenter">
-                    <Setter Property="Background" Value="{StaticResource CapsuleSelectedBrush}"/>
-                </Style>
-            </Border.Styles>
 
             <StackPanel Orientation="Vertical" Spacing="2">
                 <ItemsControl ItemsSource="{Binding ShapeSubTools}"
@@ -1197,25 +1163,11 @@
              迷雾子工具胶囊（仅 fog 工具激活时显示）
              ══════════════════════════════════════════════════════════════ -->
         <Border x:Name="FogSubToolCapsule"
-                HorizontalAlignment="Left" VerticalAlignment="Center"
-                Margin="70,0,0,0" ZIndex="45"
-                CornerRadius="20"
-                Background="{StaticResource CapsuleActionBrush}"
-                BorderBrush="{StaticResource CapsuleBorderBrush}" BorderThickness="1"
-                BoxShadow="{StaticResource ShadowCapsuleAction}"
+                Classes="sub-tool-capsule"
+                layout:SubToolLayout.TriggerKey="fog"
+                ZIndex="45"
                 Padding="6,8"
                 IsVisible="{Binding IsFogToolActive}">
-            <Border.Styles>
-                <Style Selector="Button">
-                    <Setter Property="Background" Value="Transparent"/>
-                    <Setter Property="BorderThickness" Value="0"/>
-                    <Setter Property="Padding" Value="0"/>
-                    <Setter Property="CornerRadius" Value="10"/>
-                </Style>
-                <Style Selector="Button:pointerover /template/ ContentPresenter">
-                    <Setter Property="Background" Value="{StaticResource CapsuleHoverBrush}"/>
-                </Style>
-            </Border.Styles>
             <StackPanel Orientation="Vertical" Spacing="2">
 
                 <!-- 开关迷雾 -->
@@ -1341,28 +1293,10 @@
                 Padding="6,6">
             <Border.Transitions>
                 <Transitions>
-                    <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.22" Easing="CubicEaseOut"/>
                     <ThicknessTransition Property="Margin" Duration="0:0:0.22" Easing="CubicEaseOut"/>
                 </Transitions>
             </Border.Transitions>
             <Border.Styles>
-                <Style Selector="Border#PanelToggleCapsule">
-                    <Setter Property="RenderTransform" Value="translateX(0px)"/>
-                    <Setter Property="Margin" Value="0,14,14,62"/>
-                </Style>
-                <!-- RightDrawer 打开时向左推（320px 栏宽 + 14px 栏的右 margin） -->
-                <Style Selector="Border#PanelToggleCapsule.pushed-right">
-                    <Setter Property="RenderTransform" Value="translateX(-334px)"/>
-                </Style>
-                <!-- BottomDrawer 打开时压缩底部 margin -->
-                <Style Selector="Border#PanelToggleCapsule.compressed-bottom">
-                    <Setter Property="Margin" Value="0,14,14,356"/>
-                </Style>
-                <!-- 两者同时 -->
-                <Style Selector="Border#PanelToggleCapsule.pushed-right.compressed-bottom">
-                    <Setter Property="RenderTransform" Value="translateX(-320px)"/>
-                    <Setter Property="Margin" Value="0,14,14,356"/>
-                </Style>
                 <Style Selector="Button">
                     <Setter Property="Background" Value="Transparent"/>
                     <Setter Property="BorderThickness" Value="0"/>
@@ -1449,23 +1383,9 @@
                 BoxShadow="0 4 12 0 #80000000">
             <Border.Transitions>
                 <Transitions>
-                    <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.22" Easing="CubicEaseOut"/>
+                    <ThicknessTransition Property="Margin" Duration="0:0:0.22" Easing="CubicEaseOut"/>
                 </Transitions>
             </Border.Transitions>
-            <Border.Styles>
-                <Style Selector="Border#StatusBarCapsule">
-                    <Setter Property="RenderTransform" Value="translateX(0px) translateY(0px)"/>
-                </Style>
-                <Style Selector="Border#StatusBarCapsule.pushed-left">
-                    <Setter Property="RenderTransform" Value="translateX(260px) translateY(0px)"/>
-                </Style>
-                <Style Selector="Border#StatusBarCapsule.pushed-up">
-                    <Setter Property="RenderTransform" Value="translateX(0px) translateY(-284px)"/>
-                </Style>
-                <Style Selector="Border#StatusBarCapsule.pushed-left.pushed-up">
-                    <Setter Property="RenderTransform" Value="translateX(260px) translateY(-284px)"/>
-                </Style>
-            </Border.Styles>
             <StackPanel Spacing="2">
                 <TextBlock Text="{Binding StatusMessage}"          Foreground="{StaticResource TextPrimaryBrush}" FontSize="12"/>
                 <TextBlock Text="{Binding MapViewportSummary}"     Foreground="{StaticResource TextTertiaryBrush}" FontSize="11"/>
@@ -1498,7 +1418,6 @@
                     <Setter Property="RenderTransform" Value="translateX(-260px)"/>
                     <Setter Property="Opacity" Value="0"/>
                     <Setter Property="IsHitTestVisible" Value="False"/>
-                    <Setter Property="Margin" Value="0,14,0,62"/>
                 </Style>
                 <!-- 开启态：平移归零 + 完全不透明 -->
                 <Style Selector="Border#LeftDrawer.open">
@@ -1506,16 +1425,7 @@
                     <Setter Property="Opacity" Value="1"/>
                     <Setter Property="IsHitTestVisible" Value="True"/>
                 </Style>
-                <!-- BottomDrawer 打开时压缩底部（底部抽屉 280px + margin 14px = 294px，加上原有 62px） -->
-                <Style Selector="Border#LeftDrawer.compressed-bottom">
-                    <Setter Property="Margin" Value="0,14,0,356"/>
-                </Style>
-                <Style Selector="Border#LeftDrawer.open.compressed-bottom">
-                    <Setter Property="RenderTransform" Value="translateX(0px)"/>
-                    <Setter Property="Opacity" Value="1"/>
-                    <Setter Property="IsHitTestVisible" Value="True"/>
-                    <Setter Property="Margin" Value="0,14,0,356"/>
-                </Style>
+                <!-- Margin 由 DrawerLayoutBehavior 动态管理，不再写 compressed-bottom class -->
             </Border.Styles>
             <Grid RowDefinitions="36,*,Auto">
                 <Border Grid.Row="0" Background="{StaticResource CapsuleActionBrush}" Padding="10,0"
@@ -1621,16 +1531,7 @@
                     <Setter Property="Opacity" Value="1"/>
                     <Setter Property="IsHitTestVisible" Value="True"/>
                 </Style>
-                <!-- BottomDrawer 打开时压缩底部 -->
-                <Style Selector="Border#RightDrawer.compressed-bottom">
-                    <Setter Property="Margin" Value="0,14,14,356"/>
-                </Style>
-                <Style Selector="Border#RightDrawer.open.compressed-bottom">
-                    <Setter Property="RenderTransform" Value="translateX(0px)"/>
-                    <Setter Property="Opacity" Value="1"/>
-                    <Setter Property="IsHitTestVisible" Value="True"/>
-                    <Setter Property="Margin" Value="0,14,14,356"/>
-                </Style>
+                <!-- BottomDrawer 打开时压缩底部：Margin 由 DrawerLayoutBehavior 动态管理 -->
             </Border.Styles>
             <Grid RowDefinitions="36,*">
                 <Border Grid.Row="0" Background="{StaticResource CapsuleActionBrush}"
@@ -1985,8 +1886,7 @@
         <!--
              行 1: [▦网格] [🧲吸附] │ [⌖回原点]
              行 2: [1格=5ft ▾]      │ [−] [100%▾] [+]
-             push class: .pushed-right → translateX(-320px)
-                         .pushed-up   → translateY(-280px)
+             Margin 由 DrawerLayoutBehavior 动态管理
         -->
         <Border x:Name="ViewportCapsule"
                 HorizontalAlignment="Right" VerticalAlignment="Bottom"
@@ -1997,27 +1897,10 @@
                 BoxShadow="{StaticResource ShadowCapsuleAction}">
             <Border.Transitions>
                 <Transitions>
-                    <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.22"/>
+                    <ThicknessTransition Property="Margin" Duration="0:0:0.22" Easing="CubicEaseOut"/>
                 </Transitions>
             </Border.Transitions>
-            <Border.Styles>
-                <!-- 默认：无偏移 -->
-                <Style Selector="Border#ViewportCapsule">
-                    <Setter Property="RenderTransform" Value="translateX(0px) translateY(0px)"/>
-                </Style>
-                <!-- RightDrawer 打开时向左推（320px 栏宽 + 14px 栏的右 margin） -->
-                <Style Selector="Border#ViewportCapsule.pushed-right">
-                    <Setter Property="RenderTransform" Value="translateX(-334px) translateY(0px)"/>
-                </Style>
-                <!-- BottomDrawer 打开时向上推 284px（280高度 + 4边距） -->
-                <Style Selector="Border#ViewportCapsule.pushed-up">
-                    <Setter Property="RenderTransform" Value="translateX(0px) translateY(-284px)"/>
-                </Style>
-                <!-- 两者同时打开 -->
-                <Style Selector="Border#ViewportCapsule.pushed-right.pushed-up">
-                    <Setter Property="RenderTransform" Value="translateX(-334px) translateY(-284px)"/>
-                </Style>
-            </Border.Styles>
+            <!-- Margin 由 DrawerLayoutBehavior 动态管理；无 pushed-right/pushed-up class styles -->
             <StackPanel Orientation="Vertical" Spacing="0">
 
                 <!-- 行 1: 工具开关 + 回原点 -->
