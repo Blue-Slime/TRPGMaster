@@ -153,8 +153,38 @@ public sealed class InitiativeTrackerViewModel : ObservableObject
         if (_currentTurnIndex == 0)
         {
             TurnCounter++;
+            DecrementAllConditionRounds();
         }
         UpdateCurrentTurnFlags();
+    }
+
+    /// <summary>回合结束时递减所有 Token 的状态回合数，移除归零的状态。</summary>
+    private void DecrementAllConditionRounds()
+    {
+        foreach (var entry in Entries)
+        {
+            var tokenComp = entry.Source.GetComponent<MapEngine.Core.Components.TokenComponent>();
+            if (tokenComp == null) continue;
+
+            // 倒序遍历，方便移除元素
+            for (int i = tokenComp.Conditions.Count - 1; i >= 0; i--)
+            {
+                var condition = tokenComp.Conditions[i];
+                if (condition.RemainingRounds > 0)
+                {
+                    condition.RemainingRounds--;
+                    if (condition.RemainingRounds == 0)
+                    {
+                        // 回合数归零，移除状态
+                        tokenComp.Conditions.RemoveAt(i);
+                        System.Diagnostics.Debug.WriteLine($"[DecrementAllConditionRounds] {entry.Name} 的状态 '{condition.Name}' 已到期移除");
+                    }
+                }
+            }
+
+            // 通知 UI 刷新状态列表
+            entry.Source.NotifyTokenComponentChanged();
+        }
     }
 
     private void PreviousTurn()

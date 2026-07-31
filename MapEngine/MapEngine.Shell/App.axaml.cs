@@ -17,18 +17,13 @@ public partial class App : Application
     }
 
     public override void OnFrameworkInitializationCompleted()
+    {
+        if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
-            if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
-            {
-                var vm = new MainWindowViewModel();
-                System.Console.WriteLine($"[MapEditor] Loaded: PackageName={vm.PackageName}, Roots={vm.HierarchyRoots.Count}, FirstRoot={vm.HierarchyRoots.FirstOrDefault()?.Name}");
-
-                desktop.MainWindow = new MapEditorWindow
-                {
-                    DataContext = vm,
-                };
-            }
-
-            base.OnFrameworkInitializationCompleted();
+            // MapEditorWindow 内部会创建 ViewModel，不再在这里创建
+            desktop.MainWindow = new MapEditorWindow();
         }
+
+        base.OnFrameworkInitializationCompleted();
+    }
 }
