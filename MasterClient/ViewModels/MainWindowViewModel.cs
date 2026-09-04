@@ -134,6 +134,9 @@ public partial class MainWindowViewModel : ViewModelBase
     [ObservableProperty]
     private string _defaultRoomsPath = string.Empty;
 
+    [ObservableProperty]
+    private string _assetLibraryPath = string.Empty;
+
     // 启动设置
     [ObservableProperty]
     private bool _startWithWindows = false;
@@ -343,6 +346,7 @@ public partial class MainWindowViewModel : ViewModelBase
 
         // 存储设置
         DefaultRoomsPath = settings.DefaultRoomsPath;
+        AssetLibraryPath = settings.AssetLibraryPath ?? string.Empty;
 
         // 全局用户ID
         if (!string.IsNullOrWhiteSpace(settings.UserId))
@@ -1245,12 +1249,42 @@ A: 目前支持 COC 7版、DND 5E、PF 2E 等主流规则。
     }
 
     [RelayCommand]
+    private async Task BrowseAssetLibraryPathAsync()
+    {
+        try
+        {
+            var topLevel = Avalonia.Application.Current?.ApplicationLifetime is Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop
+                ? desktop.MainWindow
+                : null;
+
+            if (topLevel == null) return;
+
+            var folders = await topLevel.StorageProvider.OpenFolderPickerAsync(new Avalonia.Platform.Storage.FolderPickerOpenOptions
+            {
+                Title = "选择全局素材库路径",
+                AllowMultiple = false
+            });
+
+            if (folders.Count > 0)
+            {
+                AssetLibraryPath = folders[0].Path.LocalPath;
+                System.Diagnostics.Debug.WriteLine($"[StartMaster] 已选择素材库路径: {AssetLibraryPath}");
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[StartMaster] 选择文件夹失败: {ex.Message}");
+        }
+    }
+
+    [RelayCommand]
     private void SaveSettings()
     {
         var settings = _settingsService.Settings;
 
         // 存储设置
         settings.DefaultRoomsPath = DefaultRoomsPath;
+        settings.AssetLibraryPath = string.IsNullOrWhiteSpace(AssetLibraryPath) ? null : AssetLibraryPath.Trim();
 
         // 全局用户ID
         settings.UserId = string.IsNullOrWhiteSpace(UserId) ? "player" : UserId.Trim();
@@ -1294,6 +1328,7 @@ A: 目前支持 COC 7版、DND 5E、PF 2E 等主流规则。
     {
         // 存储设置
         DefaultRoomsPath = System.IO.Path.Combine(AppContext.BaseDirectory, "Rooms");
+        AssetLibraryPath = string.Empty;
 
         // 启动设置
         RememberPassword = true;
@@ -1344,6 +1379,25 @@ A: 目前支持 COC 7版、DND 5E、PF 2E 等主流规则。
         catch (Exception ex)
         {
             System.Diagnostics.Debug.WriteLine($"[StartMaster] 打开房间文件夹失败: {ex.Message}");
+        }
+    }
+
+    [RelayCommand]
+    private void OpenAssetLibraryFolder()
+    {
+        if (string.IsNullOrEmpty(AssetLibraryPath)) return;
+
+        try
+        {
+            if (!System.IO.Directory.Exists(AssetLibraryPath))
+            {
+                System.IO.Directory.CreateDirectory(AssetLibraryPath);
+            }
+            OpenFolderInExplorer(AssetLibraryPath);
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[StartMaster] 打开素材库文件夹失败: {ex.Message}");
         }
     }
 

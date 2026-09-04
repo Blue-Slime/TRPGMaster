@@ -1,6 +1,7 @@
 using Avalonia.Controls;
 using MapEngine.Core.Hosting;
 using MapEngine.Avalonia.ViewModels;
+using MapEngine.Avalonia.Services;
 
 namespace MapEngine.Avalonia.Hosting;
 
@@ -25,6 +26,8 @@ public static class MapEditorEntry
     {
         options ??= new MapEditorStartupOptions();
 
+        MapSpriteAssetResolver.RoomAssetRoot = host.RoomAssetLibraryPath;
+
         var vm = new MainWindowViewModel();
         var view = new MapEngine.Avalonia.Views.MapEditorView { DataContext = vm };
 
@@ -47,6 +50,8 @@ public static class MapEditorEntry
         MapEditorStartupOptions? options = null)
     {
         options ??= new MapEditorStartupOptions();
+
+        MapSpriteAssetResolver.RoomAssetRoot = host.RoomAssetLibraryPath;
 
         // 独立模式下 ViewModel 由 App.axaml.cs 构造并赋给 MainWindow.DataContext。
         // 这里创建一个临时 VM 仅供 AgentService 使用；Shell 负责把同一个 VM 传给窗口。

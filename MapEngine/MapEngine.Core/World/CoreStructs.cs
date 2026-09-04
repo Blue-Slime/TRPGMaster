@@ -156,6 +156,69 @@ public struct TextData
 }
 
 /// <summary>
+/// 拓扑节点数据（GraphNodeComponent 的存档投影）
+/// </summary>
+public struct GraphNodeData
+{
+    public int Kind { get; set; }
+    public string DisplayName { get; set; }
+    public string Description { get; set; }
+    public int Visibility { get; set; }
+    public int RenderMode { get; set; }
+    public string IconAssetRef { get; set; }
+    public string Color { get; set; }
+    public double Size { get; set; }
+    public string Shape { get; set; }
+
+    public GraphNodeData()
+    {
+        Kind = 0;                // Location
+        DisplayName = string.Empty;
+        Description = string.Empty;
+        Visibility = 0;          // Hidden
+        RenderMode = 1;          // Icon
+        IconAssetRef = string.Empty;
+        Color = "#4A90E2";
+        Size = 48;
+        Shape = "circle";
+    }
+}
+
+/// <summary>
+/// 单条拓扑通道数据（GraphLinkComponent 的存档投影）。
+/// 一个对象可挂多条，故 GraphLinksData 以列表形式存档。
+/// </summary>
+public struct GraphLinkData
+{
+    public string LinkId { get; set; }
+    public string TargetNodeId { get; set; }
+    public int Kind { get; set; }
+    public bool IsBidirectional { get; set; }
+    public string Label { get; set; }
+    public int Visibility { get; set; }
+    public bool IsPassable { get; set; }
+    public double Cost { get; set; }
+    public string Color { get; set; }
+    public double Width { get; set; }
+    public int StrokeStyle { get; set; }
+
+    public GraphLinkData()
+    {
+        LinkId = string.Empty;
+        TargetNodeId = string.Empty;
+        Kind = 0;                // Normal
+        IsBidirectional = true;
+        Label = string.Empty;
+        Visibility = 0;          // Hidden
+        IsPassable = true;
+        Cost = 1;
+        Color = "#8A8F98";
+        Width = 2;
+        StrokeStyle = 0;         // Solid
+    }
+}
+
+/// <summary>
 /// 单个视野锥数据
 /// </summary>
 public struct VisionConeData
@@ -211,6 +274,7 @@ public struct TokenData
     public double MovementSpeed { get; set; }
     public int CurrentHP { get; set; }
     public int MaxHP { get; set; }
+    public string Shape { get; set; }
 
     public TokenData()
     {
@@ -219,5 +283,6 @@ public struct TokenData
         MovementSpeed = 30;
         CurrentHP = 100;
         MaxHP = 100;
+        Shape = "Rectangle";
     }
 }

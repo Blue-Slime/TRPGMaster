@@ -19,7 +19,7 @@ public sealed class HierarchyNode
     public string SpriteColor { get; set; } = "#FF4444";
     public double Opacity { get; set; } = 1;
     public bool HasMapPosition { get; set; }
-    public string SourceAssetPath { get; set; } = string.Empty;
+    public string AssetRef { get; set; } = string.Empty;
     public string SourceAssetKind { get; set; } = string.Empty;
     public string SourceAssetName { get; set; } = string.Empty;
     public bool VisionEnabled { get; set; }

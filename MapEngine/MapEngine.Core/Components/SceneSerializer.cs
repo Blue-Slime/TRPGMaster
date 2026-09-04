@@ -68,7 +68,7 @@ public static class SceneSerializer
             case SpriteRendererComponent s:
                 props["spriteColor"] = s.Color;
                 props["opacity"] = s.Opacity;
-                props["sourceAssetPath"] = s.SourceAssetPath;
+                props["assetRef"] = s.AssetRef;
                 props["sourceAssetKind"] = s.SourceAssetKind;
                 props["sourceAssetName"] = s.SourceAssetName;
                 props["alignX"] = s.AlignX;
@@ -107,6 +107,7 @@ public static class SceneSerializer
                 props["currentHP"] = tk.CurrentHP;
                 props["maxHP"] = tk.MaxHP;
                 props["isInInitiativeTracker"] = tk.IsInInitiativeTracker;
+                props["shape"] = tk.Shape;
                 if (tk.Conditions.Count > 0)
                     props["conditions"] = tk.Conditions.Select(c => new ConditionData
                     {
@@ -146,6 +147,30 @@ public static class SceneSerializer
                 props["isBold"] = tx.IsBold;
                 props["isItalic"] = tx.IsItalic;
                 props["align"] = (int)tx.Align;
+                break;
+            case GraphNodeComponent gn:
+                props["kind"] = (int)gn.Kind;
+                props["displayName"] = gn.DisplayName;
+                props["description"] = gn.Description;
+                props["visibility"] = (int)gn.Visibility;
+                props["renderMode"] = (int)gn.RenderMode;
+                props["iconAssetRef"] = gn.IconAssetRef;
+                props["color"] = gn.Color;
+                props["size"] = gn.Size;
+                props["shape"] = gn.Shape;
+                break;
+            case GraphLinkComponent gl:
+                props["linkId"] = gl.LinkId;
+                props["targetNodeId"] = gl.TargetNodeId;
+                props["kind"] = (int)gl.Kind;
+                props["isBidirectional"] = gl.IsBidirectional;
+                props["label"] = gl.Label;
+                props["visibility"] = (int)gl.Visibility;
+                props["isPassable"] = gl.IsPassable;
+                props["cost"] = gl.Cost;
+                props["color"] = gl.Color;
+                props["width"] = gl.Width;
+                props["strokeStyle"] = (int)gl.StrokeStyle;
                 break;
         }
         return new ComponentData { Type = component.TypeName, Properties = props };
@@ -203,7 +228,7 @@ public static class SceneSerializer
             {
                 Color = GetString(data, "spriteColor", "#FF4444"),
                 Opacity = GetDouble(data, "opacity", 1),
-                SourceAssetPath = GetString(data, "sourceAssetPath"),
+                AssetRef = GetString(data, "assetRef"),
                 SourceAssetKind = GetString(data, "sourceAssetKind"),
                 SourceAssetName = GetString(data, "sourceAssetName"),
                 AlignX = (int)GetDouble(data, "alignX", 1),
@@ -245,6 +270,7 @@ public static class SceneSerializer
                 CurrentHP = (int)GetDouble(data, "currentHP", 100),
                 MaxHP = (int)GetDouble(data, "maxHP", 100),
                 IsInInitiativeTracker = GetBool(data, "isInInitiativeTracker", false),
+                Shape = GetString(data, "shape", "Rectangle"),
                 Conditions = GetConditions(data)
             },
             "Shape" => new ShapeComponent
@@ -273,6 +299,33 @@ public static class SceneSerializer
                 IsBold = GetBool(data, "isBold"),
                 IsItalic = GetBool(data, "isItalic"),
                 Align = (TextAlign)(int)GetDouble(data, "align", 1)
+            },
+            "GraphNode" => new GraphNodeComponent
+            {
+                Kind = (GraphNodeKind)(int)GetDouble(data, "kind"),
+                DisplayName = GetString(data, "displayName"),
+                Description = GetString(data, "description"),
+                Visibility = (GraphVisibility)(int)GetDouble(data, "visibility"),
+                RenderMode = (GraphNodeRenderMode)(int)GetDouble(data, "renderMode", 1),
+                IconAssetRef = GetString(data, "iconAssetRef"),
+                Color = GetString(data, "color", "#4A90E2"),
+                Size = GetDouble(data, "size", 48),
+                Shape = GetString(data, "shape", "circle")
+            },
+            "GraphLink" => new GraphLinkComponent
+            {
+                // LinkId 缺失时补新的，保证每条边始终有稳定 ID
+                LinkId = GetString(data, "linkId") is { Length: > 0 } lid ? lid : Guid.NewGuid().ToString("N"),
+                TargetNodeId = GetString(data, "targetNodeId"),
+                Kind = (GraphLinkKind)(int)GetDouble(data, "kind"),
+                IsBidirectional = GetBool(data, "isBidirectional", true),
+                Label = GetString(data, "label"),
+                Visibility = (GraphVisibility)(int)GetDouble(data, "visibility"),
+                IsPassable = GetBool(data, "isPassable", true),
+                Cost = GetDouble(data, "cost", 1),
+                Color = GetString(data, "color", "#8A8F98"),
+                Width = GetDouble(data, "width", 2),
+                StrokeStyle = (StrokeStyle)(int)GetDouble(data, "strokeStyle")
             },
             _ => null
         };

@@ -86,10 +86,11 @@ public sealed class MapSyncClient
         {
             try
             {
-                // 1. 清空本地 World
-                foreach (var obj in _world.AllObjects().ToList())
+                // 1. 清空本地 World。只摘根：RemoveObject 会连带注销整棵子树，
+                //    遍历 AllObjects() 会对已随父摘除的子对象重复调用。
+                foreach (var root in _world.Roots.ToList())
                 {
-                    _world.RemoveObject(obj);
+                    _world.RemoveObject(root);
                 }
 
                 // 2. 从文档重建场景

@@ -85,9 +85,12 @@
             </StackPanel>
 
             <!-- 先攻卡片横向滑动 -->
-            <Grid Grid.Row="1">
-                <!-- 卡片轨道 -->
-                <ScrollViewer HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Disabled">
+            <Grid Grid.Row="1" ClipToBounds="True">
+                <!-- 卡片轨道：ClipToBounds 使超出框宽的卡片被裁剪 -->
+                <ScrollViewer x:Name="CardScrollViewer"
+                              HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Disabled"
+                              ClipToBounds="True"
+                              MinHeight="148">
                     <ItemsControl ItemsSource="{Binding Entries}">
                         <ItemsControl.ItemsPanel>
                             <ItemsPanelTemplate>

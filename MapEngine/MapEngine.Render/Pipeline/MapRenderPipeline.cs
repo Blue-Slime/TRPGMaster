@@ -20,6 +20,7 @@ namespace MapEngine
         private uint _spriteVbo;
         private uint _spriteShaderProgram;
         private int _spriteSamplerLocation = -1;
+        private int _spriteCircularClipLocation = -1;
         private string _shaderProfileName = "Unknown";
         private readonly Dictionary<string, TextureResource> _textureCache = new(StringComparer.OrdinalIgnoreCase);
 
@@ -80,10 +81,23 @@ namespace MapEngine
                 in vec4 vColor;
                 in vec2 vUv;
                 uniform sampler2D uTexture;
+                uniform bool uCircularClip;
                 out vec4 FragColor;
                 void main()
                 {
-                    FragColor = texture(uTexture, vUv) * vColor;
+                    vec4 texColor = texture(uTexture, vUv);
+
+                    if (uCircularClip)
+                    {
+                        vec2 center = vec2(0.5, 0.5);
+                        float dist = distance(vUv, center);
+                        if (dist > 0.5)
+                        {
+                            discard;
+                        }
+                    }
+
+                    FragColor = texColor * vColor;
                 }
                 """,
                 false),
@@ -132,10 +146,23 @@ namespace MapEngine
                 in vec4 vColor;
                 in vec2 vUv;
                 uniform sampler2D uTexture;
+                uniform bool uCircularClip;
                 out vec4 FragColor;
                 void main()
                 {
-                    FragColor = texture(uTexture, vUv) * vColor;
+                    vec4 texColor = texture(uTexture, vUv);
+
+                    if (uCircularClip)
+                    {
+                        vec2 center = vec2(0.5, 0.5);
+                        float dist = distance(vUv, center);
+                        if (dist > 0.5)
+                        {
+                            discard;
+                        }
+                    }
+
+                    FragColor = texColor * vColor;
                 }
                 """,
                 false),
@@ -196,6 +223,7 @@ namespace MapEngine
             _solidShaderProgram = programs.SolidProgram;
             _spriteShaderProgram = programs.SpriteProgram;
             _spriteSamplerLocation = _gl.GetUniformLocation(_spriteShaderProgram, "uTexture");
+            _spriteCircularClipLocation = _gl.GetUniformLocation(_spriteShaderProgram, "uCircularClip");
 
             _solidVao = _gl.GenVertexArray();
             _solidVbo = _gl.GenBuffer();
@@ -401,6 +429,10 @@ namespace MapEngine
             // ── 矢量形状：描边趟（每个形状单独提交，LINE_LOOP/LINE_STRIP）─────
             DrawVectorShapeStrokes(scene.VectorShapes, scene);
 
+            // ── 拓扑图：连线先画，节点图标压在线上 ────────────────────────────
+            DrawGraphLinks(scene.GraphLinks, scene);
+            DrawGraphNodes(scene.GraphNodes, scene);
+
             DrawSprites(scene.Sprites, scene);
 
             // ── Token 状态徽章（已移至 TokenUIManager Avalonia UI 层）───────
@@ -447,6 +479,13 @@ namespace MapEngine
                 if (texture is null)
                 {
                     continue;
+                }
+
+                // 设置圆形裁剪 uniform
+                if (_spriteCircularClipLocation >= 0)
+                {
+                    bool isCircular = sprite.Shape == "Circle";
+                    _gl.Uniform1(_spriteCircularClipLocation, isCircular ? 1 : 0);
                 }
 
                 vertices.Clear();
@@ -939,6 +978,265 @@ namespace MapEngine
                     break;
             }
         }
+
+        // ─────────────────────────────────────────────────────────────────────
+        // 拓扑图渲染（连线 + 节点）
+        // ─────────────────────────────────────────────────────────────────────
+
+        /// <summary>
+        /// 画拓扑连线。逐条提交以便各自设置线宽/线型（与矢量描边同样的取舍）。
+        /// 虚线/点线用 shader 之外的手法做不到，这里按段拆分模拟。
+        /// </summary>
+        private unsafe void DrawGraphLinks(IReadOnlyList<MapRenderGraphLink> links, MapRenderScene scene)
+        {
+            if (_gl is null || links.Count == 0) return;
+
+            _gl.UseProgram(_solidShaderProgram);
+            _gl.BindVertexArray(_solidVao);
+
+            foreach (var link in links)
+            {
+                var verts = new List<float>(64);
+                var color = WithOpacity(link.Color, link.Opacity);
+
+                var x1 = ContentToNdcX(link.X1, scene);
+                var y1 = ContentToNdcY(link.Y1, scene);
+                var x2 = ContentToNdcX(link.X2, scene);
+                var y2 = ContentToNdcY(link.Y2, scene);
+
+                if (link.StrokeStyle == VectorStrokeStyle.Solid)
+                {
+                    AppendSolidVertex(verts, x1, y1, color);
+                    AppendSolidVertex(verts, x2, y2, color);
+                }
+                else
+                {
+                    // 虚线/点线：沿线按固定屏幕长度切段，只画奇数段
+                    // dash 长度取屏幕像素折算到 NDC，保证缩放时观感稳定
+                    var dashPx = link.StrokeStyle == VectorStrokeStyle.Dashed ? 12.0 : 4.0;
+                    var gapPx = link.StrokeStyle == VectorStrokeStyle.Dashed ? 8.0 : 5.0;
+
+                    var dxPx = (link.X2 - link.X1) * scene.Zoom;
+                    var dyPx = (link.Y2 - link.Y1) * scene.Zoom;
+                    var lenPx = Math.Sqrt(dxPx * dxPx + dyPx * dyPx);
+                    if (lenPx < 0.5) continue;
+
+                    var step = dashPx + gapPx;
+                    for (double t = 0; t < lenPx; t += step)
+                    {
+                        var t0 = t / lenPx;
+                        var t1 = Math.Min(t + dashPx, lenPx) / lenPx;
+                        AppendSolidVertex(verts,
+                            x1 + (float)((x2 - x1) * t0), y1 + (float)((y2 - y1) * t0), color);
+                        AppendSolidVertex(verts,
+                            x1 + (float)((x2 - x1) * t1), y1 + (float)((y2 - y1) * t1), color);
+                    }
+                }
+
+                // 单向边在终点补箭头（两条短线，与主线同批提交）
+                if (link.ShowArrow)
+                    AppendArrowHead(verts, x1, y1, x2, y2, color, scene);
+
+                if (verts.Count < 2 * 6) continue;
+
+                _gl.BindBuffer(BufferTargetARB.ArrayBuffer, _solidVbo);
+                fixed (float* data = verts.ToArray())
+                {
+                    _gl.BufferData(BufferTargetARB.ArrayBuffer,
+                        (nuint)(verts.Count * sizeof(float)), data, BufferUsageARB.DynamicDraw);
+                }
+
+                _gl.LineWidth(link.IsSelected ? link.Width + 2f : link.Width);
+                _gl.DrawArrays(PrimitiveType.Lines, 0, (uint)(verts.Count / 6));
+            }
+
+            _gl.LineWidth(1f);
+            _gl.BindBuffer(BufferTargetARB.ArrayBuffer, 0);
+            _gl.BindVertexArray(0);
+            _gl.UseProgram(0);
+        }
+
+        /// <summary>在 (x2,y2) 端画箭头的两条斜线（NDC 坐标）。</summary>
+        private static void AppendArrowHead(
+            List<float> verts, float x1, float y1, float x2, float y2,
+            MapRenderColor color, MapRenderScene scene)
+        {
+            // NDC 的 x/y 尺度不一致，先换算成各自方向的屏幕比例再取角度
+            var dxPx = (x2 - x1) * scene.ViewportWidth;
+            var dyPx = (y2 - y1) * scene.ViewportHeight;
+            var lenPx = Math.Sqrt(dxPx * dxPx + dyPx * dyPx);
+            if (lenPx < 1e-3) return;
+
+            var angle = Math.Atan2(dyPx, dxPx);
+            const double headPx = 12.0;
+            const double spread = Math.PI / 7.0;
+
+            foreach (var a in new[] { angle + Math.PI - spread, angle + Math.PI + spread })
+            {
+                var ex = x2 + (float)(Math.Cos(a) * headPx / scene.ViewportWidth);
+                var ey = y2 + (float)(Math.Sin(a) * headPx / scene.ViewportHeight);
+                AppendSolidVertex(verts, x2, y2, color);
+                AppendSolidVertex(verts, ex, ey, color);
+            }
+        }
+
+        /// <summary>
+        /// 画拓扑节点。无贴图的走纯色形状批次；有贴图的转成 sprite 走贴图管线。
+        /// </summary>
+        private unsafe void DrawGraphNodes(IReadOnlyList<MapRenderGraphNode> nodes, MapRenderScene scene)
+        {
+            if (_gl is null || nodes.Count == 0) return;
+
+            var solid = new List<float>(2048);
+            var textured = new List<MapRenderSprite>();
+
+            foreach (var node in nodes)
+            {
+                if (!string.IsNullOrEmpty(node.TexturePath))
+                {
+                    // 有图标就走贴图管线。节点形状交给 sprite 的 Shape 做裁剪，
+                    // 这样圆形节点的图标也会被裁成圆形。
+                    textured.Add(new MapRenderSprite(
+                        node.CenterX - node.Size / 2,
+                        node.CenterY - node.Size / 2,
+                        node.Size,
+                        node.Size,
+                        0,
+                        node.TexturePath!,
+                        WithOpacity(new MapRenderColor(1f, 1f, 1f, 1f), node.Opacity),
+                        node.Shape == GraphNodeShape.Circle ? "Circle" : "Rectangle"));
+                    continue;
+                }
+
+                AppendGraphNodeFill(solid, node, scene);
+            }
+
+            if (solid.Count > 0)
+            {
+                _gl.UseProgram(_solidShaderProgram);
+                _gl.BindVertexArray(_solidVao);
+                _gl.BindBuffer(BufferTargetARB.ArrayBuffer, _solidVbo);
+                fixed (float* data = solid.ToArray())
+                {
+                    _gl.BufferData(BufferTargetARB.ArrayBuffer,
+                        (nuint)(solid.Count * sizeof(float)), data, BufferUsageARB.DynamicDraw);
+                }
+                _gl.DrawArrays(PrimitiveType.Triangles, 0, (uint)(solid.Count / 6));
+                _gl.BindBuffer(BufferTargetARB.ArrayBuffer, 0);
+                _gl.BindVertexArray(0);
+                _gl.UseProgram(0);
+            }
+
+            if (textured.Count > 0)
+                DrawSprites(textured, scene);
+
+            // 选中环单独一趟描边，压在节点之上
+            DrawGraphNodeSelection(nodes, scene);
+        }
+
+        private static void AppendGraphNodeFill(
+            List<float> verts, MapRenderGraphNode node, MapRenderScene scene)
+        {
+            var cx = ContentToNdcX(node.CenterX, scene);
+            var cy = ContentToNdcY(node.CenterY, scene);
+            var rx = (float)((node.Size / 2.0) * scene.Zoom / scene.ViewportWidth * 2.0);
+            var ry = (float)((node.Size / 2.0) * scene.Zoom / scene.ViewportHeight * 2.0);
+            var color = WithOpacity(node.FillColor, node.Opacity);
+
+            switch (node.Shape)
+            {
+                case GraphNodeShape.Square:
+                    AppendSolidVertex(verts, cx - rx, cy + ry, color);
+                    AppendSolidVertex(verts, cx + rx, cy + ry, color);
+                    AppendSolidVertex(verts, cx + rx, cy - ry, color);
+                    AppendSolidVertex(verts, cx - rx, cy + ry, color);
+                    AppendSolidVertex(verts, cx + rx, cy - ry, color);
+                    AppendSolidVertex(verts, cx - rx, cy - ry, color);
+                    break;
+
+                case GraphNodeShape.Diamond:
+                    // 四个三角形从中心辐射到四个顶点
+                    AppendSolidVertex(verts, cx, cy, color);
+                    AppendSolidVertex(verts, cx, cy + ry, color);
+                    AppendSolidVertex(verts, cx + rx, cy, color);
+
+                    AppendSolidVertex(verts, cx, cy, color);
+                    AppendSolidVertex(verts, cx + rx, cy, color);
+                    AppendSolidVertex(verts, cx, cy - ry, color);
+
+                    AppendSolidVertex(verts, cx, cy, color);
+                    AppendSolidVertex(verts, cx, cy - ry, color);
+                    AppendSolidVertex(verts, cx - rx, cy, color);
+
+                    AppendSolidVertex(verts, cx, cy, color);
+                    AppendSolidVertex(verts, cx - rx, cy, color);
+                    AppendSolidVertex(verts, cx, cy + ry, color);
+                    break;
+
+                default: // Circle
+                    const int segments = 24;
+                    for (int i = 0; i < segments; i++)
+                    {
+                        var a1 = 2 * Math.PI * i / segments;
+                        var a2 = 2 * Math.PI * (i + 1) / segments;
+                        AppendSolidVertex(verts, cx, cy, color);
+                        AppendSolidVertex(verts,
+                            cx + (float)(Math.Cos(a1) * rx), cy - (float)(Math.Sin(a1) * ry), color);
+                        AppendSolidVertex(verts,
+                            cx + (float)(Math.Cos(a2) * rx), cy - (float)(Math.Sin(a2) * ry), color);
+                    }
+                    break;
+            }
+        }
+
+        private unsafe void DrawGraphNodeSelection(
+            IReadOnlyList<MapRenderGraphNode> nodes, MapRenderScene scene)
+        {
+            if (_gl is null) return;
+
+            var selected = nodes.Where(n => n.IsSelected).ToList();
+            if (selected.Count == 0) return;
+
+            var ring = new MapRenderColor(1.0f, 0.85f, 0.25f, 0.95f);
+
+            _gl.UseProgram(_solidShaderProgram);
+            _gl.BindVertexArray(_solidVao);
+
+            foreach (var node in selected)
+            {
+                var verts = new List<float>(160);
+                var cx = ContentToNdcX(node.CenterX, scene);
+                var cy = ContentToNdcY(node.CenterY, scene);
+                // 环比节点本体大 6 屏幕像素
+                var rx = (float)((node.Size / 2.0 + 6.0 / scene.Zoom) * scene.Zoom / scene.ViewportWidth * 2.0);
+                var ry = (float)((node.Size / 2.0 + 6.0 / scene.Zoom) * scene.Zoom / scene.ViewportHeight * 2.0);
+
+                const int segments = 32;
+                for (int i = 0; i <= segments; i++)
+                {
+                    var a = 2 * Math.PI * i / segments;
+                    AppendSolidVertex(verts,
+                        cx + (float)(Math.Cos(a) * rx), cy - (float)(Math.Sin(a) * ry), ring);
+                }
+
+                _gl.BindBuffer(BufferTargetARB.ArrayBuffer, _solidVbo);
+                fixed (float* data = verts.ToArray())
+                {
+                    _gl.BufferData(BufferTargetARB.ArrayBuffer,
+                        (nuint)(verts.Count * sizeof(float)), data, BufferUsageARB.DynamicDraw);
+                }
+                _gl.LineWidth(2f);
+                _gl.DrawArrays(PrimitiveType.LineStrip, 0, (uint)(verts.Count / 6));
+            }
+
+            _gl.LineWidth(1f);
+            _gl.BindBuffer(BufferTargetARB.ArrayBuffer, 0);
+            _gl.BindVertexArray(0);
+            _gl.UseProgram(0);
+        }
+
+        private static MapRenderColor WithOpacity(MapRenderColor color, float opacity)
+            => opacity >= 1f ? color : new MapRenderColor(color.R, color.G, color.B, color.A * opacity);
 
         private static void AppendSpriteVertex(List<float> vertices, float x, float y, MapRenderColor color, float u, float v)
         {

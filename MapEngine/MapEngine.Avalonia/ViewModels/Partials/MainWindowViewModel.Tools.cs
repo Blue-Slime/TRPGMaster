@@ -53,6 +53,245 @@ public partial class MainWindowViewModel
 
         OnPropertyChanged(nameof(IsShapeToolActive));
         OnPropertyChanged(nameof(IsFogToolActive));
+        OnPropertyChanged(nameof(IsGraphToolActive));
+
+        // 换工具时丢掉半成品连线，否则回到 graph 工具会接着上次的起点连
+        if (!IsGraphToolActive) CancelGraphLinkDrag();
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
+    // 拓扑工具（建节点 / 拉连线）
+    // ─────────────────────────────────────────────────────────────────────
+
+    /// <summary>拓扑工具是否为当前主工具（控制子工具面板显隐）。</summary>
+    public bool IsGraphToolActive =>
+        string.Equals(SelectedPrimaryTool?.Key, "graph", StringComparison.OrdinalIgnoreCase);
+
+    private string _graphSubTool = "node";
+    /// <summary>拓扑子工具：node（建节点）| link（拉连线）。</summary>
+    public string GraphSubTool
+    {
+        get => _graphSubTool;
+        set
+        {
+            if (SetProperty(ref _graphSubTool, value))
+            {
+                CancelGraphLinkDrag();
+                OnPropertyChanged(nameof(IsGraphNodeSubTool));
+                OnPropertyChanged(nameof(IsGraphLinkSubTool));
+            }
+        }
+    }
+
+    public bool IsGraphNodeSubTool => _graphSubTool == "node";
+    public bool IsGraphLinkSubTool => _graphSubTool == "link";
+
+    /// <summary>连线拖拽的起点节点。非 null 表示正在拉线。</summary>
+    private HierarchyItemViewModel? _graphLinkDragSource;
+
+    /// <summary>正在拉线时的起点节点，供 View 层画预览线。</summary>
+    public HierarchyItemViewModel? GraphLinkDragSource => _graphLinkDragSource;
+
+    /// <summary>是否正在拉连线。</summary>
+    public bool IsDraggingGraphLink => _graphLinkDragSource is not null;
+
+    /// <summary>
+    /// 在指定世界坐标建一个拓扑节点。走 CommandBus 以支持撤销与联机同步。
+    /// </summary>
+    public HierarchyItemViewModel? CreateGraphNodeAt(double worldX, double worldY)
+    {
+        var parent = HierarchyRoots.Count > 0 ? HierarchyRoots[0] : EnsureSceneRoot();
+        if (parent is null)
+        {
+            StatusMessage = "当前没有可用的层级父对象";
+            return null;
+        }
+
+        var dto = new Services.HierarchyNodeDto
+        {
+            Id             = CreateId("node"),
+            Name           = "节点",
+            Icon           = "🕸",
+            ObjectType     = "GraphNode",
+            IsActive       = true,
+            HasMapPosition = true,
+            X              = worldX,
+            Y              = worldY,
+            GraphNodeV2    = new GraphNodeData
+            {
+                // 新建节点默认对玩家可见，GM 想藏再改——比反过来更少踩坑
+                Visibility = (int)GraphVisibility.Revealed,
+            },
+        };
+
+        _commandBus.Execute(new VmAddEmptyObjectCommand(this, parent.Id, dto));
+        var created = FindHierarchyById(dto.Id);
+        if (created is not null)
+        {
+            SelectedHierarchyItem = created;
+            StatusMessage = $"已创建拓扑节点 {created.Name}";
+            RefreshMapRenderableItems();
+        }
+        return created;
+    }
+
+    /// <summary>开始从某节点拉连线。目标非节点时忽略。</summary>
+    public bool BeginGraphLinkDrag(HierarchyItemViewModel node)
+    {
+        if (node.GetComponent<GraphNodeComponent>() is null)
+        {
+            StatusMessage = "只能从拓扑节点开始连线";
+            return false;
+        }
+
+        _graphLinkDragSource = node;
+        OnPropertyChanged(nameof(GraphLinkDragSource));
+        OnPropertyChanged(nameof(IsDraggingGraphLink));
+        StatusMessage = $"从 {node.Name} 拉连线，松开鼠标选择目标节点";
+        return true;
+    }
+
+    /// <summary>
+    /// 完成连线。目标为空/非节点/自身/已存在同向连接时都不建。
+    /// </summary>
+    public bool CompleteGraphLinkDrag(HierarchyItemViewModel? target)
+    {
+        var source = _graphLinkDragSource;
+        CancelGraphLinkDrag();
+
+        if (source is null) return false;
+        if (target is null)
+        {
+            StatusMessage = "连线取消：终点不是节点";
+            return false;
+        }
+        if (ReferenceEquals(source, target))
+        {
+            StatusMessage = "连线取消：不能连到自己";
+            return false;
+        }
+        if (target.GetComponent<GraphNodeComponent>() is null)
+        {
+            StatusMessage = "连线取消：终点不是拓扑节点";
+            return false;
+        }
+
+        var targetId = target.BackingObject.Id.ToString();
+        var already = source.BackingObject
+            .GetComponents<GraphLinkComponent>()
+            .Any(l => string.Equals(l.TargetNodeId, targetId, StringComparison.OrdinalIgnoreCase));
+        if (already)
+        {
+            StatusMessage = $"{source.Name} → {target.Name} 已有连线";
+            return false;
+        }
+
+        _commandBus.Execute(new VmAddGraphLinkCommand(
+            this,
+            source.Id,
+            new GraphLinkComponent
+            {
+                TargetNodeId = targetId,
+                // 新连线默认双向可见，与新建节点的默认保持一致
+                Visibility   = GraphVisibility.Revealed,
+            }));
+
+        StatusMessage = $"已连接 {source.Name} ↔ {target.Name}";
+        return true;
+    }
+
+    /// <summary>丢弃进行中的连线拖拽。</summary>
+    public void CancelGraphLinkDrag()
+    {
+        if (_graphLinkDragSource is null) return;
+        _graphLinkDragSource = null;
+        OnPropertyChanged(nameof(GraphLinkDragSource));
+        OnPropertyChanged(nameof(IsDraggingGraphLink));
+    }
+
+    /// <summary>
+    /// 命中测试：找出坐标落在哪个拓扑节点上。View 层的点击/拖拽用它定位节点。
+    /// </summary>
+    public HierarchyItemViewModel? HitTestGraphNode(double worldX, double worldY)
+    {
+        HierarchyItemViewModel? best = null;
+        var bestDistSq = double.MaxValue;
+
+        foreach (var item in MapRenderableItems)
+        {
+            var comp = item.GetComponent<GraphNodeComponent>();
+            if (comp is null || !item.ShouldRenderOnMap) continue;
+            if (comp.RenderMode is GraphNodeRenderMode.None or GraphNodeRenderMode.Content)
+                continue;   // 不画的节点点不到
+
+            var dx = worldX - item.X;
+            var dy = worldY - item.Y;
+            var distSq = dx * dx + dy * dy;
+            var radius = comp.Size / 2.0;
+
+            // 重叠时取圆心更近的那个
+            if (distSq <= radius * radius && distSq < bestDistSq)
+            {
+                bestDistSq = distSq;
+                best = item;
+            }
+        }
+        return best;
+    }
+
+    /// <summary>
+    /// 清掉所有指向已删节点的悬空连线，返回清理条数。
+    /// 遍历 VM 树而非 World —— 编辑器里的对象只在 VM 树上，World 可能是空的。
+    /// </summary>
+    public int PruneDanglingGraphLinks()
+    {
+        // 先收集当前存在的节点 Id
+        var liveNodeIds = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var item in EnumerateAllHierarchyItems())
+        {
+            if (item.GetComponent<GraphNodeComponent>() is not null)
+                liveNodeIds.Add(item.BackingObject.Id.ToString());
+        }
+
+        var pruned = 0;
+        foreach (var item in EnumerateAllHierarchyItems())
+        {
+            var dangling = item.BackingObject
+                .GetComponents<GraphLinkComponent>()
+                .Where(l => !liveNodeIds.Contains(l.TargetNodeId))
+                .ToList();
+
+            foreach (var link in dangling)
+            {
+                item.BackingObject.RemoveComponent(link);
+                pruned++;
+            }
+            if (dangling.Count > 0)
+                item.RebuildComponentEditors();
+        }
+
+        if (pruned > 0)
+        {
+            StatusMessage = $"已清理 {pruned} 条悬空连线";
+            RefreshMapRenderableItems();
+        }
+        return pruned;
+    }
+
+    /// <summary>深度优先遍历整棵层级树。</summary>
+    private IEnumerable<HierarchyItemViewModel> EnumerateAllHierarchyItems()
+    {
+        foreach (var root in HierarchyRoots)
+            foreach (var item in Descend(root))
+                yield return item;
+
+        static IEnumerable<HierarchyItemViewModel> Descend(HierarchyItemViewModel node)
+        {
+            yield return node;
+            foreach (var child in node.Children)
+                foreach (var d in Descend(child))
+                    yield return d;
+        }
     }
 
     // ─────────────────────────────────────────────────────────────────────

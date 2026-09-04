@@ -80,6 +80,37 @@ public static class CommandSerializer
                     name = cmd.NewName
                 };
                 break;
+            case WorldUpdateGraphNodeCommand cmd:
+                commandType = "UpdateGraphNode";
+                paramsObj = new
+                {
+                    object_id = cmd.ObjectId.ToString(),
+                    property = cmd.Property,
+                    value = cmd.NewValue
+                };
+                break;
+            case WorldUpdateGraphLinkCommand cmd:
+                commandType = "UpdateGraphLink";
+                paramsObj = new
+                {
+                    object_id = cmd.ObjectId.ToString(),
+                    link_id = cmd.LinkId,
+                    property = cmd.Property,
+                    value = cmd.NewValue
+                };
+                break;
+            case WorldAddGraphLinkCommand cmd:
+                commandType = "AddGraphLink";
+                paramsObj = GraphLinkPayload(cmd.ObjectId, cmd.Link);
+                break;
+            case WorldRemoveGraphLinkCommand cmd:
+                commandType = "RemoveGraphLink";
+                paramsObj = new
+                {
+                    object_id = cmd.ObjectId.ToString(),
+                    link_id = cmd.LinkId
+                };
+                break;
             default:
                 throw new NotSupportedException($"Cannot serialize command type: {command.GetType().Name}");
         }
@@ -184,6 +215,47 @@ public static class CommandSerializer
                 };
                 break;
 
+            case WorldUpdateGraphNodeCommand cmd:
+                // 逆操作是同一命令带旧值
+                commandType = "UpdateGraphNode";
+                paramsObj = new
+                {
+                    object_id = cmd.ObjectId.ToString(),
+                    property = cmd.Property,
+                    value = cmd.OldValue
+                };
+                break;
+
+            case WorldUpdateGraphLinkCommand cmd:
+                commandType = "UpdateGraphLink";
+                paramsObj = new
+                {
+                    object_id = cmd.ObjectId.ToString(),
+                    link_id = cmd.LinkId,
+                    property = cmd.Property,
+                    value = cmd.OldValue
+                };
+                break;
+
+            case WorldAddGraphLinkCommand cmd:
+                // AddGraphLink 的逆操作是 RemoveGraphLink
+                commandType = "RemoveGraphLink";
+                paramsObj = new
+                {
+                    object_id = cmd.ObjectId.ToString(),
+                    link_id = cmd.Link.LinkId
+                };
+                break;
+
+            case WorldRemoveGraphLinkCommand cmd:
+                // RemoveGraphLink 的逆操作是 AddGraphLink（用摘除时的快照重建）
+                if (cmd.RemovedLink is not { } removed)
+                    throw new InvalidOperationException("RemoveGraphLink command must be executed before SerializeInverse");
+
+                commandType = "AddGraphLink";
+                paramsObj = GraphLinkPayload(cmd.ObjectId, removed);
+                break;
+
             default:
                 throw new NotSupportedException($"Cannot serialize inverse for command type: {command.GetType().Name}");
         }
@@ -208,9 +280,102 @@ public static class CommandSerializer
             "SetProperty" => DeserializeSetProperty(paramsJson),
             "AddComponent" => DeserializeAddComponent(paramsJson),
             "RemoveComponent" => DeserializeRemoveComponent(paramsJson),
+            "Rename" => DeserializeRename(paramsJson),
+            "UpdateGraphNode" => DeserializeUpdateGraphNode(paramsJson),
+            "UpdateGraphLink" => DeserializeUpdateGraphLink(paramsJson),
+            "AddGraphLink" => DeserializeAddGraphLink(paramsJson),
+            "RemoveGraphLink" => DeserializeRemoveGraphLink(paramsJson),
             _ => throw new NotSupportedException($"Unknown command type: {commandType}")
         };
     }
+
+    /// <summary>GraphLink 的完整线格式。AddGraphLink 正向/逆向共用，避免两处字段不一致。</summary>
+    private static object GraphLinkPayload(Guid objectId, GraphLinkComponent link) => new
+    {
+        object_id = objectId.ToString(),
+        link_id = link.LinkId,
+        target_node_id = link.TargetNodeId,
+        kind = (int)link.Kind,
+        is_bidirectional = link.IsBidirectional,
+        label = link.Label,
+        visibility = (int)link.Visibility,
+        is_passable = link.IsPassable,
+        cost = link.Cost,
+        color = link.Color,
+        width = link.Width,
+        stroke_style = (int)link.StrokeStyle
+    };
+
+    private static WorldRenameCommand DeserializeRename(JsonElement json)
+    {
+        var objectId = Guid.Parse(json.GetProperty("object_id").GetString()!);
+        var name = json.GetProperty("name").GetString() ?? "";
+        return new WorldRenameCommand(objectId, name);
+    }
+
+    private static WorldUpdateGraphNodeCommand DeserializeUpdateGraphNode(JsonElement json)
+    {
+        var objectId = Guid.Parse(json.GetProperty("object_id").GetString()!);
+        var property = json.GetProperty("property").GetString()!;
+        var value = ReadLooseValue(json.GetProperty("value"));
+        return new WorldUpdateGraphNodeCommand(objectId, property, value);
+    }
+
+    private static WorldUpdateGraphLinkCommand DeserializeUpdateGraphLink(JsonElement json)
+    {
+        var objectId = Guid.Parse(json.GetProperty("object_id").GetString()!);
+        var linkId = json.GetProperty("link_id").GetString()!;
+        var property = json.GetProperty("property").GetString()!;
+        var value = ReadLooseValue(json.GetProperty("value"));
+        return new WorldUpdateGraphLinkCommand(objectId, linkId, property, value);
+    }
+
+    private static WorldAddGraphLinkCommand DeserializeAddGraphLink(JsonElement json)
+    {
+        var objectId = Guid.Parse(json.GetProperty("object_id").GetString()!);
+        var link = new GraphLinkComponent
+        {
+            // LinkId 由发起端决定，收到后必须沿用，否则两端边 ID 不一致后续更新会失配
+            LinkId = json.TryGetProperty("link_id", out var lid) && lid.GetString() is { Length: > 0 } s
+                ? s : Guid.NewGuid().ToString("N"),
+            TargetNodeId = json.GetProperty("target_node_id").GetString() ?? "",
+            Kind = (GraphLinkKind)ReadInt(json, "kind"),
+            IsBidirectional = ReadBool(json, "is_bidirectional", true),
+            Label = json.TryGetProperty("label", out var lb) ? lb.GetString() ?? "" : "",
+            Visibility = (GraphVisibility)ReadInt(json, "visibility"),
+            IsPassable = ReadBool(json, "is_passable", true),
+            Cost = json.TryGetProperty("cost", out var c) && c.TryGetDouble(out var cv) ? cv : 1,
+            Color = json.TryGetProperty("color", out var col) ? col.GetString() ?? "#8A8F98" : "#8A8F98",
+            Width = json.TryGetProperty("width", out var w) && w.TryGetDouble(out var wv) ? wv : 2,
+            StrokeStyle = (StrokeStyle)ReadInt(json, "stroke_style")
+        };
+        return new WorldAddGraphLinkCommand(objectId, link);
+    }
+
+    private static WorldRemoveGraphLinkCommand DeserializeRemoveGraphLink(JsonElement json)
+    {
+        var objectId = Guid.Parse(json.GetProperty("object_id").GetString()!);
+        var linkId = json.GetProperty("link_id").GetString()!;
+        return new WorldRemoveGraphLinkCommand(objectId, linkId);
+    }
+
+    private static int ReadInt(JsonElement json, string name)
+        => json.TryGetProperty(name, out var el) && el.TryGetInt32(out var v) ? v : 0;
+
+    private static bool ReadBool(JsonElement json, string name, bool fallback)
+        => json.TryGetProperty(name, out var el)
+           && el.ValueKind is JsonValueKind.True or JsonValueKind.False
+            ? el.GetBoolean() : fallback;
+
+    private static object? ReadLooseValue(JsonElement value) => value.ValueKind switch
+    {
+        JsonValueKind.String => value.GetString(),
+        JsonValueKind.Number => value.GetDouble(),
+        JsonValueKind.True => true,
+        JsonValueKind.False => false,
+        JsonValueKind.Null => null,
+        _ => value.ToString()
+    };
 
     private static WorldAddObjectCommand DeserializeAddObject(JsonElement json)
     {

@@ -35,6 +35,7 @@ public static class MapSceneBuilder
 
         var (wallLines, wallHandles) = (BuildWallLines(viewModel), BuildWallHandles(viewModel));
         var (visionCones, visionFans) = BuildVision(viewModel);
+        var (graphNodes, graphLinks) = BuildGraph(viewModel);
 
         return new MapRenderScene
         {
@@ -56,6 +57,8 @@ public static class MapSceneBuilder
             WallHandles = wallHandles,
             SelectionHandles = BuildSelectionHandles(viewModel),
             VectorShapes = BuildVectorShapes(viewModel),
+            GraphLinks = graphLinks,
+            GraphNodes = graphNodes,
             LightSources = BuildLightSources(viewModel),
             // ConditionBadges 已移至 TokenUIManager（Avalonia UI 层），此处不再在 GL 层渲染
             ConditionBadges = Array.Empty<MapRenderConditionBadge>(),
@@ -163,7 +166,8 @@ public static class MapSceneBuilder
                 height,
                 0,
                 TestBattleMapPath,
-                new MapRenderColor(1.0f, 1.0f, 1.0f, 1.0f))
+                new MapRenderColor(1.0f, 1.0f, 1.0f, 1.0f),
+                "Rectangle")
         ];
     }
 
@@ -222,20 +226,9 @@ public static class MapSceneBuilder
                 continue;
             }
 
-            var spritePath = MapSpriteAssetResolver.ResolveSpritePath(item.SourceAssetPath, item.SourceAssetKind);
-            if (!string.IsNullOrWhiteSpace(spritePath))
-            {
-                objects.Add(new MapRenderRect(
-                    item.MapLeft + 3,
-                    item.MapTop + 4,
-                    30,
-                    30,
-                    0,
-                    TokenShadowColor,
-                    null,
-                    1.0f));
-            }
+            // 阴影方块已移除 — 后续通过 alpha 轮廓描边实现选中高亮（参考 token-alpha-clipping-plan.md）
 
+            var spritePath = MapSpriteAssetResolver.ResolveSpritePath(item.AssetRef);
             var accentColor = ResolveObjectColor(item);
             // MapObjectSize(36) < SpriteWidth(50)；矩形必须在格子内居中，否则比格子小的矩形会偏向左上角
             var bodySize   = MapViewportConstants.MapObjectSize;
@@ -281,7 +274,7 @@ public static class MapSceneBuilder
                 continue;
             }
 
-            var spritePath = MapSpriteAssetResolver.ResolveSpritePath(item.SourceAssetPath, item.SourceAssetKind);
+            var spritePath = MapSpriteAssetResolver.ResolveSpritePath(item.AssetRef);
             if (string.IsNullOrWhiteSpace(spritePath))
             {
                 continue;
@@ -290,6 +283,9 @@ public static class MapSceneBuilder
             var spriteWidth = MapViewportConstants.CellSize * item.ScaleX;
             var spriteHeight = MapViewportConstants.CellSize * item.ScaleY;
 
+            // 获取 Token Shape（如果有 TokenComponent）
+            var tokenShape = item.BackingObject?.GetComponent<MapEngine.Core.Components.TokenComponent>()?.Shape ?? "Rectangle";
+
             sprites.Add(new MapRenderSprite(
                 item.MapLeft,
                 item.MapTop,
@@ -297,7 +293,8 @@ public static class MapSceneBuilder
                 Math.Max(MapViewportConstants.CellSize * 0.5, spriteHeight),
                 item.Rotation,
                 spritePath,
-                new MapRenderColor(1.0f, 1.0f, 1.0f, (float)Math.Clamp(item.Opacity, 0.0, 1.0))));
+                new MapRenderColor(1.0f, 1.0f, 1.0f, (float)Math.Clamp(item.Opacity, 0.0, 1.0)),
+                tokenShape));
         }
 
         return sprites;
@@ -759,6 +756,111 @@ public static class MapSceneBuilder
         }
 
         return shapes;
+    }
+
+    /// <summary>
+    /// 构建拓扑图渲染数据（节点图标 + 连线）。
+    ///
+    /// 连线两端坐标在此解析完毕，渲染层不再回查节点。
+    /// 非 GM 视角下隐藏未揭示的节点/边；GM 视角保留但降透明度。
+    /// </summary>
+    private static (IReadOnlyList<MapRenderGraphNode> nodes, IReadOnlyList<MapRenderGraphLink> links)
+        BuildGraph(MainWindowViewModel viewModel)
+    {
+        var nodes = new List<MapRenderGraphNode>();
+        var links = new List<MapRenderGraphLink>();
+
+        // 先建 Id→节点 的索引，连线要按 TargetNodeId 找对端坐标
+        var nodeItems = new Dictionary<string, HierarchyItemViewModel>(StringComparer.OrdinalIgnoreCase);
+        foreach (var item in viewModel.MapRenderableItems)
+        {
+            if (item.GetComponent<GraphNodeComponent>() is not null)
+                nodeItems[item.BackingObject.Id.ToString()] = item;
+        }
+
+        // GM 能看到未揭示内容（降透明度提示），玩家完全看不到
+        var isGm = viewModel.Host?.Role is null or MapEngine.Core.Hosting.UserRole.GM;
+        var selectedId = viewModel.SelectedHierarchyItem?.BackingObject.Id.ToString();
+
+        static (double X, double Y) CenterOf(HierarchyItemViewModel item)
+            => (MapViewportConstants.WorldOriginContent + item.X,
+                MapViewportConstants.WorldOriginContent - item.Y);
+
+        // ── 连线（先于节点，保证节点图标压在线上）─────────────────────────
+        foreach (var (fromId, fromItem) in nodeItems)
+        {
+            if (!fromItem.ShouldRenderOnMap) continue;
+
+            foreach (var link in fromItem.BackingObject.GetComponents<GraphLinkComponent>())
+            {
+                if (link.Visibility == GraphVisibility.Hidden && !isGm) continue;
+                if (!nodeItems.TryGetValue(link.TargetNodeId, out var toItem)) continue; // 悬空边跳过
+                if (!toItem.ShouldRenderOnMap) continue;
+
+                var (x1, y1) = CenterOf(fromItem);
+                var (x2, y2) = CenterOf(toItem);
+
+                // 未揭示（GM 视角）0.35，封锁 0.5，正常 1.0
+                var opacity = link.Visibility == GraphVisibility.Hidden ? 0.35f
+                            : link.IsPassable ? 1f : 0.5f;
+
+                links.Add(new MapRenderGraphLink
+                {
+                    LinkId      = link.LinkId,
+                    X1 = x1, Y1 = y1,
+                    X2 = x2, Y2 = y2,
+                    Color       = ParseColor(link.Color),
+                    Width       = (float)link.Width,
+                    StrokeStyle = link.StrokeStyle switch
+                    {
+                        StrokeStyle.Dashed => VectorStrokeStyle.Dashed,
+                        StrokeStyle.Dotted => VectorStrokeStyle.Dotted,
+                        _                  => VectorStrokeStyle.Solid,
+                    },
+                    ShowArrow   = !link.IsBidirectional,
+                    Opacity     = opacity,
+                    IsSelected  = false,
+                });
+            }
+        }
+
+        // ── 节点图标 ──────────────────────────────────────────────────────
+        foreach (var (id, item) in nodeItems)
+        {
+            if (!item.ShouldRenderOnMap) continue;
+
+            var comp = item.GetComponent<GraphNodeComponent>()!;
+            if (comp.RenderMode is GraphNodeRenderMode.None or GraphNodeRenderMode.Content)
+                continue; // 纯逻辑节点 / 只铺内容不画图标
+            if (comp.Visibility == GraphVisibility.Hidden && !isGm) continue;
+
+            var (cx, cy) = CenterOf(item);
+
+            // 图标走素材库解析，解析不到就退回纯色形状
+            var texturePath = string.IsNullOrEmpty(comp.IconAssetRef)
+                ? null
+                : MapSpriteAssetResolver.ResolveSpritePath(comp.IconAssetRef);
+
+            nodes.Add(new MapRenderGraphNode
+            {
+                ObjectId    = id,
+                CenterX     = cx,
+                CenterY     = cy,
+                Size        = comp.Size,
+                Shape       = comp.Shape?.ToLowerInvariant() switch
+                {
+                    "square"  => GraphNodeShape.Square,
+                    "diamond" => GraphNodeShape.Diamond,
+                    _         => GraphNodeShape.Circle,
+                },
+                FillColor   = ParseColor(comp.Color),
+                TexturePath = string.IsNullOrEmpty(texturePath) ? null : texturePath,
+                Opacity     = comp.Visibility == GraphVisibility.Hidden ? 0.4f : 1f,
+                IsSelected  = id.Equals(selectedId, StringComparison.OrdinalIgnoreCase),
+            });
+        }
+
+        return (nodes, links);
     }
 
     /// <summary>

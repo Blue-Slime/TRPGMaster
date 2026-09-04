@@ -35,11 +35,22 @@ public static class AssetLibraryFileSystemService
         return targetPath;
     }
 
-    public static string RenameFolder(string folderPath, string newName)
+    /// <param name="libraryRoot">
+    /// 当前生效的素材库根（本地库或房间库）。必须由调用方传入：
+    /// 用 ResolveRootPath(null) 永远拿到本地库根，会把房间库的改动写进本地索引（跨库污染）。
+    /// </param>
+    public static string RenameFolder(string folderPath, string newName, string libraryRoot)
     {
         var parentPath = Path.GetDirectoryName(folderPath)
             ?? throw new InvalidOperationException("素材文件夹缺少父目录。");
         var targetPath = BuildUniqueRenamePath(parentPath, newName, Path.GetFileName(folderPath));
+
+        // 更新元数据索引中所有子文件的 relativePath
+        var metadataStore = new MapEngine.Core.Assets.AssetMetadataStore(libraryRoot);
+        var oldPrefix = Path.GetRelativePath(libraryRoot, folderPath);
+        var newPrefix = Path.GetRelativePath(libraryRoot, targetPath);
+        metadataStore.UpdateRelativePathPrefix(oldPrefix, newPrefix);
+
         Directory.Move(folderPath, targetPath);
         return targetPath;
     }
@@ -47,10 +58,21 @@ public static class AssetLibraryFileSystemService
     public static void DeleteFolder(string folderPath)
         => Directory.Delete(folderPath, recursive: true);
 
-    public static string CopyFolderToParent(string sourceFolderPath, string targetParentPath)
+    /// <param name="libraryRoot">当前生效的素材库根，见 <see cref="RenameFolder"/>。</param>
+    public static string CopyFolderToParent(string sourceFolderPath, string targetParentPath, string libraryRoot)
     {
         var targetPath = GetUniqueDirectoryPath(targetParentPath, Path.GetFileName(sourceFolderPath));
+
+        // 复制文件夹并更新元数据索引
+        var metadataStore = new MapEngine.Core.Assets.AssetMetadataStore(libraryRoot);
+        var sourcePrefix = Path.GetRelativePath(libraryRoot, sourceFolderPath);
+        var targetPrefix = Path.GetRelativePath(libraryRoot, targetPath);
+
         CopyDirectory(sourceFolderPath, targetPath);
+
+        // 为所有复制的文件创建新的元数据条目
+        metadataStore.ClonePathPrefix(sourcePrefix, targetPrefix);
+
         return targetPath;
     }
 
@@ -74,12 +96,20 @@ public static class AssetLibraryFileSystemService
         return targetPath;
     }
 
-    public static string RenameFile(string filePath, string newName)
+    /// <param name="libraryRoot">当前生效的素材库根，见 <see cref="RenameFolder"/>。</param>
+    public static string RenameFile(string filePath, string newName, string libraryRoot)
     {
         var parentPath = Path.GetDirectoryName(filePath)
             ?? throw new InvalidOperationException("素材文件缺少父目录。");
         var targetFileName = PreserveKnownExtension(Path.GetFileName(filePath), newName);
         var targetPath = BuildUniqueRenamePath(parentPath, targetFileName, Path.GetFileName(filePath));
+
+        // 更新元数据索引中的 relativePath
+        var metadataStore = new MapEngine.Core.Assets.AssetMetadataStore(libraryRoot);
+        var oldRelativePath = Path.GetRelativePath(libraryRoot, filePath);
+        var newRelativePath = Path.GetRelativePath(libraryRoot, targetPath);
+        metadataStore.UpdateRelativePath(oldRelativePath, newRelativePath);
+
         File.Move(filePath, targetPath);
         SyncStaticObjectName(targetPath);
         return targetPath;
@@ -88,32 +118,104 @@ public static class AssetLibraryFileSystemService
     public static void DeleteFile(string filePath)
         => File.Delete(filePath);
 
-    public static string CopyFileToFolder(string sourceFilePath, string targetFolderPath)
+    /// <param name="libraryRoot">当前生效的素材库根，见 <see cref="RenameFolder"/>。</param>
+    public static string CopyFileToFolder(string sourceFilePath, string targetFolderPath, string libraryRoot)
     {
         var targetPath = GetUniqueFilePath(targetFolderPath, Path.GetFileName(sourceFilePath));
+
+        // 复制文件并更新元数据索引
+        var metadataStore = new MapEngine.Core.Assets.AssetMetadataStore(libraryRoot);
+        var sourceRelativePath = Path.GetRelativePath(libraryRoot, sourceFilePath);
+        var targetRelativePath = Path.GetRelativePath(libraryRoot, targetPath);
+
         File.Copy(sourceFilePath, targetPath);
+
+        // 如果源文件在元数据中，为目标文件创建新条目（保持相同哈希）
+        var sourceHash = metadataStore.GetHashByPath(sourceRelativePath);
+        if (sourceHash != null)
+        {
+            var sourceMeta = metadataStore.GetMetadata(sourceHash);
+            if (sourceMeta != null)
+            {
+                var newMeta = new MapEngine.Core.Assets.AssetMetadata
+                {
+                    Hash = sourceMeta.Hash,
+                    Algorithm = sourceMeta.Algorithm,
+                    RelativePath = targetRelativePath,
+                    FileName = Path.GetFileName(targetPath),
+                    MimeType = sourceMeta.MimeType,
+                    Size = sourceMeta.Size,
+                    ImportedAt = DateTime.UtcNow,
+                    Tags = sourceMeta.Tags != null ? new List<string>(sourceMeta.Tags) : new List<string>()
+                };
+                metadataStore.Register(sourceHash, newMeta);
+            }
+        }
+
         SyncStaticObjectName(targetPath);
         return targetPath;
     }
 
     private static string ResolveRootPath(string? configuredRootFolder)
     {
-        var currentDirectory = Directory.GetCurrentDirectory();
+        var settings = GlobalSettingsStore.Load();
 
-        if (!string.IsNullOrWhiteSpace(configuredRootFolder))
+        // 三级优先级路径解析
+        switch (settings.MapModuleAssetPathMode)
         {
-            return Path.IsPathRooted(configuredRootFolder)
-                ? configuredRootFolder
-                : Path.Combine(currentDirectory, configuredRootFolder);
+            case AssetPathMode.Global:
+                // P1: 使用全局配置路径（由启动器设置）
+                var globalPath = GlobalConfigStore.TryGetAssetLibraryPath();
+                if (!string.IsNullOrWhiteSpace(globalPath))
+                {
+                    return Path.IsPathRooted(globalPath)
+                        ? globalPath
+                        : Path.Combine(AppContext.BaseDirectory, globalPath);
+                }
+                // 全局配置不存在或为空时，降级到模块默认路径
+                break;
+
+            case AssetPathMode.ModuleDefault:
+                // P2: 强制使用模块默认路径（用户手动选择）
+                break;
+
+            case AssetPathMode.Custom:
+                // P3: 使用模块自定义路径
+                if (!string.IsNullOrWhiteSpace(settings.MapModuleCustomAssetPath))
+                {
+                    return Path.IsPathRooted(settings.MapModuleCustomAssetPath)
+                        ? settings.MapModuleCustomAssetPath
+                        : Path.Combine(AppContext.BaseDirectory, settings.MapModuleCustomAssetPath);
+                }
+                // 自定义路径为空时，降级到模块默认路径
+                break;
         }
 
+        // 降级：模块默认路径（可执行文件目录/AssetLibrary）
+        return GetModuleDefaultPath();
+    }
+
+    /// <summary>获取模块默认路径（开发环境兼容）。</summary>
+    private static string GetModuleDefaultPath()
+    {
+        var defaultPath = Path.Combine(AppContext.BaseDirectory, DefaultRootFolderName);
+
+        // 开发环境兼容：如果当前目录是项目根目录（有 .csproj 文件），使用当前目录
+        var currentDirectory = Directory.GetCurrentDirectory();
         var projectPath = Path.Combine(currentDirectory, DefaultRootFolderName);
-        if (File.Exists(Path.Combine(currentDirectory, "MapVttApp.csproj")) || Directory.Exists(projectPath))
+        if (File.Exists(Path.Combine(currentDirectory, "MapEngine.Shell.csproj"))
+            || File.Exists(Path.Combine(currentDirectory, "MapEngine.Avalonia.csproj")))
         {
             return projectPath;
         }
 
-        return Path.Combine(AppContext.BaseDirectory, DefaultRootFolderName);
+        return defaultPath;
+    }
+
+    /// <summary>解析当前生效的素材库根路径（公开方法供设置对话框使用）。</summary>
+    public static string ResolveEffectiveRootPath()
+    {
+        return ResolveRootPath(null);
     }
 
     private static void EnsureRootScaffold(string rootPath)
@@ -139,10 +241,7 @@ public static class AssetLibraryFileSystemService
                         new StaticObjectComponentDocument
                         {
                             Type = "SpriteRenderer",
-                            Properties = new Dictionary<string, string>
-                            {
-                                ["sprite"] = "example.png"
-                            }
+                            Properties = []
                         }
                     ]
                 },

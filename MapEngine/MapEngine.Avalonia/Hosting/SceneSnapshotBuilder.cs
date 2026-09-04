@@ -84,7 +84,7 @@ internal static class SceneSnapshotBuilder
                 ScaleX = item.ScaleX,
                 ScaleY = item.ScaleY,
             },
-            Sprite = string.IsNullOrEmpty(item.SourceAssetPath) ? null : new SpriteSnapshot
+            Sprite = string.IsNullOrEmpty(item.AssetRef) ? null : new SpriteSnapshot
             {
                 AssetName = item.SourceAssetName,
                 AssetKind = item.SourceAssetKind,

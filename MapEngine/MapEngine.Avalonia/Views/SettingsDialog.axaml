@@ -5,7 +5,7 @@
         mc:Ignorable="d" d:DesignWidth="480" d:DesignHeight="380"
         x:Class="MapEngine.Avalonia.Views.SettingsDialog"
         Title="全局设置"
-        Width="480" Height="380"
+        Width="520" Height="680"
         WindowStartupLocation="CenterOwner"
         CanResize="False"
         Background="#2D2D30">
@@ -20,6 +20,112 @@
 
         <ScrollViewer Grid.Row="1">
             <StackPanel Spacing="10">
+                <!-- 素材库路径配置 -->
+                <Border Background="#1E1E1E" CornerRadius="6" Padding="12" Margin="0,0,0,6">
+                    <StackPanel Spacing="8">
+                        <TextBlock Text="📁 素材库路径" Foreground="#4CAF50" FontWeight="SemiBold"/>
+
+                        <!-- 三级优先级说明 -->
+                        <TextBlock FontSize="11" Foreground="#888888" TextWrapping="Wrap">
+                            <Run Text="选择路径来源："/>
+                            <Run Text="P1 全局配置（启动器）" Foreground="#4CAF50"/>
+                            <Run Text=" / "/>
+                            <Run Text="P2 模块默认" Foreground="#3B82F6"/>
+                            <Run Text=" / "/>
+                            <Run Text="P3 模块自定义" Foreground="#F59E0B"/>
+                        </TextBlock>
+
+                        <!-- P1: 全局配置路径（只读显示） -->
+                        <StackPanel Spacing="4">
+                            <RadioButton x:Name="UseGlobalConfigRadio"
+                                         Content="P1: 使用全局配置路径（由客户端设置）"
+                                         GroupName="AssetPathMode"
+                                         FontSize="11"
+                                         Foreground="#4CAF50"
+                                         FontWeight="SemiBold"
+                                         Click="OnModeRadioChanged"/>
+                            <Border Background="#252545" CornerRadius="4" Padding="8" Margin="20,0,0,0">
+                                <TextBlock x:Name="GlobalAssetPathText"
+                                           Text="未配置"
+                                           FontSize="11"
+                                           Foreground="#888888"
+                                           TextWrapping="Wrap"/>
+                            </Border>
+                        </StackPanel>
+
+                        <!-- P2: 模块默认路径（只读显示） -->
+                        <StackPanel Spacing="4">
+                            <RadioButton x:Name="UseModuleDefaultRadio"
+                                         Content="P2: 使用模块默认路径"
+                                         GroupName="AssetPathMode"
+                                         FontSize="11"
+                                         Foreground="#3B82F6"
+                                         FontWeight="SemiBold"
+                                         Click="OnModeRadioChanged"/>
+                            <Border Background="#252545" CornerRadius="4" Padding="8" Margin="20,0,0,0">
+                                <TextBlock x:Name="DefaultAssetPathText"
+                                           Text="加载中..."
+                                           FontSize="11"
+                                           Foreground="#888888"
+                                           TextWrapping="Wrap"/>
+                            </Border>
+                        </StackPanel>
+
+                        <!-- P3: 模块自定义路径（可编辑） -->
+                        <StackPanel Spacing="4">
+                            <RadioButton x:Name="UseCustomPathRadio"
+                                         Content="P3: 使用模块自定义路径"
+                                         GroupName="AssetPathMode"
+                                         FontSize="11"
+                                         Foreground="#F59E0B"
+                                         FontWeight="SemiBold"
+                                         Click="OnModeRadioChanged"/>
+                            <Grid ColumnDefinitions="*,Auto" Margin="20,0,0,0">
+                                <TextBox x:Name="CustomAssetPathBox"
+                                         Grid.Column="0"
+                                         PlaceholderText="输入自定义路径"
+                                         Background="#252545"
+                                         Foreground="#FFFFFF"
+                                         Margin="0,0,8,0"/>
+                                <Button x:Name="BrowseAssetPathButton"
+                                        Grid.Column="1"
+                                        Content="浏览..."
+                                        Click="OnBrowseAssetPathClick"
+                                        Background="#3a3a5a"
+                                        Foreground="#CCCCCC"
+                                        Padding="10,6"/>
+                            </Grid>
+                        </StackPanel>
+
+                        <!-- 当前生效路径 -->
+                        <StackPanel Spacing="4">
+                            <TextBlock Text="✓ 当前生效路径" FontSize="11" Foreground="#10B981" FontWeight="SemiBold"/>
+                            <Border Background="#0f3730" BorderBrush="#10B981" BorderThickness="1" CornerRadius="4" Padding="8">
+                                <TextBlock x:Name="CurrentEffectivePathText"
+                                           Text="加载中..."
+                                           FontSize="11"
+                                           Foreground="#10B981"
+                                           TextWrapping="Wrap"/>
+                            </Border>
+                        </StackPanel>
+
+                        <TextBlock FontSize="10" Foreground="#F59E0B" TextWrapping="Wrap">
+                            <Run Text="💡 修改后需要重启编辑器生效"/>
+                            <LineBreak/>
+                            <Run Text="📂 模块配置: %AppData%\MapEditor\settings.json"/>
+                            <LineBreak/>
+                            <Run Text="📂 全局配置: %AppData%\TRPGMaster\settings.json"/>
+                        </TextBlock>
+                        <Button x:Name="OpenSettingsFolderButton"
+                                Content="📂 打开模块配置文件夹"
+                                Click="OnOpenSettingsFolderClick"
+                                Background="#3a3a5a"
+                                Foreground="#CCCCCC"
+                                HorizontalAlignment="Left"
+                                Padding="10,6"/>
+                    </StackPanel>
+                </Border>
+
                 <StackPanel>
                     <TextBlock Text="地图包名称" Foreground="#CCCCCC" Margin="0,0,0,4"/>
                     <TextBox x:Name="PackageNameBox" Background="#1E1E1E" Foreground="#FFFFFF"/>

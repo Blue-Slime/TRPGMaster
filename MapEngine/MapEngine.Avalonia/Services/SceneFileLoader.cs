@@ -59,6 +59,9 @@ public static class SceneFileLoader
         var vision = go.GetComponent<VisionComponent>();
         var shape = go.GetComponent<ShapeComponent>();
         var text = go.GetComponent<TextComponent>();
+        var token = go.GetComponent<TokenComponent>();
+        var graphNode = go.GetComponent<GraphNodeComponent>();
+        var graphLinks = go.GetComponents<GraphLinkComponent>().ToList();
 
         return new HierarchyNodeDto
         {
@@ -79,13 +82,83 @@ public static class SceneFileLoader
             HasMapPosition = transform?.HasMapPosition ?? false,
             SpriteColor = sprite?.Color ?? "#FF4444",
             Opacity = sprite?.Opacity ?? 1,
-            SourceAssetPath = sprite?.SourceAssetPath ?? string.Empty,
+            AssetRef = sprite?.AssetRef ?? string.Empty,
             SourceAssetKind = sprite?.SourceAssetKind ?? string.Empty,
             SourceAssetName = sprite?.SourceAssetName ?? string.Empty,
             VisionEnabled = vision?.Enabled ?? false,
             VisionRadius = vision?.Radius ?? 0,
-            ShapeV2 = shape is null ? null : LegacyMigrator.ToShapeData(shape),
-            TextV2 = text is null ? null : LegacyMigrator.ToTextData(text),
+            ShapeV2 = shape is null ? null : new MapEngine.Core.Data.ShapeData
+            {
+                ShapeType = shape.ShapeType,
+                Width = shape.Width,
+                Height = shape.Height,
+                X2 = shape.X2,
+                Y2 = shape.Y2,
+                Points = shape.Points.Select(p => new MapEngine.Core.Data.PointData { X = p.X, Y = p.Y }).ToList(),
+                ConeAngle = shape.ConeAngle,
+                ConeRadius = shape.ConeRadius,
+                Rotation = shape.Rotation,
+                StrokeColor = shape.StrokeColor,
+                FillColor = shape.FillColor,
+                StrokeWidth = shape.StrokeWidth,
+                IsFilled = shape.IsFilled,
+                StrokeStyle = (int)shape.StrokeStyle
+            },
+            TextV2 = text is null ? null : new MapEngine.Core.Data.TextData
+            {
+                Text = text.Text,
+                FontSize = text.FontSize,
+                Color = text.Color,
+                BackgroundColor = text.BackgroundColor,
+                IsBold = text.IsBold,
+                IsItalic = text.IsItalic,
+                Align = (int)text.Align
+            },
+            TokenV2 = token is null ? null : new MapEngine.Core.Data.TokenData
+            {
+                InitiativeOrder = token.InitiativeOrder,
+                IsPlayerControlled = token.IsPlayerControlled,
+                MovementSpeed = token.MovementSpeed,
+                CurrentHP = token.CurrentHP,
+                MaxHP = token.MaxHP
+            },
+            ConditionsV2 = token?.Conditions.Select(c => new MapEngine.Core.Data.ConditionData
+            {
+                Id = c.Id,
+                Name = c.Name,
+                Icon = c.Icon,
+                StackCount = c.StackCount,
+                RemainingRounds = c.RemainingRounds,
+                ColorHex = c.ColorHex
+            }).ToList(),
+            GraphNodeV2 = graphNode is null ? null : new MapEngine.Core.Data.GraphNodeData
+            {
+                Kind         = (int)graphNode.Kind,
+                DisplayName  = graphNode.DisplayName,
+                Description  = graphNode.Description,
+                Visibility   = (int)graphNode.Visibility,
+                RenderMode   = (int)graphNode.RenderMode,
+                IconAssetRef = graphNode.IconAssetRef,
+                Color        = graphNode.Color,
+                Size         = graphNode.Size,
+                Shape        = graphNode.Shape
+            },
+            GraphLinksV2 = graphLinks.Count > 0
+                ? graphLinks.Select(l => new MapEngine.Core.Data.GraphLinkData
+                {
+                    LinkId          = l.LinkId,
+                    TargetNodeId    = l.TargetNodeId,
+                    Kind            = (int)l.Kind,
+                    IsBidirectional = l.IsBidirectional,
+                    Label           = l.Label,
+                    Visibility      = (int)l.Visibility,
+                    IsPassable      = l.IsPassable,
+                    Cost            = l.Cost,
+                    Color           = l.Color,
+                    Width           = l.Width,
+                    StrokeStyle     = (int)l.StrokeStyle
+                }).ToList()
+                : null,
             Tags = [.. go.Tags],
             Children = go.Children.Select(GameObjectToDto).ToList()
         };

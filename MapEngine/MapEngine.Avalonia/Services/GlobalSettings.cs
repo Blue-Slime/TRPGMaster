@@ -5,6 +5,19 @@ using System.Text.Json.Serialization;
 
 namespace MapEngine.Avalonia.Services;
 
+/// <summary>素材库路径来源模式（在地图模块设置界面选择）。</summary>
+public enum AssetPathMode
+{
+    /// <summary>P1：使用全局配置路径（由启动器设置）。查不到时降级到模块默认路径。</summary>
+    Global = 0,
+
+    /// <summary>P2：强制使用地图模块默认路径（可执行文件目录下的 AssetLibrary）。</summary>
+    ModuleDefault = 1,
+
+    /// <summary>P3：使用模块自定义路径。路径为空时降级到模块默认路径。</summary>
+    Custom = 2
+}
+
 public sealed class GlobalSettings
 {
     public string PackageName { get; set; } = "默认地图包";
@@ -13,6 +26,12 @@ public sealed class GlobalSettings
     public bool ShowGrid { get; set; } = true;
     public int AgentTcpPort { get; set; } = 47821;
     public string AssetImportMode { get; set; } = "copy";
+
+    /// <summary>素材库路径来源模式，默认使用全局配置。</summary>
+    public AssetPathMode MapModuleAssetPathMode { get; set; } = AssetPathMode.Global;
+
+    /// <summary>P3: 地图模块自定义素材库路径，仅在 <see cref="MapModuleAssetPathMode"/> 为 Custom 时生效。</summary>
+    public string? MapModuleCustomAssetPath { get; set; }
 }
 
 public static class GlobalSettingsStore
@@ -21,7 +40,8 @@ public static class GlobalSettingsStore
     {
         WriteIndented = true,
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
+        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
+        Converters = { new JsonStringEnumConverter() }
     };
 
     public static string GetSettingsPath()

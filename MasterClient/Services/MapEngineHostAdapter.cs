@@ -32,6 +32,43 @@ public sealed class MapEngineHostAdapter : IMapEditorHost
         }
     }
 
+    /// <summary>
+    /// 房间共享素材库：%AppData%/TRPGMaster/rooms/{roomId}/assets。
+    /// 未连接房间（单机运行）时返回 null，素材库面板据此隐藏"房间库"切换。
+    /// </summary>
+    public string? RoomAssetLibraryPath
+    {
+        get
+        {
+            var roomId = _imClient?.CurrentRoomId;
+            if (string.IsNullOrWhiteSpace(roomId)) return null;
+
+            var appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+            var dir = Path.Combine(appData, "TRPGMaster", "rooms", roomId, "assets");
+            Directory.CreateDirectory(dir);
+            return dir;
+        }
+    }
+
+    /// <summary>
+    /// 房间场景缓存目录：%AppData%/TRPGMaster/rooms/{roomId}/scenes。
+    /// 用于缓存从服务器同步的场景文件（.scene），与本地 Maps\ 分离。
+    /// 未连接房间时返回 null。
+    /// </summary>
+    public string? RoomScenesPath
+    {
+        get
+        {
+            var roomId = _imClient?.CurrentRoomId;
+            if (string.IsNullOrWhiteSpace(roomId)) return null;
+
+            var appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+            var dir = Path.Combine(appData, "TRPGMaster", "rooms", roomId, "scenes");
+            Directory.CreateDirectory(dir);
+            return dir;
+        }
+    }
+
     public UserRole Role => UserRole.GM; // 房间角色未做前默认 GM
 
     public IMapEditorLogger Logger { get; } = new DebugMapEditorLogger();
@@ -53,6 +90,35 @@ public sealed class MapEngineHostAdapter : IMapEditorHost
         };
         // fire-and-forget：流式数据丢失不影响正确性
         _ = _imClient.SendStreamAsync(streamData);
+    }
+
+    /// <inheritdoc/>
+    /// <remarks>
+    /// 走 HTTP POST /asset/import：服务端按 assetType 落到 assets/{tokens|maps|audio|files}/，
+    /// 保留原文件名（语义命名），同内容按哈希去重复用。
+    /// </remarks>
+    public async Task<string?> UploadRoomAssetAsync(string localFilePath, string assetType)
+    {
+        if (_imClient is null) return null;
+        if (string.IsNullOrWhiteSpace(_imClient.CurrentRoomId)) return null;
+        if (!File.Exists(localFilePath)) return null;
+
+        var result = await _imClient.UploadAssetAsync(localFilePath, assetType);
+        return result.Success ? result.Hash : null;
+    }
+
+    /// <summary>
+    /// 把服务端房间共享库增量同步到本地房间缓存（结构与服务端同构）。
+    /// 进房间后调用一次即可，只拉本地缺失的素材。
+    /// </summary>
+    /// <returns>本次实际下载的素材数量</returns>
+    public async Task<int> SyncRoomAssetsAsync()
+    {
+        if (_imClient is null) return 0;
+        var cacheRoot = RoomAssetLibraryPath;
+        if (cacheRoot is null) return 0;
+
+        return await _imClient.SyncRoomAssetsAsync(cacheRoot);
     }
 }
 

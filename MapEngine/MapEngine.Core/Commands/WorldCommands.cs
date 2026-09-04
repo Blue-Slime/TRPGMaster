@@ -1,4 +1,4 @@
-using MapEngine.Core.Components;
+﻿using MapEngine.Core.Components;
 
 namespace MapEngine.Core.Commands;
 
@@ -448,5 +448,333 @@ public sealed class WorldRemoveComponentCommand : IWorldCommand
         var obj = world.FindById(_objectId);
         if (obj is null) return;
         world.AddComponent(obj, _removedComponent);
+    }
+}
+
+/// <summary>
+/// 更新 GraphNodeComponent 字段（单字段增量更新，减少网络传输）。
+/// 前端 Inspector 编辑时按字段触发，而非整个组件替换。
+/// </summary>
+public sealed class WorldUpdateGraphNodeCommand : IWorldCommand
+{
+    private readonly Guid _objectId;
+    private readonly string _property;
+    private readonly object? _newValue;
+    private object? _oldValue;
+
+    public WorldUpdateGraphNodeCommand(Guid objectId, string property, object? newValue)
+    {
+        _objectId = objectId;
+        _property = property;
+        _newValue = newValue;
+    }
+
+    public string Description => $"设置节点 {_property} = {_newValue}";
+
+    public Guid ObjectId => _objectId;
+    public string Property => _property;
+    public object? NewValue => _newValue;
+    public object? OldValue => _oldValue;
+
+    public void Execute(World world)
+    {
+        var obj = world.FindById(_objectId);
+        var comp = obj?.GetComponent<GraphNodeComponent>();
+        if (comp is null) return;
+
+        _oldValue = _property switch
+        {
+            "Kind" => (int)comp.Kind,
+            "DisplayName" => comp.DisplayName,
+            "Description" => comp.Description,
+            "Visibility" => (int)comp.Visibility,
+            "RenderMode" => (int)comp.RenderMode,
+            "IconAssetRef" => comp.IconAssetRef,
+            "Color" => comp.Color,
+            "Size" => comp.Size,
+            "Shape" => comp.Shape,
+            _ => null
+        };
+
+        switch (_property)
+        {
+            case "Kind":
+                comp.Kind = (GraphNodeKind)Convert.ToInt32(_newValue);
+                break;
+            case "DisplayName":
+                comp.DisplayName = _newValue?.ToString() ?? string.Empty;
+                break;
+            case "Description":
+                comp.Description = _newValue?.ToString() ?? string.Empty;
+                break;
+            case "Visibility":
+                comp.Visibility = (GraphVisibility)Convert.ToInt32(_newValue);
+                break;
+            case "RenderMode":
+                comp.RenderMode = (GraphNodeRenderMode)Convert.ToInt32(_newValue);
+                break;
+            case "IconAssetRef":
+                comp.IconAssetRef = _newValue?.ToString() ?? string.Empty;
+                break;
+            case "Color":
+                comp.Color = _newValue?.ToString() ?? "#4A90E2";
+                break;
+            case "Size":
+                comp.Size = Convert.ToDouble(_newValue);
+                break;
+            case "Shape":
+                comp.Shape = _newValue?.ToString() ?? "circle";
+                break;
+        }
+
+        world.MarkDirty(DirtyFlags.Render);
+    }
+
+    public void Undo(World world)
+    {
+        var obj = world.FindById(_objectId);
+        var comp = obj?.GetComponent<GraphNodeComponent>();
+        if (comp is null) return;
+
+        switch (_property)
+        {
+            case "Kind":
+                comp.Kind = (GraphNodeKind)Convert.ToInt32(_oldValue);
+                break;
+            case "DisplayName":
+                comp.DisplayName = _oldValue?.ToString() ?? string.Empty;
+                break;
+            case "Description":
+                comp.Description = _oldValue?.ToString() ?? string.Empty;
+                break;
+            case "Visibility":
+                comp.Visibility = (GraphVisibility)Convert.ToInt32(_oldValue);
+                break;
+            case "RenderMode":
+                comp.RenderMode = (GraphNodeRenderMode)Convert.ToInt32(_oldValue);
+                break;
+            case "IconAssetRef":
+                comp.IconAssetRef = _oldValue?.ToString() ?? string.Empty;
+                break;
+            case "Color":
+                comp.Color = _oldValue?.ToString() ?? "#4A90E2";
+                break;
+            case "Size":
+                comp.Size = Convert.ToDouble(_oldValue);
+                break;
+            case "Shape":
+                comp.Shape = _oldValue?.ToString() ?? "circle";
+                break;
+        }
+
+        world.MarkDirty(DirtyFlags.Render);
+    }
+}
+
+/// <summary>
+/// 更新 GraphLinkComponent 字段。一个对象可挂多条 GraphLink，
+/// 通过 LinkId 定位具体哪条边，避免多实例组件的混淆。
+/// </summary>
+public sealed class WorldUpdateGraphLinkCommand : IWorldCommand
+{
+    private readonly Guid _objectId;
+    private readonly string _linkId;
+    private readonly string _property;
+    private readonly object? _newValue;
+    private object? _oldValue;
+
+    public WorldUpdateGraphLinkCommand(Guid objectId, string linkId, string property, object? newValue)
+    {
+        _objectId = objectId;
+        _linkId = linkId;
+        _property = property;
+        _newValue = newValue;
+    }
+
+    public string Description => $"设置连接 {_linkId} 的 {_property} = {_newValue}";
+
+    public Guid ObjectId => _objectId;
+    public string LinkId => _linkId;
+    public string Property => _property;
+    public object? NewValue => _newValue;
+    public object? OldValue => _oldValue;
+
+    public void Execute(World world)
+    {
+        var obj = world.FindById(_objectId);
+        var comp = obj?.GetComponents<GraphLinkComponent>()
+            .FirstOrDefault(l => l.LinkId == _linkId);
+        if (comp is null) return;
+
+        _oldValue = _property switch
+        {
+            "TargetNodeId" => comp.TargetNodeId,
+            "Kind" => (int)comp.Kind,
+            "IsBidirectional" => comp.IsBidirectional,
+            "Label" => comp.Label,
+            "Visibility" => (int)comp.Visibility,
+            "IsPassable" => comp.IsPassable,
+            "Cost" => comp.Cost,
+            "Color" => comp.Color,
+            "Width" => comp.Width,
+            "StrokeStyle" => (int)comp.StrokeStyle,
+            _ => null
+        };
+
+        switch (_property)
+        {
+            case "TargetNodeId":
+                comp.TargetNodeId = _newValue?.ToString() ?? string.Empty;
+                break;
+            case "Kind":
+                comp.Kind = (GraphLinkKind)Convert.ToInt32(_newValue);
+                break;
+            case "IsBidirectional":
+                comp.IsBidirectional = Convert.ToBoolean(_newValue);
+                break;
+            case "Label":
+                comp.Label = _newValue?.ToString() ?? string.Empty;
+                break;
+            case "Visibility":
+                comp.Visibility = (GraphVisibility)Convert.ToInt32(_newValue);
+                break;
+            case "IsPassable":
+                comp.IsPassable = Convert.ToBoolean(_newValue);
+                break;
+            case "Cost":
+                comp.Cost = Convert.ToDouble(_newValue);
+                break;
+            case "Color":
+                comp.Color = _newValue?.ToString() ?? "#8A8F98";
+                break;
+            case "Width":
+                comp.Width = Convert.ToDouble(_newValue);
+                break;
+            case "StrokeStyle":
+                comp.StrokeStyle = (StrokeStyle)Convert.ToInt32(_newValue);
+                break;
+        }
+
+        world.MarkDirty(DirtyFlags.Render);
+    }
+
+    public void Undo(World world)
+    {
+        var obj = world.FindById(_objectId);
+        var comp = obj?.GetComponents<GraphLinkComponent>()
+            .FirstOrDefault(l => l.LinkId == _linkId);
+        if (comp is null) return;
+
+        switch (_property)
+        {
+            case "TargetNodeId":
+                comp.TargetNodeId = _oldValue?.ToString() ?? string.Empty;
+                break;
+            case "Kind":
+                comp.Kind = (GraphLinkKind)Convert.ToInt32(_oldValue);
+                break;
+            case "IsBidirectional":
+                comp.IsBidirectional = Convert.ToBoolean(_oldValue);
+                break;
+            case "Label":
+                comp.Label = _oldValue?.ToString() ?? string.Empty;
+                break;
+            case "Visibility":
+                comp.Visibility = (GraphVisibility)Convert.ToInt32(_oldValue);
+                break;
+            case "IsPassable":
+                comp.IsPassable = Convert.ToBoolean(_oldValue);
+                break;
+            case "Cost":
+                comp.Cost = Convert.ToDouble(_oldValue);
+                break;
+            case "Color":
+                comp.Color = _oldValue?.ToString() ?? "#8A8F98";
+                break;
+            case "Width":
+                comp.Width = Convert.ToDouble(_oldValue);
+                break;
+            case "StrokeStyle":
+                comp.StrokeStyle = (StrokeStyle)Convert.ToInt32(_oldValue);
+                break;
+        }
+
+        world.MarkDirty(DirtyFlags.Render);
+    }
+}
+
+/// <summary>
+/// 添加一条 GraphLink（一个对象可挂多条，不能用 WorldAddComponentCommand）。
+/// 携带完整初始数据避免"先加空组件再逐字段 Update"的冗余同步。
+/// </summary>
+public sealed class WorldAddGraphLinkCommand : IWorldCommand
+{
+    private readonly Guid _objectId;
+    private readonly GraphLinkComponent _link;
+
+    public WorldAddGraphLinkCommand(Guid objectId, GraphLinkComponent link)
+    {
+        _objectId = objectId;
+        _link = link;
+    }
+
+    public string Description => $"添加连接 → {_link.TargetNodeId}";
+
+    public Guid ObjectId => _objectId;
+    public GraphLinkComponent Link => _link;
+
+    public void Execute(World world)
+    {
+        var obj = world.FindById(_objectId);
+        if (obj is null) return;
+        _link.Owner = obj;
+        world.AddComponent(obj, _link);
+    }
+
+    public void Undo(World world)
+    {
+        var obj = world.FindById(_objectId);
+        if (obj is null) return;
+        world.RemoveComponent(obj, _link);
+    }
+}
+
+/// <summary>
+/// 移除一条 GraphLink（按 LinkId 定位）。
+/// </summary>
+public sealed class WorldRemoveGraphLinkCommand : IWorldCommand
+{
+    private readonly Guid _objectId;
+    private readonly string _linkId;
+    private GraphLinkComponent? _removedLink;
+
+    public WorldRemoveGraphLinkCommand(Guid objectId, string linkId)
+    {
+        _objectId = objectId;
+        _linkId = linkId;
+    }
+
+    public string Description => $"移除连接 {_linkId}";
+
+    public Guid ObjectId => _objectId;
+    public string LinkId => _linkId;
+    public GraphLinkComponent? RemovedLink => _removedLink;
+
+    public void Execute(World world)
+    {
+        var obj = world.FindById(_objectId);
+        _removedLink = obj?.GetComponents<GraphLinkComponent>()
+            .FirstOrDefault(l => l.LinkId == _linkId);
+
+        if (_removedLink is not null)
+            world.RemoveComponent(obj!, _removedLink);
+    }
+
+    public void Undo(World world)
+    {
+        if (_removedLink is null) return;
+        var obj = world.FindById(_objectId);
+        if (obj is null) return;
+        world.AddComponent(obj, _removedLink);
     }
 }

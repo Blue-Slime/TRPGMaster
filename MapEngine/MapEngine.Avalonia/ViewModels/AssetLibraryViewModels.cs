@@ -153,7 +153,7 @@ public sealed class AssetItemViewModel : ViewModelBase, IGlobalSelectionItem
         if (_thumbnailRequested) return;
         _thumbnailRequested = true;
 
-        var imagePath = MapSpriteAssetResolver.ResolveSpritePath(FullPath, Kind);
+        var imagePath = MapSpriteAssetResolver.ResolveAssetFileSprite(FullPath);
         if (string.IsNullOrWhiteSpace(imagePath)) return;
 
         _ = LoadThumbnailAsync(imagePath);

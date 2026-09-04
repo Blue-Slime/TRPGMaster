@@ -78,12 +78,14 @@ public class TokenUIOverlayTests
         var manager = new TokenUIManager(canvas, vm, () => (cameraCenter, 1.0));
         manager.SyncFromViewModel(cameraCenter, 1.0);
 
-        Assert.Single(canvas.Children);
-        var host = canvas.Children[0];
+        // 每个 Token 现在有两个 Host：名称/HP + 徽章栏
+        Assert.Equal(2, canvas.Children.Count);
+        var nameHost = canvas.Children[0];  // 名称/HP Host
+        var badgeHost = canvas.Children[1]; // 徽章 Host
 
-        // Token 中心与相机中心重合 => 标签左边缘 = 视口中心X - HalfWidth(48)，上边缘 = 视口中心Y - AboveToken(56)
-        Assert.Equal(400 - 48, Canvas.GetLeft(host), precision: 3);
-        Assert.Equal(300 - 56, Canvas.GetTop(host), precision: 3);
+        // Token 中心与相机中心重合 => 名称标签左边缘 = 视口中心X - HalfWidth(48)，上边缘 = 视口中心Y - AboveToken(56)
+        Assert.Equal(400 - 48, Canvas.GetLeft(nameHost), precision: 3);
+        Assert.Equal(300 - 56, Canvas.GetTop(nameHost), precision: 3);
     }
 
     [Fact]
@@ -103,12 +105,13 @@ public class TokenUIOverlayTests
         var manager = new TokenUIManager(canvas, vm, () => (cameraCenter, 1.0));
         manager.SyncFromViewModel(cameraCenter, 1.0);
 
-        Assert.Equal(2, canvas.Children.Count);
+        // 每个 Token 有 2 个 Host，所以 2 个 Token = 4 个子元素
+        Assert.Equal(4, canvas.Children.Count);
 
         var lefts = new[]
         {
-            Canvas.GetLeft(canvas.Children[0]),
-            Canvas.GetLeft(canvas.Children[1])
+            Canvas.GetLeft(canvas.Children[0]),  // Token A 名称 Host
+            Canvas.GetLeft(canvas.Children[2])   // Token B 名称 Host
         };
 
         // 回归点：两个 Token 不能重合，且都不应停留在 0（未定位的表现）
@@ -135,8 +138,9 @@ public class TokenUIOverlayTests
         var manager = new TokenUIManager(canvas, vm, () => (cameraCenter, 2.0));
         manager.SyncFromViewModel(cameraCenter, 2.0);
 
+        // 每个 Token 有 2 个 Host，索引 0 和 2 是两个 Token 的名称 Host
         var gap = Math.Abs(
-            Canvas.GetLeft(canvas.Children[0]) - Canvas.GetLeft(canvas.Children[1]));
+            Canvas.GetLeft(canvas.Children[0]) - Canvas.GetLeft(canvas.Children[2]));
 
         // zoom=2 => 间距翻倍
         Assert.Equal(200, gap, precision: 3);
@@ -156,7 +160,8 @@ public class TokenUIOverlayTests
         var cameraCenter = new Point(ContentOrigin, ContentOrigin);
         var manager = new TokenUIManager(canvas, vm, () => (cameraCenter, 1.0));
         manager.SyncFromViewModel(cameraCenter, 1.0);
-        Assert.Single(canvas.Children);
+        // 每个 Token 有 2 个 Host
+        Assert.Equal(2, canvas.Children.Count);
 
         // 相机移开很远 => Token 出屏，宿主控件应被回收
         var farCamera = new Point(ContentOrigin + 100000, ContentOrigin);
@@ -179,7 +184,8 @@ public class TokenUIOverlayTests
         var manager = new TokenUIManager(canvas, vm, () => (cameraCenter, 1.0));
 
         manager.SyncFromViewModel(cameraCenter, 1.0);
-        var firstHost = canvas.Children[0];
+        var firstNameHost = canvas.Children[0];
+        var firstBadgeHost = canvas.Children[1];
 
         // 多次同步（模拟相机连续平移）不应重复创建视觉树
         for (var i = 1; i <= 5; i++)
@@ -187,8 +193,10 @@ public class TokenUIOverlayTests
             manager.SyncFromViewModel(new Point(ContentOrigin + i, ContentOrigin), 1.0);
         }
 
-        Assert.Single(canvas.Children);
-        Assert.Same(firstHost, canvas.Children[0]);
+        // 每个 Token 始终是 2 个 Host
+        Assert.Equal(2, canvas.Children.Count);
+        Assert.Same(firstNameHost, canvas.Children[0]);
+        Assert.Same(firstBadgeHost, canvas.Children[1]);
     }
 
     [Fact]

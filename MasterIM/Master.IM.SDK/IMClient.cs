@@ -775,7 +775,7 @@ public class IMClient : IDisposable
     }
 
     /// <summary>
-    /// 上传文件到服务器
+    /// 上传文件到服务器（聊天附件）
     /// </summary>
     public async Task<FileUploadResult> UploadFileAsync(string filePath)
     {
@@ -801,6 +801,150 @@ public class IMClient : IDisposable
             FileType = json?["FileType"]?.ToString() ?? "",
             Url = json?["Url"]?.ToString() ?? ""
         };
+    }
+
+    /// <summary>
+    /// 上传资产到服务器（分类存储：token/map/audio/file）
+    /// </summary>
+    /// <param name="filePath">本地文件路径</param>
+    /// <param name="assetType">资产类型：token, map, audio, file</param>
+    /// <returns>资产元数据（包含哈希、相对路径等）</returns>
+    public async Task<AssetUploadResult> UploadAssetAsync(string filePath, string assetType)
+    {
+        using var client = new HttpClient();
+        using var form = new MultipartFormDataContent();
+        using var fileStream = File.OpenRead(filePath);
+
+        var fileName = Path.GetFileName(filePath);
+        var fileContent = new StreamContent(fileStream);
+        form.Add(fileContent, "file", fileName);
+
+        var uploadUrl = $"{BaseHttpUrl}/asset/import?roomId={_roomId}&type={assetType}&userId={_userId}";
+        var response = await client.PostAsync(uploadUrl, form);
+        response.EnsureSuccessStatusCode();
+
+        var result = await response.Content.ReadAsStringAsync();
+        var json = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(result);
+
+        return new AssetUploadResult
+        {
+            Success = TryGetBool(json, "success", "Success") ?? false,
+            Hash = TryGetString(json, "hash", "Hash") ?? "",
+            FileName = TryGetString(json, "fileName", "FileName") ?? "",
+            RelativePath = TryGetString(json, "relativePath", "RelativePath") ?? "",
+            AssetType = TryGetString(json, "assetType", "AssetType") ?? "",
+            Deduplicated = TryGetBool(json, "deduplicated", "Deduplicated") ?? false
+        };
+
+        static string? TryGetString(Dictionary<string, JsonElement>? d, string a, string b)
+            => (d is not null && (d.TryGetValue(a, out var v) || d.TryGetValue(b, out v)))
+                ? v.GetString() : null;
+
+        static bool? TryGetBool(Dictionary<string, JsonElement>? d, string a, string b)
+            => (d is not null && (d.TryGetValue(a, out var v) || d.TryGetValue(b, out v))
+                && (v.ValueKind == JsonValueKind.True || v.ValueKind == JsonValueKind.False))
+                ? v.GetBoolean() : null;
+    }
+
+    /// <summary>
+    /// 拉取房间素材清单（用于增量同步：对比本地缺哪些 hash）
+    /// </summary>
+    public async Task<List<RoomAssetEntry>> GetRoomAssetIndexAsync()
+    {
+        using var client = new HttpClient();
+        var url = $"{BaseHttpUrl}/asset/index?roomId={_roomId}";
+        var response = await client.GetAsync(url);
+        response.EnsureSuccessStatusCode();
+
+        var json = await response.Content.ReadAsStringAsync();
+        using var doc = JsonDocument.Parse(json);
+        var list = new List<RoomAssetEntry>();
+
+        if (!doc.RootElement.TryGetProperty("Assets", out var assets)
+            && !doc.RootElement.TryGetProperty("assets", out assets))
+            return list;
+
+        foreach (var el in assets.EnumerateArray())
+        {
+            list.Add(new RoomAssetEntry
+            {
+                Hash         = ReadString(el, "Hash", "hash"),
+                Type         = ReadString(el, "Type", "type"),
+                FileName     = ReadString(el, "FileName", "fileName"),
+                RelativePath = ReadString(el, "RelativePath", "relativePath"),
+                DisplayName  = ReadString(el, "DisplayName", "displayName"),
+                MimeType     = ReadString(el, "MimeType", "mimeType"),
+                Size         = ReadInt64(el, "Size", "size"),
+            });
+        }
+        return list;
+
+        static string ReadString(JsonElement el, string a, string b)
+            => el.TryGetProperty(a, out var v) || el.TryGetProperty(b, out v)
+                ? v.GetString() ?? "" : "";
+
+        static long ReadInt64(JsonElement el, string a, string b)
+            => (el.TryGetProperty(a, out var v) || el.TryGetProperty(b, out v))
+               && v.ValueKind == JsonValueKind.Number ? v.GetInt64() : 0;
+    }
+
+    /// <summary>
+    /// 按哈希下载房间素材，写入本地房间缓存（保持与服务端同构的分类目录结构）。
+    /// </summary>
+    /// <param name="hash">素材内容哈希</param>
+    /// <param name="cacheRoot">本地房间缓存根目录（对应服务端 assets/）</param>
+    /// <returns>落盘后的完整路径；失败返回 null</returns>
+    public async Task<string?> DownloadAssetAsync(string hash, string cacheRoot)
+    {
+        using var client = new HttpClient();
+        var url = $"{BaseHttpUrl}/asset/download?roomId={_roomId}&hash={Uri.EscapeDataString(hash)}";
+        var response = await client.GetAsync(url);
+        if (!response.IsSuccessStatusCode) return null;
+
+        // 服务端用响应头带回 relativePath，客户端据此还原同构目录。
+        // 头部是 URL 编码的（HTTP 头不允许中文），这里解码回原名。
+        var relativePath = response.Headers.TryGetValues("X-Asset-RelativePath", out var vals)
+            ? vals.FirstOrDefault()
+            : null;
+        if (string.IsNullOrWhiteSpace(relativePath)) return null;
+        relativePath = Uri.UnescapeDataString(relativePath);
+
+        var targetPath = Path.GetFullPath(Path.Combine(cacheRoot, relativePath));
+        var rootFull = Path.GetFullPath(cacheRoot);
+        if (!targetPath.StartsWith(rootFull, StringComparison.OrdinalIgnoreCase))
+            return null; // 防目录穿越
+
+        Directory.CreateDirectory(Path.GetDirectoryName(targetPath)!);
+        await using (var fs = File.Create(targetPath))
+            await response.Content.CopyToAsync(fs);
+
+        return targetPath;
+    }
+
+    /// <summary>
+    /// 增量同步房间素材到本地缓存：只下载本地缺失的条目。
+    /// </summary>
+    /// <param name="cacheRoot">本地房间缓存根目录（对应服务端 assets/）</param>
+    /// <returns>本次实际下载的素材数量</returns>
+    public async Task<int> SyncRoomAssetsAsync(string cacheRoot)
+    {
+        var remote = await GetRoomAssetIndexAsync();
+        var downloaded = 0;
+
+        foreach (var entry in remote)
+        {
+            if (string.IsNullOrEmpty(entry.Hash) || string.IsNullOrEmpty(entry.RelativePath))
+                continue;
+
+            var localPath = Path.Combine(cacheRoot, entry.RelativePath);
+            if (File.Exists(localPath) && (entry.Size <= 0 || new FileInfo(localPath).Length == entry.Size))
+                continue; // 已有且大小一致，跳过
+
+            if (await DownloadAssetAsync(entry.Hash, cacheRoot) is not null)
+                downloaded++;
+        }
+
+        return downloaded;
     }
 
     /// <summary>
@@ -1165,4 +1309,33 @@ public class IMClient : IDisposable
         _cts?.Cancel();
         _ws?.Dispose();
     }
+}
+
+/// <summary>
+/// 资产上传结果
+/// </summary>
+public class AssetUploadResult
+{
+    public bool Success { get; set; }
+    public string Hash { get; set; } = "";
+    public string FileName { get; set; } = "";
+    public string RelativePath { get; set; } = "";
+    public string AssetType { get; set; } = "";
+    /// <summary>true 表示服务端已有相同内容，本次复用未产生新副本</summary>
+    public bool Deduplicated { get; set; }
+}
+
+/// <summary>
+/// 房间素材清单条目（/asset/index 返回）
+/// </summary>
+public class RoomAssetEntry
+{
+    public string Hash { get; set; } = "";
+    public string Type { get; set; } = "";
+    public string FileName { get; set; } = "";
+    /// <summary>相对 assets/ 的路径，如 "tokens/战士.png"</summary>
+    public string RelativePath { get; set; } = "";
+    public string DisplayName { get; set; } = "";
+    public string MimeType { get; set; } = "";
+    public long Size { get; set; }
 }

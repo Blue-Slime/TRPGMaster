@@ -79,7 +79,7 @@ public sealed class HierarchyItemViewModel : ViewModelBase, IGlobalSelectionItem
         if (dto.SpriteV2.HasValue)
         {
             var s = dto.SpriteV2.Value;
-            sprite.SourceAssetPath = s.TexturePath;
+            sprite.AssetRef = s.TexturePath;
             sprite.Opacity = s.Opacity;
             sprite.Color = s.TintColor;
             sprite.AlignX = s.AlignX;
@@ -88,7 +88,7 @@ public sealed class HierarchyItemViewModel : ViewModelBase, IGlobalSelectionItem
         }
         else
         {
-            sprite.SourceAssetPath = dto.SourceAssetPath;
+            sprite.AssetRef = dto.AssetRef;
             sprite.Opacity = dto.Opacity;
             sprite.Color = dto.SpriteColor;
             // V1 没有 AlignX/AlignY,用默认值 1
@@ -225,6 +225,7 @@ public sealed class HierarchyItemViewModel : ViewModelBase, IGlobalSelectionItem
                 token.MovementSpeed = tv.MovementSpeed;
                 token.CurrentHP = tv.CurrentHP;
                 token.MaxHP = tv.MaxHP;
+                token.Shape = tv.Shape;
             }
             if (dto.ConditionsV2 is not null)
             {
@@ -239,6 +240,46 @@ public sealed class HierarchyItemViewModel : ViewModelBase, IGlobalSelectionItem
                 }).ToList();
             }
             BackingObject.AddComponent(token);
+        }
+
+        // 挂载 GraphNodeComponent(可选):把本对象标记成拓扑节点
+        if (dto.GraphNodeV2 is { } gnd)
+        {
+            BackingObject.AddComponent(new GraphNodeComponent
+            {
+                Kind         = (GraphNodeKind)gnd.Kind,
+                DisplayName  = gnd.DisplayName ?? string.Empty,
+                Description  = gnd.Description ?? string.Empty,
+                Visibility   = (GraphVisibility)gnd.Visibility,
+                RenderMode   = (GraphNodeRenderMode)gnd.RenderMode,
+                IconAssetRef = gnd.IconAssetRef ?? string.Empty,
+                Color        = gnd.Color,
+                Size         = gnd.Size,
+                Shape        = gnd.Shape,
+            });
+        }
+
+        // 挂载 GraphLinkComponent(可选,可多条):本节点的出边
+        if (dto.GraphLinksV2 is not null)
+        {
+            foreach (var gld in dto.GraphLinksV2)
+            {
+                BackingObject.AddComponent(new GraphLinkComponent
+                {
+                    LinkId          = string.IsNullOrEmpty(gld.LinkId)
+                        ? Guid.NewGuid().ToString("N") : gld.LinkId,
+                    TargetNodeId    = gld.TargetNodeId ?? string.Empty,
+                    Kind            = (GraphLinkKind)gld.Kind,
+                    IsBidirectional = gld.IsBidirectional,
+                    Label           = gld.Label ?? string.Empty,
+                    Visibility      = (GraphVisibility)gld.Visibility,
+                    IsPassable      = gld.IsPassable,
+                    Cost            = gld.Cost,
+                    Color           = gld.Color,
+                    Width           = gld.Width,
+                    StrokeStyle     = (StrokeStyle)gld.StrokeStyle,
+                });
+            }
         }
 
         // UI 专用字段
@@ -274,6 +315,8 @@ public sealed class HierarchyItemViewModel : ViewModelBase, IGlobalSelectionItem
                 TokenComponent tk => new TokenComponentEditor(this, tk),
                 ShapeComponent sh => new ShapeComponentEditor(this, sh),
                 TextComponent tx => new TextComponentEditor(this, tx),
+                GraphNodeComponent gn => new GraphNodeComponentEditor(this, gn),
+                GraphLinkComponent gl => new GraphLinkComponentEditor(this, gl),
                 _ => new GenericComponentEditor(this, component)
             });
         }
@@ -536,10 +579,10 @@ public sealed class HierarchyItemViewModel : ViewModelBase, IGlobalSelectionItem
         set { if (Sp.Opacity != value) { Sp.Opacity = value; OnPropertyChanged(); } }
     }
 
-    public string SourceAssetPath
+    public string AssetRef
     {
-        get => Sp.SourceAssetPath;
-        set { if (Sp.SourceAssetPath != value) { Sp.SourceAssetPath = value; OnPropertyChanged(); } }
+        get => Sp.AssetRef;
+        set { if (Sp.AssetRef != value) { Sp.AssetRef = value; OnPropertyChanged(); } }
     }
 
     public string SourceAssetKind
@@ -1426,6 +1469,145 @@ public sealed class HierarchyItemViewModel : ViewModelBase, IGlobalSelectionItem
     public void ApplyTextColor(string? hex)
     {
         if (!string.IsNullOrWhiteSpace(hex)) TextColor = hex;
+    }
+
+    // ── 拓扑节点（GraphNodeComponent）─────────────────────────────────────
+
+    /// <summary>拓扑节点组件，可能未挂载。</summary>
+    private MapEngine.Core.Components.GraphNodeComponent? GNode
+        => BackingObject.GetComponent<MapEngine.Core.Components.GraphNodeComponent>();
+
+    /// <summary>是否是拓扑节点（Inspector 面板门控）。</summary>
+    public bool HasGraphNodeComponent => GNode is not null;
+
+    public int GraphNodeKindIndex
+    {
+        get => (int)(GNode?.Kind ?? MapEngine.Core.Components.GraphNodeKind.Location);
+        set
+        {
+            if (GNode is { } g && (int)g.Kind != value)
+            {
+                g.Kind = (MapEngine.Core.Components.GraphNodeKind)value;
+                OnPropertyChanged();
+            }
+        }
+    }
+
+    /// <summary>节点显示名。留空时回落到对象名，所以 getter 不补默认值。</summary>
+    public string GraphNodeDisplayName
+    {
+        get => GNode?.DisplayName ?? string.Empty;
+        set
+        {
+            if (GNode is { } g && g.DisplayName != value)
+            {
+                g.DisplayName = value ?? string.Empty;
+                OnPropertyChanged();
+            }
+        }
+    }
+
+    public string GraphNodeDescription
+    {
+        get => GNode?.Description ?? string.Empty;
+        set
+        {
+            if (GNode is { } g && g.Description != value)
+            {
+                g.Description = value ?? string.Empty;
+                OnPropertyChanged();
+            }
+        }
+    }
+
+    public int GraphNodeVisibilityIndex
+    {
+        get => (int)(GNode?.Visibility ?? MapEngine.Core.Components.GraphVisibility.Hidden);
+        set
+        {
+            if (GNode is { } g && (int)g.Visibility != value)
+            {
+                g.Visibility = (MapEngine.Core.Components.GraphVisibility)value;
+                OnPropertyChanged();
+                NotifyBoundsChanged();  // 可见性影响渲染
+            }
+        }
+    }
+
+    public int GraphNodeRenderModeIndex
+    {
+        get => (int)(GNode?.RenderMode ?? MapEngine.Core.Components.GraphNodeRenderMode.Icon);
+        set
+        {
+            if (GNode is { } g && (int)g.RenderMode != value)
+            {
+                g.RenderMode = (MapEngine.Core.Components.GraphNodeRenderMode)value;
+                OnPropertyChanged();
+                NotifyBoundsChanged();
+            }
+        }
+    }
+
+    public string GraphNodeColor
+    {
+        get => GNode?.Color ?? "#4A90E2";
+        set
+        {
+            if (GNode is { } g && g.Color != value)
+            {
+                g.Color = value ?? "#4A90E2";
+                OnPropertyChanged();
+            }
+        }
+    }
+
+    public double GraphNodeSize
+    {
+        get => GNode?.Size ?? 48;
+        set
+        {
+            var clamped = Math.Clamp(value, 8, 512);
+            if (GNode is { } g && Math.Abs(g.Size - clamped) > 0.001)
+            {
+                g.Size = clamped;
+                OnPropertyChanged();
+                NotifyBoundsChanged();
+            }
+        }
+    }
+
+    public string GraphNodeShape
+    {
+        get => GNode?.Shape ?? "circle";
+        set
+        {
+            if (GNode is { } g && g.Shape != value)
+            {
+                g.Shape = value ?? "circle";
+                OnPropertyChanged();
+            }
+        }
+    }
+
+    /// <summary>把调色板色值套到节点颜色。</summary>
+    public void ApplyGraphNodeColor(string? hex)
+    {
+        if (!string.IsNullOrWhiteSpace(hex)) GraphNodeColor = hex;
+    }
+
+    /// <summary>拓扑节点组件增删后刷新绑定。</summary>
+    internal void NotifyGraphNodeComponentChanged()
+    {
+        OnPropertyChanged(nameof(HasGraphNodeComponent));
+        OnPropertyChanged(nameof(GraphNodeKindIndex));
+        OnPropertyChanged(nameof(GraphNodeDisplayName));
+        OnPropertyChanged(nameof(GraphNodeDescription));
+        OnPropertyChanged(nameof(GraphNodeVisibilityIndex));
+        OnPropertyChanged(nameof(GraphNodeRenderModeIndex));
+        OnPropertyChanged(nameof(GraphNodeColor));
+        OnPropertyChanged(nameof(GraphNodeSize));
+        OnPropertyChanged(nameof(GraphNodeShape));
+        NotifyBoundsChanged();
     }
 
     /// <summary>形状组件增删后刷新所有相关绑定。</summary>

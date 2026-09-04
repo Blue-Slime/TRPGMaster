@@ -49,50 +49,20 @@ public static class ImportAssetsCommand
             try
             {
                 var category = ClassifyImage(imageFile);
-                var targetDir = Path.Combine(targetRoot, category);
-                Directory.CreateDirectory(targetDir);
-
                 var fileName = Path.GetFileName(imageFile);
-                var baseName = Path.GetFileNameWithoutExtension(fileName);
-                var targetImagePath = Path.Combine(targetDir, fileName);
-                var targetAssetPath = Path.Combine(targetDir, baseName + AssetExtension);
 
-                // 复制图片
-                File.Copy(imageFile, targetImagePath, overwrite: true);
-
-                // 生成 .asset 文件
-                var assetContent = new
+                // 统一走 AssetImporter：按内容哈希命名图片并写入 assetRef
+                // 使用 targetSubfolder 参数支持分类存储：targetRoot 为库根目录，category 为子目录
+                var result = MapEngine.Core.Assets.AssetImporter.ImportImage(imageFile, targetRoot, category);
+                if (result is null)
                 {
-                    Name = baseName,
-                    Type = "StaticObjectClass",
-                    Components = new object[]
-                    {
-                        new
-                        {
-                            Type = "Transform",
-                            Properties = new Dictionary<string, string>()
-                        },
-                        new
-                        {
-                            Type = "SpriteRenderer",
-                            Properties = new Dictionary<string, string>
-                            {
-                                ["sprite"] = fileName
-                            }
-                        }
-                    }
-                };
-
-                var json = JsonSerializer.Serialize(assetContent, new JsonSerializerOptions
-                {
-                    WriteIndented = true,
-                    Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping
-                });
-
-                File.WriteAllText(targetAssetPath, json);
+                    Console.WriteLine($"  ✗ {fileName}: 不支持的图片格式");
+                    continue;
+                }
 
                 stats[category]++;
-                Console.WriteLine($"  ✓ {category}/{fileName}");
+                var dedup = result.IsNewImage ? "" : "（复用已有图片）";
+                Console.WriteLine($"  ✓ {category}/{result.DisplayName}{dedup}");
             }
             catch (Exception ex)
             {

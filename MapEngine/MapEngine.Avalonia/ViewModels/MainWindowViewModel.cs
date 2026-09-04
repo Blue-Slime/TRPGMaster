@@ -23,11 +23,36 @@ public partial class MainWindowViewModel : ViewModelBase
     private readonly World _world = new();
     private readonly CommandBus _commandBus;
 
+    private IMapEditorHost? _host;
+
     /// <summary>
     /// 外部宿主引用，用于上报流式实时数据（拖拽预览、光标等）。
     /// 单机模式下为 null 或 StandaloneMapEditorHost；联机时由 ChatRoomWindow 注入。
     /// </summary>
-    public IMapEditorHost? Host { get; set; }
+    /// <remarks>
+    /// 必须走属性通知：房间库路径只有注入 Host 之后才知道，
+    /// 素材库面板"房间"单选框的 IsEnabled 绑的是算自本属性的 IsRoomAssetLibraryAvailable。
+    /// 不通知的话绑定会停在构造时求得的 false，按钮一直是禁用态、点不动。
+    /// </remarks>
+    public IMapEditorHost? Host
+    {
+        get => _host;
+        set
+        {
+            if (ReferenceEquals(_host, value))
+                return;
+
+            _host = value;
+            OnPropertyChanged();
+
+            // 渲染端解析 assetRef 要靠房间库根路径；客户端不走 MapEditorEntry.Mount，
+            // 所以这里补上注入，否则房间库的精灵图永远解析不到。
+            MapSpriteAssetResolver.RoomAssetRoot = value?.RoomAssetLibraryPath;
+            MapSpriteAssetResolver.Initialize();
+
+            OnPropertyChanged(nameof(IsRoomAssetLibraryAvailable));
+        }
+    }
 
     private readonly List<AssetItemViewModel> _allAssetItems;
     private readonly Dictionary<string, AssetFolderViewModel> _assetFolderIndex;
@@ -37,7 +62,12 @@ public partial class MainWindowViewModel : ViewModelBase
     private string? _assetFolderClipboardPath;
     private string? _assetItemClipboardPath;
     private AssetClipboardKind _assetClipboardKind;
-    private readonly string _assetLibraryRootPath;
+    /// <summary>当前素材库根路径。随 ActiveAssetSource 切换（本地库 / 房间库）。</summary>
+    private string _assetLibraryRootPath;
+    /// <summary>本地素材库根路径，切回本地时复位用。</summary>
+    private readonly string _localAssetLibraryRootPath;
+    /// <summary>当前素材库的元数据索引（哈希→路径映射）。随 ActiveAssetSource 切换。</summary>
+    private MapEngine.Core.Assets.AssetMetadataStore? _assetMetadataStore;
     private HierarchyItemViewModel? _mapDragPreviewItem;
     private HierarchyItemViewModel? _highlightedHierarchyItem;
 
@@ -149,6 +179,13 @@ public partial class MainWindowViewModel : ViewModelBase
 
         SelectToolCommand = new RelayCommand<string?>(SelectTool);
         SelectShapeSubToolCommand = new RelayCommand<string?>(SelectShapeSubTool);
+        SelectGraphSubToolCommand = new RelayCommand<string?>(key =>
+        {
+            if (string.IsNullOrWhiteSpace(key)) return;
+            GraphSubTool = key;
+            if (!IsGraphToolActive) SelectTool("graph");
+        });
+        PruneDanglingGraphLinksCommand = new RelayCommand(() => PruneDanglingGraphLinks());
         ToggleShapeFillCommand = new RelayCommand(ToggleShapeFill);
         CycleStrokeStyleCommand = new RelayCommand(CycleStrokeStyle);
         ActivateQuickActionCommand = new RelayCommand<string?>(ActivateQuickAction);
@@ -208,7 +245,8 @@ public partial class MainWindowViewModel : ViewModelBase
             new("measure", "📏",  "测量", "测量工具 (M)"),
             new("laser",   "🎯",  "激光", "激光笔 (L)", isToggle: true),
             new("fog",     "☁️", "迷雾", "迷雾工具 (F)"),
-            new("attach",  "📎",  "附件", "附件/标记 (A)")
+            new("attach",  "📎",  "附件", "附件/标记 (A)"),
+            new("graph",   "🕸",  "拓扑", "拓扑节点/连线 (G)")
         };
 
         // 游玩模式：玩家可用工具（无编辑/迷雾/附件）
@@ -257,6 +295,8 @@ public partial class MainWindowViewModel : ViewModelBase
 
         var assetLibrary = AssetLibraryFileSystemService.Load(data.AssetLibraryRootFolder);
         _assetLibraryRootPath = assetLibrary.RootPath;
+        _localAssetLibraryRootPath = assetLibrary.RootPath;
+        _assetMetadataStore = LoadOrCreateMetadataStore(_assetLibraryRootPath);
         _assetFolderIndex = [];
         AssetRoots = new ObservableCollection<AssetFolderViewModel>(
             assetLibrary.RootFolders.Select(folder => BuildAssetFolder(folder, null)));
@@ -446,6 +486,12 @@ public partial class MainWindowViewModel : ViewModelBase
     public RelayCommand<string?> SelectToolCommand { get; }
 
     public RelayCommand<string?> SelectShapeSubToolCommand { get; }
+
+    /// <summary>切换拓扑子工具（node / link）。</summary>
+    public RelayCommand<string?> SelectGraphSubToolCommand { get; }
+
+    /// <summary>清理所有指向已删节点的悬空连线。</summary>
+    public RelayCommand PruneDanglingGraphLinksCommand { get; }
 
     public RelayCommand ToggleShapeFillCommand { get; }
 
@@ -825,6 +871,25 @@ public partial class MainWindowViewModel : ViewModelBase
     {
         GraphicsRuntimeSummary = $"渲染后端: {info.BackendSummary}";
         GraphicsRuntimeHint = info.RuntimeHint;
+    }
+
+    /// <summary>获取当前素材库的元数据索引（供拖放导入使用）。</summary>
+    public MapEngine.Core.Assets.AssetMetadataStore? GetAssetMetadataStore() => _assetMetadataStore;
+
+    /// <summary>获取当前素材库根路径（供拖放导入使用）。</summary>
+    public string GetAssetLibraryRootPath() => _assetLibraryRootPath;
+
+    private static MapEngine.Core.Assets.AssetMetadataStore LoadOrCreateMetadataStore(string assetLibraryRoot)
+    {
+        try
+        {
+            return new MapEngine.Core.Assets.AssetMetadataStore(assetLibraryRoot);
+        }
+        catch
+        {
+            // 损坏时重建
+            return new MapEngine.Core.Assets.AssetMetadataStore(assetLibraryRoot);
+        }
     }
 }
 

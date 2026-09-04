@@ -41,6 +41,14 @@ internal static class IconPaths
     public const string Text =
         "M18.5,4L19.66,8.35L18.7,8.61C18.25,7.74 17.79,6.87 17.26,6.43C16.73,6 16.11,6 15.5,6H13V16.5C13,17 13,17.5 13.33,17.75C13.67,18 14.33,18 15,18V19H9V18C9.67,18 10.33,18 10.67,17.75C11,17.5 11,17 11,16.5V6H8.5C7.89,6 7.27,6 6.74,6.43C6.21,6.87 5.75,7.74 5.3,8.61L4.34,8.35L5.5,4H18.5Z";
 
+    /// <summary>GraphNode:网状拓扑节点(connection)。</summary>
+    public const string GraphNode =
+        "M15,20A1,1 0 0,0 14,19H13V17.5A1.5,1.5 0 0,0 11.5,16A1.5,1.5 0 0,0 10,17.5V19H9A1,1 0 0,0 8,20A1,1 0 0,0 9,21H10V22.5A1.5,1.5 0 0,0 11.5,24A1.5,1.5 0 0,0 13,22.5V21H14A1,1 0 0,0 15,20M5,3A3,3 0 0,1 8,6A3,3 0 0,1 5,9A3,3 0 0,1 2,6A3,3 0 0,1 5,3M5,4.5A1.5,1.5 0 0,0 3.5,6A1.5,1.5 0 0,0 5,7.5A1.5,1.5 0 0,0 6.5,6A1.5,1.5 0 0,0 5,4.5M17.5,6A2.5,2.5 0 0,1 20,8.5A2.5,2.5 0 0,1 17.5,11A2.5,2.5 0 0,1 15,8.5A2.5,2.5 0 0,1 17.5,6M17.5,7.5A1,1 0 0,0 16.5,8.5A1,1 0 0,0 17.5,9.5A1,1 0 0,0 18.5,8.5A1,1 0 0,0 17.5,7.5Z";
+
+    /// <summary>GraphLink:拓扑连接线(ray-vertex)。</summary>
+    public const string GraphLink =
+        "M2,2H4V4H2V2M5,5H7V7H5V5M8,8H10V10H8V8M11,11H13V13H11V11M14,14H16V16H14V14M17,17H19V19H17V17M20,20H22V22H20V20M15,8H23V10H15V8M1,15H9V17H1V15Z";
+
     /// <summary>兜底:拼图块。</summary>
     public const string Puzzle =
         "M20.5,11H19V7A2,2 0 0,0 17,5H13V3.5A2.5,2.5 0 0,0 10.5,1A2.5,2.5 0 0,0 8,3.5V5H4A2,2 0 0,0 2,7V10.8H3.5C5,10.8 6.2,12 6.2,13.5C6.2,15 5,16.2 3.5,16.2H2V20A2,2 0 0,0 4,22H7.8V20.5C7.8,19 9,17.8 10.5,17.8C12,17.8 13.2,19 13.2,20.5V22H17A2,2 0 0,0 19,20V16H20.5A2.5,2.5 0 0,0 23,13.5A2.5,2.5 0 0,0 20.5,11Z";
@@ -165,6 +173,42 @@ public sealed class TokenComponentEditor : ComponentEditorViewModel
     public override string IconPath => IconPaths.Token;
     public override IComponent Component => _component;
 
+    /// <summary>Token 形状选项列表（用于 ComboBox）。</summary>
+    public IReadOnlyList<string> ShapeOptions { get; } = new[] { "矩形", "圆形" };
+
+    /// <summary>Token 形状（Rectangle | Circle）双向绑定。</summary>
+    public string Shape
+    {
+        get => _component.Shape;
+        set
+        {
+            if (_component.Shape != value)
+            {
+                _component.Shape = value;
+                Owner.NotifyTokenComponentChanged();
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(ShapeIndex));
+            }
+        }
+    }
+
+    /// <summary>Shape 索引绑定（ComboBox.SelectedIndex 需要 int）。</summary>
+    public int ShapeIndex
+    {
+        get => _component.Shape == "Circle" ? 1 : 0;
+        set
+        {
+            var newShape = value == 1 ? "Circle" : "Rectangle";
+            if (_component.Shape != newShape)
+            {
+                _component.Shape = newShape;
+                Owner.NotifyTokenComponentChanged();
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(Shape));
+            }
+        }
+    }
+
     /// <summary>是否显示在先攻追踪器中（双向绑定）。</summary>
     public bool IsInInitiativeTracker
     {
@@ -262,6 +306,223 @@ public sealed class TextComponentEditor : ComponentEditorViewModel
     public IReadOnlyList<string> AlignOptions { get; } = ["左对齐", "居中", "右对齐"];
 
     public IRelayCommand<string?> ApplyTextColorCommand { get; }
+}
+
+/// <summary>拓扑节点编辑器:节点语义、揭示状态、渲染方式与图标样式。</summary>
+public sealed class GraphNodeComponentEditor : ComponentEditorViewModel
+{
+    public GraphNodeComponentEditor(HierarchyItemViewModel owner, GraphNodeComponent component)
+        : base(owner)
+    {
+        Component = component;
+        ApplyNodeColorCommand = new RelayCommand<string?>(Owner.ApplyGraphNodeColor);
+    }
+
+    public IRelayCommand<string?> ApplyNodeColorCommand { get; }
+
+    public override string Title => "Graph Node";
+    public override string Icon => "🕸";
+    public override string IconPath => IconPaths.GraphNode;
+    public override IComponent Component { get; }
+
+    /// <summary>节点类型下拉(索引与 <see cref="GraphNodeKind"/> 一致)。</summary>
+    public IReadOnlyList<string> KindOptions { get; } = ["地点", "地标", "遭遇", "枢纽", "锚点"];
+
+    /// <summary>揭示状态下拉(索引与 <see cref="GraphVisibility"/> 一致)。</summary>
+    public IReadOnlyList<string> VisibilityOptions { get; } = ["隐藏", "已揭示", "已到过"];
+
+    /// <summary>渲染方式下拉(索引与 <see cref="GraphNodeRenderMode"/> 一致)。</summary>
+    public IReadOnlyList<string> RenderModeOptions { get; } = ["不渲染", "仅图标", "仅内容", "图标+内容"];
+
+    /// <summary>节点形状下拉。</summary>
+    public IReadOnlyList<string> ShapeOptions { get; } = ["circle", "square", "diamond"];
+
+    /// <summary>与 Shape/Text 编辑器共用调色板。</summary>
+    public IReadOnlyList<string> ColorPalette => ShapeComponentEditor.SharedPalette;
+}
+
+/// <summary>
+/// 拓扑通道编辑器:单条出边的目标、方向、通行性与代价。
+///
+/// 与其他编辑器不同,字段读写直接落在本 VM 上而非 Owner —— 因为一个对象可挂
+/// 多条 GraphLink,走 Owner.Xxx 的单例桥接无法区分是哪一条。
+/// </summary>
+public sealed class GraphLinkComponentEditor : ComponentEditorViewModel
+{
+    private readonly GraphLinkComponent _link;
+
+    public GraphLinkComponentEditor(HierarchyItemViewModel owner, GraphLinkComponent component)
+        : base(owner)
+    {
+        _link = component;
+        ApplyLinkColorCommand = new RelayCommand<string?>(hex =>
+        {
+            if (!string.IsNullOrWhiteSpace(hex)) LinkColor = hex;
+        });
+    }
+
+    /// <summary>一个对象可挂多条通道,标题带上标签/方向以便区分。</summary>
+    public override string Title
+        => string.IsNullOrWhiteSpace(_link.Label)
+            ? $"Link {(_link.IsBidirectional ? "↔" : "→")}"
+            : $"Link · {_link.Label}";
+
+    public override string Icon => "🔗";
+    public override string IconPath => IconPaths.GraphLink;
+    public override IComponent Component => _link;
+
+    /// <summary>本条边的稳定 ID,同步/删除按它定位。</summary>
+    public string LinkId => _link.LinkId;
+
+    public string TargetNodeId
+    {
+        get => _link.TargetNodeId;
+        set
+        {
+            if (_link.TargetNodeId == value) return;
+            _link.TargetNodeId = value ?? string.Empty;
+            OnPropertyChanged();
+            Owner.NotifyBoundsChanged();
+        }
+    }
+
+    /// <summary>目标节点的可读名。解析不到就直说,避免 UI 上只剩一串 GUID。</summary>
+    public string TargetNodeDisplay
+    {
+        get
+        {
+            var world = Owner.BackingObject.World;
+            if (world is null || !Guid.TryParse(_link.TargetNodeId, out var id))
+                return "(未设置)";
+            var target = world.FindById(id);
+            if (target is null) return "(目标已删除)";
+            var gn = target.GetComponent<GraphNodeComponent>();
+            return string.IsNullOrWhiteSpace(gn?.DisplayName) ? target.Name : gn!.DisplayName;
+        }
+    }
+
+    public int KindIndex
+    {
+        get => (int)_link.Kind;
+        set
+        {
+            if ((int)_link.Kind == value) return;
+            _link.Kind = (GraphLinkKind)value;
+            OnPropertyChanged();
+        }
+    }
+
+    public bool IsBidirectional
+    {
+        get => _link.IsBidirectional;
+        set
+        {
+            if (_link.IsBidirectional == value) return;
+            _link.IsBidirectional = value;
+            OnPropertyChanged();
+            OnPropertyChanged(nameof(Title));
+            Owner.NotifyBoundsChanged();
+        }
+    }
+
+    public string Label
+    {
+        get => _link.Label;
+        set
+        {
+            if (_link.Label == value) return;
+            _link.Label = value ?? string.Empty;
+            OnPropertyChanged();
+            OnPropertyChanged(nameof(Title));
+        }
+    }
+
+    public int VisibilityIndex
+    {
+        get => (int)_link.Visibility;
+        set
+        {
+            if ((int)_link.Visibility == value) return;
+            _link.Visibility = (GraphVisibility)value;
+            OnPropertyChanged();
+            Owner.NotifyBoundsChanged();
+        }
+    }
+
+    public bool IsPassable
+    {
+        get => _link.IsPassable;
+        set
+        {
+            if (_link.IsPassable == value) return;
+            _link.IsPassable = value;
+            OnPropertyChanged();
+            Owner.NotifyBoundsChanged();
+        }
+    }
+
+    public double Cost
+    {
+        get => _link.Cost;
+        set
+        {
+            // 寻路要求正权重,0/负值会破坏 Dijkstra 的贪心前提
+            var clamped = value <= 0 ? 0.01 : value;
+            if (Math.Abs(_link.Cost - clamped) < 1e-9) return;
+            _link.Cost = clamped;
+            OnPropertyChanged();
+        }
+    }
+
+    public string LinkColor
+    {
+        get => _link.Color;
+        set
+        {
+            if (_link.Color == value) return;
+            _link.Color = value ?? "#8A8F98";
+            OnPropertyChanged();
+            Owner.NotifyBoundsChanged();
+        }
+    }
+
+    public double LinkWidth
+    {
+        get => _link.Width;
+        set
+        {
+            var clamped = Math.Clamp(value, 1, 32);
+            if (Math.Abs(_link.Width - clamped) < 1e-9) return;
+            _link.Width = clamped;
+            OnPropertyChanged();
+            Owner.NotifyBoundsChanged();
+        }
+    }
+
+    public int StrokeStyleIndex
+    {
+        get => (int)_link.StrokeStyle;
+        set
+        {
+            if ((int)_link.StrokeStyle == value) return;
+            _link.StrokeStyle = (StrokeStyle)value;
+            OnPropertyChanged();
+            Owner.NotifyBoundsChanged();
+        }
+    }
+
+    /// <summary>通道类型下拉(索引与 <see cref="GraphLinkKind"/> 一致)。</summary>
+    public IReadOnlyList<string> KindOptions { get; } = ["普通", "道路", "密道", "危险", "传送"];
+
+    /// <summary>揭示状态下拉(索引与 <see cref="GraphVisibility"/> 一致)。</summary>
+    public IReadOnlyList<string> VisibilityOptions { get; } = ["隐藏", "已揭示", "已到过"];
+
+    /// <summary>线型下拉(索引与 <see cref="StrokeStyle"/> 一致)。</summary>
+    public IReadOnlyList<string> StrokeStyleOptions { get; } = ["实线", "虚线", "点线"];
+
+    public IReadOnlyList<string> ColorPalette => ShapeComponentEditor.SharedPalette;
+
+    public IRelayCommand<string?> ApplyLinkColorCommand { get; }
 }
 
 /// <summary>兜底编辑器:未单独建模的组件,只显示类型名(只读)。</summary>

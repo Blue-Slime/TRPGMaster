@@ -77,7 +77,7 @@ public class ComponentSystemTests
     {
         var go = new GameObject { Name = "Hero", ObjectType = "Token", Tags = ["player", "warrior"] };
         go.AddComponent(new TransformComponent { X = 100, Y = -50, ScaleX = 2 });
-        go.AddComponent(new SpriteRendererComponent { Opacity = 0.8, SourceAssetPath = "/assets/hero.png" });
+        go.AddComponent(new SpriteRendererComponent { Opacity = 0.8, AssetRef = "e3b0c44298fc1c14" });
         go.AddComponent(new VisionComponent { Enabled = true, Radius = 120 });
         go.AddComponent(new TokenComponent { TokenName = "Aragorn", MovementSpeed = 30 });
 
@@ -101,7 +101,7 @@ public class ComponentSystemTests
 
         var s = r.GetComponent<SpriteRendererComponent>()!;
         Assert.Equal(0.8, s.Opacity);
-        Assert.Equal("/assets/hero.png", s.SourceAssetPath);
+        Assert.Equal("e3b0c44298fc1c14", s.AssetRef);
 
         var v = r.GetComponent<VisionComponent>()!;
         Assert.True(v.Enabled);
@@ -110,56 +110,6 @@ public class ComponentSystemTests
         var tk = r.GetComponent<TokenComponent>()!;
         Assert.Equal("Aragorn", tk.TokenName);
         Assert.Equal(30.0, tk.MovementSpeed);
-    }
-
-    [Fact]
-    public void LegacyMigrator_RoundTrip_PreservesData()
-    {
-        var dto = new HierarchyNodeDto
-        {
-            Id = "test-node-1",
-            Name = "Goblin",
-            Icon = "👹",
-            ObjectType = "Token",
-            X = 50,
-            Y = -30,
-            ScaleX = 1.5,
-            ScaleY = 1.5,
-            Opacity = 0.9,
-            SpriteColor = "#00FF00",
-            SourceAssetPath = "/assets/goblin.asset",
-            SourceAssetKind = "StaticObjectClass",
-            SourceAssetName = "Goblin",
-            VisionEnabled = true,
-            VisionRadius = 60,
-            HasMapPosition = true,
-            Tags = ["enemy", "npc"]
-        };
-
-        var go = LegacyMigrator.FromHierarchyNodeDto(dto);
-
-        Assert.Equal("Goblin", go.Name);
-        Assert.Equal("👹", go.Icon);
-
-        var t = go.GetComponent<TransformComponent>()!;
-        Assert.Equal(50.0, t.X);
-        Assert.Equal(-30.0, t.Y);
-        Assert.True(t.HasMapPosition);
-
-        var s = go.GetComponent<SpriteRendererComponent>()!;
-        Assert.Equal("#00FF00", s.Color);
-        Assert.Equal(0.9, s.Opacity);
-
-        var v = go.GetComponent<VisionComponent>()!;
-        Assert.True(v.Enabled);
-        Assert.Equal(60.0, v.Radius);
-
-        var backDto = LegacyMigrator.ToHierarchyNodeDto(go);
-        Assert.Equal("Goblin", backDto.Name);
-        Assert.Equal(50.0, backDto.X);
-        Assert.Equal("#00FF00", backDto.SpriteColor);
-        Assert.True(backDto.VisionEnabled);
-        Assert.Contains("enemy", backDto.Tags);
     }
 
     [Fact]
@@ -216,28 +166,5 @@ public class ComponentSystemTests
         Assert.True(text.IsBold);
         Assert.True(text.IsItalic);
         Assert.Equal(TextAlign.Right, text.Align);
-    }
-
-    [Fact]
-    public void LegacyMigrator_RoundTrip_PreservesShapeAndText()
-    {
-        var go = new GameObject { Name = "Blast", ObjectType = "Shape" };
-        go.AddComponent(new TransformComponent { X = 3, Y = 4 });
-        go.AddComponent(new ShapeComponent { ShapeType = "circle", Width = 88, Points = [(9, 9)] });
-        go.AddComponent(new TextComponent { Text = "AoE", FontSize = 12 });
-
-        var dto = LegacyMigrator.ToHierarchyNodeDto(go);
-        Assert.NotNull(dto.ShapeV2);
-        Assert.NotNull(dto.TextV2);
-
-        var back = LegacyMigrator.FromHierarchyNodeDto(dto);
-        var shape = back.GetComponent<ShapeComponent>()!;
-        Assert.Equal("circle", shape.ShapeType);
-        Assert.Equal(88.0, shape.Width);
-        Assert.Equal([(9.0, 9.0)], shape.Points);
-
-        var text = back.GetComponent<TextComponent>()!;
-        Assert.Equal("AoE", text.Text);
-        Assert.Equal(12.0, text.FontSize);
     }
 }

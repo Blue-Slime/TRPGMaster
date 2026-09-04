@@ -13,6 +13,12 @@ public interface IMapEditorHost
     /// <summary>项目根目录（场景文件、素材库、配置都在此目录下）</summary>
     string ProjectRootPath { get; }
 
+    /// <summary>
+    /// 房间共享素材库根目录。联机时由宿主提供（房间成员共享），单机模式为 null。
+    /// 素材库面板据此决定是否提供"房间库"切换。
+    /// </summary>
+    string? RoomAssetLibraryPath { get; }
+
     /// <summary>用户角色：决定 UI 权限与可见性</summary>
     UserRole Role { get; }
 
@@ -27,6 +33,16 @@ public interface IMapEditorHost
     /// <param name="type">数据类型标识，如 "map_drag" / "map_cursor"</param>
     /// <param name="data">可序列化的数据对象</param>
     void SendStream(string type, object data);
+
+    /// <summary>
+    /// 把本地素材上传到房间共享库（服务端按 assetType 落到分类目录，语义命名 + 哈希索引）。
+    /// 地图模块只声明"我要上传"，具体传输方式由宿主决定；单机模式默认空实现。
+    /// </summary>
+    /// <param name="localFilePath">本地文件绝对路径</param>
+    /// <param name="assetType">素材类型：token / map / audio / file</param>
+    /// <returns>服务端返回的内容哈希；未联机或失败返回 null</returns>
+    Task<string?> UploadRoomAssetAsync(string localFilePath, string assetType)
+        => Task.FromResult<string?>(null);
 }
 
 public enum UserRole
@@ -52,6 +68,8 @@ public sealed class StandaloneMapEditorHost : IMapEditorHost
 {
     public string CurrentUserId { get; init; } = "local";
     public string ProjectRootPath { get; init; } = AppContext.BaseDirectory;
+    /// <summary>单机模式没有房间库</summary>
+    public string? RoomAssetLibraryPath => null;
     public UserRole Role { get; init; } = UserRole.GM;
     public IMapEditorLogger Logger { get; init; } = ConsoleMapEditorLogger.Instance;
 

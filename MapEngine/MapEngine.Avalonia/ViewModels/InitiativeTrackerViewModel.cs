@@ -15,6 +15,7 @@ public sealed class InitiativeTrackerViewModel : ObservableObject
     private readonly MainWindowViewModel _mainWindow;
     private int _currentTurnIndex;
     private int _turnCounter;
+    private bool _refreshPending;  // 防止在同一帧内重复 Post
 
     public InitiativeTrackerViewModel(MainWindowViewModel mainWindow)
     {
@@ -27,7 +28,7 @@ public sealed class InitiativeTrackerViewModel : ObservableObject
         SelectEntryCommand = new RelayCommand<InitiativeEntryViewModel>(SelectEntry);
 
         // 监听 HierarchyRoots 变化（增删节点时）
-        _mainWindow.HierarchyRoots.CollectionChanged += (_, _) => RefreshEntries();
+        _mainWindow.HierarchyRoots.CollectionChanged += (_, _) => ScheduleRefresh();
 
         // 监听所有对象的 ObjectType 变化（非Token 变 Token 时刷新）
         _mainWindow.HierarchyRoots.CollectionChanged += OnHierarchyChanged;
@@ -54,16 +55,36 @@ public sealed class InitiativeTrackerViewModel : ObservableObject
     public RelayCommand ResetTurnCommand { get; }
     public RelayCommand<InitiativeEntryViewModel> SelectEntryCommand { get; }
 
+    /// <summary>
+    /// 请求 View 将指定索引的卡片滚动到可见中心。
+    /// 参数为目标卡片在 Entries 中的索引。
+    /// </summary>
+    public event Action<int>? ScrollToCurrentRequest;
+
     /// <summary>从先攻表移除指定条目（由 UI 直接调用）。</summary>
     public void RemoveEntry(InitiativeEntryViewModel entry)
     {
         _mainWindow.RemoveFromInitiativeTracker(entry.Source);
     }
 
+    /// <summary>
+    /// 延迟到下一帧执行刷新，防止在集合枚举或属性变化回调中途触发导致 InvalidOperationException。
+    /// 同一帧内多次调用只 Post 一次。
+    /// </summary>
+    private void ScheduleRefresh()
+    {
+        if (_refreshPending) return;
+        _refreshPending = true;
+        global::Avalonia.Threading.Dispatcher.UIThread.Post(
+            () => { _refreshPending = false; RefreshEntries(); },
+            global::Avalonia.Threading.DispatcherPriority.Normal);
+    }
+
     public void RefreshEntries()
     {
-        // 取消旧订阅
-        foreach (var entry in Entries)
+        // 先快照，防止 UnsubscribeFromEntry 触发的回调修改集合
+        var snapshot = Entries.ToList();
+        foreach (var entry in snapshot)
         {
             UnsubscribeFromEntry(entry);
         }
@@ -126,7 +147,7 @@ public sealed class InitiativeTrackerViewModel : ObservableObject
         if (e.PropertyName == nameof(HierarchyItemViewModel.InitiativeOrder) ||
             e.PropertyName == nameof(HierarchyItemViewModel.ObjectType))
         {
-            RefreshEntries();
+            ScheduleRefresh();
         }
 
         // 监听 TokenComponent 的任何属性变化（包括 IsInInitiativeTracker）
@@ -141,7 +162,7 @@ public sealed class InitiativeTrackerViewModel : ObservableObject
                     System.Diagnostics.Debug.WriteLine($"[OnEntryPropertyChanged] {item.Name} 的 Token 组件已被删除，刷新先攻表");
                 }
             }
-            RefreshEntries();
+            ScheduleRefresh();
         }
     }
 
@@ -212,6 +233,9 @@ public sealed class InitiativeTrackerViewModel : ObservableObject
         {
             Entries[i].IsCurrentTurn = (i == _currentTurnIndex);
         }
+
+        // 通知 View 滚动到当前卡片
+        ScrollToCurrentRequest?.Invoke(_currentTurnIndex);
     }
 
     private void AdjustCurrentTurnAfterRemoval()
@@ -313,7 +337,7 @@ public sealed class InitiativeTrackerViewModel : ObservableObject
         }
 
         // 子节点变化时刷新先攻列表
-        RefreshEntries();
+        ScheduleRefresh();
     }
 
     private void OnAnyItemPropertyChanged(object? sender, PropertyChangedEventArgs e)
@@ -322,8 +346,8 @@ public sealed class InitiativeTrackerViewModel : ObservableObject
         if (e.PropertyName == nameof(HierarchyItemViewModel.ObjectType))
         {
             var item = sender as HierarchyItemViewModel;
-            System.Diagnostics.Debug.WriteLine($"[OnAnyItemPropertyChanged] {item?.Name} ObjectType 变为 '{item?.ObjectType}'，触发 RefreshEntries");
-            RefreshEntries();
+            System.Diagnostics.Debug.WriteLine($"[OnAnyItemPropertyChanged] {item?.Name} ObjectType 变为 '{item?.ObjectType}'，触发 ScheduleRefresh");
+            ScheduleRefresh();
         }
     }
 
@@ -340,14 +364,14 @@ public sealed class InitiativeTrackerViewModel : ObservableObject
                 var tokenComp = item.GetComponent<MapEngine.Core.Components.TokenComponent>();
                 if (tokenComp == null)
                 {
-                    System.Diagnostics.Debug.WriteLine($"[OnComponentsPropertyChanged] {item.Name} Token 组件已删除或缺失，触发 RefreshEntries");
+                    System.Diagnostics.Debug.WriteLine($"[OnComponentsPropertyChanged] {item.Name} Token 组件已删除或缺失，触发 ScheduleRefresh");
                 }
                 else
                 {
-                    System.Diagnostics.Debug.WriteLine($"[OnComponentsPropertyChanged] {item.Name} Components 变化 (IsInInitiativeTracker={tokenComp.IsInInitiativeTracker})，触发 RefreshEntries");
+                    System.Diagnostics.Debug.WriteLine($"[OnComponentsPropertyChanged] {item.Name} Components 变化 (IsInInitiativeTracker={tokenComp.IsInInitiativeTracker})，触发 ScheduleRefresh");
                 }
             }
-            RefreshEntries();
+            ScheduleRefresh();
         }
     }
 }

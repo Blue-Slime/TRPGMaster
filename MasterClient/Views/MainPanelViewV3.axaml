@@ -783,6 +783,21 @@
                                     </Grid>
                                     <TextBlock Text="每个房间在此目录下创建独立文件夹" FontSize="12" Foreground="#6b7280"/>
                                 </StackPanel>
+
+                                <StackPanel Spacing="8">
+                                    <TextBlock Text="全局素材库路径" FontSize="14" Foreground="White"/>
+                                    <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="8">
+                                        <TextBox Grid.Column="0" Text="{Binding AssetLibraryPath, Mode=TwoWay}"
+                                                 PlaceholderText="留空使用各模块默认路径" Classes="dark-input"/>
+                                        <Button Grid.Column="1" Classes="icon-btn" Command="{Binding OpenAssetLibraryFolderCommand}" ToolTip.Tip="打开文件夹">
+                                            <TextBlock Text="📂" FontSize="14"/>
+                                        </Button>
+                                        <Button Grid.Column="2" Classes="connect-btn" Command="{Binding BrowseAssetLibraryPathCommand}">
+                                            <TextBlock Text="浏览..." FontSize="14"/>
+                                        </Button>
+                                    </Grid>
+                                    <TextBlock Text="所有模块（地图/卡牌/骰子）共享此素材库路径" FontSize="12" Foreground="#6b7280"/>
+                                </StackPanel>
                             </StackPanel>
                         </Border>
 

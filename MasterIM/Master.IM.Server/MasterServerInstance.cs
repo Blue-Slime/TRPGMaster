@@ -66,6 +66,7 @@ public class MasterServerInstance
     private RoomMemberStore? _memberStore;
     private MessageStore? _messageStore;
     private RoomRuntimeManager? _runtime;
+    private RoomMapManager? _mapManager;
 
     private Process? _proc;
     private DateTime _lastCpuSample = DateTime.UtcNow;
@@ -172,6 +173,155 @@ public class MasterServerInstance
                 await context.Response.SendFileAsync(path);
             });
 
+            app.MapPost("/asset/import", async (Microsoft.AspNetCore.Http.HttpContext context) =>
+            {
+                var roomId = context.Request.Query["roomId"].ToString();
+                var assetType = context.Request.Query["type"].ToString(); // "token", "map", "audio", "file"
+                var uploaderId = context.Request.Query["userId"].ToString();
+
+                if (string.IsNullOrEmpty(roomId) || string.IsNullOrEmpty(assetType))
+                { context.Response.StatusCode = 400; return; }
+
+                if (!context.Request.HasFormContentType || context.Request.Form.Files.Count == 0)
+                { context.Response.StatusCode = 400; return; }
+
+                var file = context.Request.Form.Files[0];
+
+                // 确保房间资产目录存在
+                MapPersistence.RoomAssetPaths.EnsureDirectories(roomId);
+
+                // 获取分类存储目录
+                var targetDir = MapPersistence.RoomAssetPaths.GetAssetDirectory(roomId, assetType);
+
+                // 语义命名：使用原始文件名（去掉路径分量，防目录穿越）
+                var fileName = System.IO.Path.GetFileName(file.FileName);
+                if (string.IsNullOrWhiteSpace(fileName))
+                { context.Response.StatusCode = 400; return; }
+                var assetsRoot = MapPersistence.RoomAssetPaths.GetAssetsDirectory(roomId);
+                var index = new MapPersistence.AssetIndexManager(roomId);
+
+                // 先落临时文件算哈希：哈希已在库里就直接复用，不产生重复副本
+                var tempPath = System.IO.Path.Combine(targetDir, $".upload-{Guid.NewGuid():N}.tmp");
+                string hash;
+                try
+                {
+                    using (var stream = System.IO.File.Create(tempPath))
+                        await file.CopyToAsync(stream);
+
+                    hash = MapEngine.Core.Utilities.ContentHasher.ComputeHash(tempPath);
+
+                    var existing = index.GetAsset(hash);
+                    if (existing is not null &&
+                        System.IO.File.Exists(System.IO.Path.Combine(assetsRoot, existing.RelativePath)))
+                    {
+                        System.IO.File.Delete(tempPath);
+                        await context.Response.WriteAsJsonAsync(new
+                        {
+                            Success = true,
+                            Hash = hash,
+                            FileName = existing.FileName,
+                            RelativePath = existing.RelativePath,
+                            AssetType = existing.Type,
+                            Deduplicated = true
+                        });
+                        return;
+                    }
+
+                    // 同名不同内容：加序号避免覆盖
+                    var nameWithoutExt = System.IO.Path.GetFileNameWithoutExtension(fileName);
+                    var ext = System.IO.Path.GetExtension(fileName);
+                    var targetPath = System.IO.Path.Combine(targetDir, fileName);
+                    var counter = 1;
+                    while (System.IO.File.Exists(targetPath))
+                    {
+                        fileName = $"{nameWithoutExt}_{counter}{ext}";
+                        targetPath = System.IO.Path.Combine(targetDir, fileName);
+                        counter++;
+                    }
+
+                    System.IO.File.Move(tempPath, targetPath);
+
+                    var relativePath = System.IO.Path.GetRelativePath(assetsRoot, targetPath)
+                        .Replace('\\', '/');
+
+                    index.AddAsset(new MapPersistence.AssetMetadata
+                    {
+                        Hash         = hash,
+                        Type         = assetType.ToLowerInvariant(),
+                        FileName     = fileName,
+                        RelativePath = relativePath,
+                        DisplayName  = nameWithoutExt,
+                        MimeType     = file.ContentType ?? string.Empty,
+                        Size         = new System.IO.FileInfo(targetPath).Length,
+                        UploadedBy   = uploaderId,
+                        UploadedAt   = DateTime.UtcNow
+                    });
+
+                    await context.Response.WriteAsJsonAsync(new
+                    {
+                        Success = true,
+                        Hash = hash,
+                        FileName = fileName,
+                        RelativePath = relativePath,
+                        AssetType = assetType.ToLowerInvariant(),
+                        Deduplicated = false
+                    });
+                }
+                catch
+                {
+                    if (System.IO.File.Exists(tempPath)) System.IO.File.Delete(tempPath);
+                    throw;
+                }
+            });
+
+            // 房间素材清单：客户端据此做增量同步（对比本地缺哪些 hash）
+            app.MapGet("/asset/index", async (Microsoft.AspNetCore.Http.HttpContext context) =>
+            {
+                var roomId = context.Request.Query["roomId"].ToString();
+                if (string.IsNullOrEmpty(roomId))
+                { context.Response.StatusCode = 400; return; }
+
+                var index = new MapPersistence.AssetIndexManager(roomId);
+                await context.Response.WriteAsJsonAsync(new
+                {
+                    RoomId = roomId,
+                    Assets = index.GetAllAssets().Select(a => new
+                    {
+                        a.Hash, a.Type, a.FileName, a.RelativePath,
+                        a.DisplayName, a.MimeType, a.Size
+                    }).ToList()
+                });
+            });
+
+            // 按哈希下载房间素材（语义命名：实际路径查 index.json）
+            app.MapGet("/asset/download", async (Microsoft.AspNetCore.Http.HttpContext context) =>
+            {
+                var roomId = context.Request.Query["roomId"].ToString();
+                var hash = context.Request.Query["hash"].ToString();
+                if (string.IsNullOrEmpty(roomId) || string.IsNullOrEmpty(hash))
+                { context.Response.StatusCode = 400; return; }
+
+                var index = new MapPersistence.AssetIndexManager(roomId);
+                var meta = index.GetAsset(hash);
+                if (meta is null || string.IsNullOrEmpty(meta.RelativePath))
+                { context.Response.StatusCode = 404; return; }
+
+                var assetsRoot = MapPersistence.RoomAssetPaths.GetAssetsDirectory(roomId);
+                var fullPath = System.IO.Path.GetFullPath(
+                    System.IO.Path.Combine(assetsRoot, meta.RelativePath));
+
+                // 防目录穿越：解析后必须仍在 assets/ 下
+                if (!fullPath.StartsWith(System.IO.Path.GetFullPath(assetsRoot), StringComparison.OrdinalIgnoreCase)
+                    || !System.IO.File.Exists(fullPath))
+                { context.Response.StatusCode = 404; return; }
+
+                // 客户端要用 relativePath 落盘到同构缓存目录，走响应头带出去。
+                // HTTP 头只允许 ASCII，中文文件名必须 URL 编码（客户端解码后使用）。
+                context.Response.Headers["X-Asset-RelativePath"] = Uri.EscapeDataString(meta.RelativePath);
+                context.Response.Headers["X-Asset-FileName"] = Uri.EscapeDataString(meta.FileName);
+                await context.Response.SendFileAsync(fullPath);
+            });
+
             // 缓存内部服务引用供管理 API 使用
             _connMgr = app.Services.GetRequiredService<ConnectionManager>();
             _roomStore = app.Services.GetRequiredService<RoomStore>();
@@ -179,6 +329,7 @@ public class MasterServerInstance
             _memberStore = app.Services.GetRequiredService<RoomMemberStore>();
             _messageStore = app.Services.GetRequiredService<MessageStore>();
             _runtime = app.Services.GetRequiredService<RoomRuntimeManager>();
+            _mapManager = app.Services.GetRequiredService<RoomMapManager>();
 
             _proc = Process.GetCurrentProcess();
             _lastCpuTotal = _proc.TotalProcessorTime;
@@ -201,6 +352,9 @@ public class MasterServerInstance
         SetState(ServerState.Stopping);
         try
         {
+            // 保存所有房间的地图场景
+            _mapManager?.SaveAllRooms();
+
             await _app.StopAsync();
             await _app.DisposeAsync();
         }
@@ -209,6 +363,7 @@ public class MasterServerInstance
             _app = null;
             _connMgr = null; _roomStore = null; _channelStore = null;
             _memberStore = null; _messageStore = null; _runtime = null;
+            _mapManager = null;
             SetState(ServerState.Stopped);
         }
     }

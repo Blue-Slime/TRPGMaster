@@ -54,6 +54,49 @@ public sealed class VmAddEmptyObjectCommand : ILocalOnlyCommand
     }
 }
 
+/// <summary>
+/// 给节点挂一条拓扑连线（可 Undo）。
+///
+/// 走 VM 层而非 WorldAddGraphLinkCommand：编辑器新建的对象只进 HierarchyItemViewModel
+/// 树、不入 World，走 World 的命令会 FindById 失败而静默无效。
+/// </summary>
+public sealed class VmAddGraphLinkCommand : ILocalOnlyCommand
+{
+    private readonly MainWindowViewModel _vm;
+    private readonly string _ownerItemId;
+    private readonly GraphLinkComponent _link;
+
+    public VmAddGraphLinkCommand(MainWindowViewModel vm, string ownerItemId, GraphLinkComponent link)
+    {
+        _vm = vm;
+        _ownerItemId = ownerItemId;
+        _link = link;
+    }
+
+    public string Description => $"添加连线 → {_link.TargetNodeId}";
+
+    public void Execute(World world)
+    {
+        var owner = _vm.FindHierarchyById(_ownerItemId);
+        if (owner is null) return;
+
+        owner.BackingObject.AddComponent(_link);
+        owner.RebuildComponentEditors();
+        _vm.RefreshMapRenderableItemsPublic();
+    }
+
+    public void Undo(World world)
+    {
+        var owner = _vm.FindHierarchyById(_ownerItemId);
+        if (owner is null) return;
+
+        // 按实例移除：同一对象可能挂多条 GraphLink，不能按类型删
+        owner.BackingObject.RemoveComponent(_link);
+        owner.RebuildComponentEditors();
+        _vm.RefreshMapRenderableItemsPublic();
+    }
+}
+
 /// <summary>从层级树删除对象（可 Undo）</summary>
 public sealed class VmDeleteHierarchyItemCommand : ILocalOnlyCommand
 {

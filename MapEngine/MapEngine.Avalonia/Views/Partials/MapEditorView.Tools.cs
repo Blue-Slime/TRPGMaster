@@ -109,8 +109,103 @@ public partial class MapEditorView
             case "fog":
                 BeginFog(screenPos);
                 return true;
+            case "graph":
+                return GraphPointerPressed(screenPos);
         }
         return false;
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
+    // Graph（拓扑节点 / 连线）
+    // ─────────────────────────────────────────────────────────────────────
+
+    /// <summary>屏幕坐标 → 世界坐标（与 PlaceText 用的同一套换算）。</summary>
+    private (double X, double Y) ScreenToWorld(Point screenPos)
+    {
+        var vpSize = GetViewportSize();
+        var zs = _viewModel!.ZoomScale <= 0 ? 1.0 : _viewModel.ZoomScale;
+        var wx = _cameraContentCenter.X + (screenPos.X - vpSize.Width  / 2.0) / zs
+                 - MapViewportConstants.WorldOriginContent;
+        var wy = -((_cameraContentCenter.Y + (screenPos.Y - vpSize.Height / 2.0) / zs)
+                 - MapViewportConstants.WorldOriginContent);
+        return (wx, wy);
+    }
+
+    /// <summary>
+    /// 拓扑工具按下：node 子工具建节点（点已有节点则只选中），link 子工具起线。
+    /// </summary>
+    private bool GraphPointerPressed(Point screenPos)
+    {
+        if (_viewModel is null) return false;
+
+        var (wx, wy) = ScreenToWorld(screenPos);
+        var hit = _viewModel.HitTestGraphNode(wx, wy);
+
+        if (_viewModel.IsGraphLinkSubTool)
+        {
+            if (hit is null)
+            {
+                _viewModel.StatusMessage = "请从一个拓扑节点开始连线";
+                return true;
+            }
+            if (_viewModel.BeginGraphLinkDrag(hit))
+            {
+                _isToolDragging = true;
+                _toolDragStart = screenPos;
+                BeginGraphLinkPreview(screenPos);
+            }
+            return true;
+        }
+
+        // node 子工具：命中已有节点就只选中，避免叠着建一堆
+        if (hit is not null)
+        {
+            _viewModel.SelectedHierarchyItem = hit;
+            _viewModel.StatusMessage = $"已选中节点 {hit.Name}";
+            return true;
+        }
+
+        _viewModel.CreateGraphNodeAt(wx, wy);
+        return true;
+    }
+
+    /// <summary>连线拖拽的橡皮筋预览线。</summary>
+    private Line? _graphLinkPreviewLine;
+
+    private void BeginGraphLinkPreview(Point screenPos)
+    {
+        if (_toolOverlayCanvas is null) return;
+
+        _graphLinkPreviewLine = new Line
+        {
+            Stroke = new SolidColorBrush(Color.Parse("#4A90E2")),
+            StrokeThickness = 2,
+            StrokeDashArray = [6, 3],
+            StartPoint = screenPos,
+            EndPoint = screenPos,
+            IsHitTestVisible = false,
+        };
+        _toolOverlayCanvas.Children.Add(_graphLinkPreviewLine);
+    }
+
+    private void UpdateGraphLinkPreview(Point screenPos)
+    {
+        if (_graphLinkPreviewLine is not null)
+            _graphLinkPreviewLine.EndPoint = screenPos;
+    }
+
+    /// <summary>松开：命中节点则建连线，否则取消。</summary>
+    private void CommitGraphLink(Point screenPos)
+    {
+        if (_viewModel is null) return;
+
+        var (wx, wy) = ScreenToWorld(screenPos);
+        var target = _viewModel.HitTestGraphNode(wx, wy);
+        _viewModel.CompleteGraphLinkDrag(target);
+
+        _isToolDragging = false;
+        ClearOverlay();
+        _graphLinkPreviewLine = null;
     }
 
     /// <summary>
@@ -158,6 +253,7 @@ public partial class MapEditorView
             case "shape":   UpdateShape(screenPos);   return true;
             case "draw":    UpdateDraw(screenPos);    return true;
             case "fog":     UpdateFog(screenPos);     return true;
+            case "graph":   UpdateGraphLinkPreview(screenPos); return true;
         }
         return false;
     }
@@ -183,6 +279,7 @@ public partial class MapEditorView
             case "shape":   CommitShape(screenPos);    return true;
             case "draw":    CommitDraw();               return true;
             case "fog":     CommitFog(screenPos);       return true;
+            case "graph":   CommitGraphLink(screenPos); return true;
         }
         return false;
     }
@@ -191,6 +288,9 @@ public partial class MapEditorView
     private void CancelToolOverlay()
     {
         _isToolDragging = false;
+        // 半成品连线也要一并丢掉，否则下次按下会接着上次的起点连
+        _viewModel?.CancelGraphLinkDrag();
+        _graphLinkPreviewLine = null;
         ClearOverlay();
     }
 

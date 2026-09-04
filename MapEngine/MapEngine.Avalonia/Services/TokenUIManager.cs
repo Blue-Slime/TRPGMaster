@@ -23,11 +23,14 @@ public sealed class TokenUIManager
 {
     public delegate (Point Center, double Zoom) CameraProvider();
 
-    private sealed record Entry(Border Host, TokenUIViewModel Vm);
+    private sealed record Entry(Border NameHost, Border BadgeHost, TokenUIViewModel Vm);
 
-    // 标签框宽 96px → 居中偏移 48px；上移量使标签贴在 Token 正上方
-    private const double HalfWidth  = 48;
-    private const double AboveToken = 56;
+    // 标签框宽度 96px → 居中偏移 48px
+    // 名称/HP 在 Token 上方，状态徽章在下方
+    private const double HalfWidth       = 48;
+    private const double AboveToken      = 56;   // 名称/HP 上移量
+    private const double BadgeHalfWidth  = 60;   // 徽章栏宽度 120px → 偏移 60px
+    private const double BelowToken      = 8;    // 徽章栏下移量（Token底边+8px）
 
     private readonly Canvas _overlay;
     private readonly MainWindowViewModel _viewModel;
@@ -130,21 +133,23 @@ public sealed class TokenUIManager
 
             if (!_entries.TryGetValue(item.Id, out var entry))
             {
-                var vm   = new TokenUIViewModel { Id = item.Id };
-                var host = BuildTokenHost(vm);
-                entry = new Entry(host, vm);
+                var vm = new TokenUIViewModel { Id = item.Id };
+                var (nameHost, badgeHost) = BuildTokenHosts(vm);
+                entry = new Entry(nameHost, badgeHost, vm);
                 _entries[item.Id] = entry;
-                _overlay.Children.Add(host);
+                _overlay.Children.Add(nameHost);
+                _overlay.Children.Add(badgeHost);
             }
 
             var tokenComp = item.GetComponent<TokenComponent>();
-            UpdateEntry(entry, item.Name,
+
+            // 计算徽章位置（Token 底边 = 中心 + 半高）
+            var screenBottom = screenPos.Y + (item.SpriteHeight / 2.0) * zoom;
+
+            UpdateEntry(entry, item.Name, screenPos, screenBottom,
                 tokenComp?.CurrentHP  ?? 100,
                 tokenComp?.MaxHP      ?? 100,
                 tokenComp?.Conditions ?? []);
-
-            Canvas.SetLeft(entry.Host, screenPos.X - HalfWidth);
-            Canvas.SetTop (entry.Host, screenPos.Y - AboveToken);
         }
 
         // 移除本帧不再存活的条目
@@ -155,7 +160,8 @@ public sealed class TokenUIManager
                 if (!_aliveScratch.Contains(kv.Key)) stale.Add(kv.Key);
             foreach (var id in stale)
             {
-                _overlay.Children.Remove(_entries[id].Host);
+                _overlay.Children.Remove(_entries[id].NameHost);
+                _overlay.Children.Remove(_entries[id].BadgeHost);
                 _entries.Remove(id);
             }
         }
@@ -179,13 +185,15 @@ public sealed class TokenUIManager
     }
 
     /// <summary>
-    /// 直接构建 Border 作为 Canvas 子元素，不使用 ContentControl 包裹。
+    /// 构建 Token 的两个独立 UI：名称/HP 在上方，状态徽章在下方。
+    /// 返回 (名称Host, 徽章Host)，两者都直接作为 Canvas 子元素。
     /// Border.Tag 存可更新的子控件引用，供 UpdateEntry 就地修改数值。
     /// </summary>
-    private static Border BuildTokenHost(TokenUIViewModel vm)
+    private static (Border nameHost, Border badgeHost) BuildTokenHosts(TokenUIViewModel vm)
     {
         const double barWidth = 80;
 
+        // ─────── 名称/HP Host（上方）───────
         var hpBarBg = new Border
         {
             Height       = 6,
@@ -223,47 +231,74 @@ public sealed class TokenUIManager
             HorizontalAlignment = HorizontalAlignment.Center,
         };
 
-        // 状态徽章栏（最多显示 5 个，超出显示 +N）
-        var badgePanel = new WrapPanel
-        {
-            Orientation         = Orientation.Horizontal,
-            HorizontalAlignment = HorizontalAlignment.Center,
-        };
+        var nameStack = new StackPanel { Spacing = 2 };
+        nameStack.Children.Add(nameText);
+        nameStack.Children.Add(hpGrid);
+        nameStack.Children.Add(hpText);
 
-        var stack = new StackPanel { Spacing = 2 };
-        stack.Children.Add(nameText);
-        stack.Children.Add(hpGrid);
-        stack.Children.Add(hpText);
-        stack.Children.Add(badgePanel);
-
-        return new Border
+        var nameHost = new Border
         {
             Width            = 96,
             Background       = new SolidColorBrush(Color.FromArgb(224, 0, 0, 0)),
             CornerRadius     = new CornerRadius(4),
             Padding          = new Thickness(8, 4),
             IsHitTestVisible = false,
-            Child            = stack,
-            Tag              = (nameText, hpBarFg, hpText, badgePanel),
+            Child            = nameStack,
+            Tag              = (nameText, hpBarFg, hpText),
         };
+
+        // ─────── 徽章 Host（下方）───────
+        var badgePanel = new WrapPanel
+        {
+            Orientation         = Orientation.Horizontal,
+            HorizontalAlignment = HorizontalAlignment.Center,
+        };
+
+        var badgeHost = new Border
+        {
+            MinWidth         = 40,
+            MaxWidth         = 120,
+            Background       = new SolidColorBrush(Color.FromArgb(224, 0, 0, 0)),
+            CornerRadius     = new CornerRadius(4),
+            Padding          = new Thickness(6, 3),
+            IsHitTestVisible = false,
+            Child            = badgePanel,
+            Tag              = badgePanel,
+        };
+
+        return (nameHost, badgeHost);
     }
 
-    private static void UpdateEntry(Entry entry, string name, int currentHp, int maxHp,
-                                    List<ConditionEntry> conditions)
+    private static void UpdateEntry(Entry entry, string name, Point screenPos, double screenBottom,
+                                    int currentHp, int maxHp, List<ConditionEntry> conditions)
     {
         const double barWidth = 80;
-        if (entry.Host.Tag is not (TextBlock nameText, Border hpBarFg, TextBlock hpText,
-                                   WrapPanel badgePanel))
-            return;
 
-        var pct = maxHp > 0 ? (double)currentHp / maxHp : 0;
-        nameText.Text      = name;
-        hpBarFg.Width      = Math.Max(0, Math.Min(barWidth, pct * barWidth));
-        hpBarFg.Background = HpBrush(pct);
-        hpText.Text        = $"{currentHp}/{maxHp}";
+        // 更新名称/HP Host
+        if (entry.NameHost.Tag is (TextBlock nameText, Border hpBarFg, TextBlock hpText))
+        {
+            var pct = maxHp > 0 ? (double)currentHp / maxHp : 0;
+            nameText.Text      = name;
+            hpBarFg.Width      = Math.Max(0, Math.Min(barWidth, pct * barWidth));
+            hpBarFg.Background = HpBrush(pct);
+            hpText.Text        = $"{currentHp}/{maxHp}";
+        }
 
-        // 同步状态徽章（最多 5 个 + 溢出标签）
-        SyncBadges(badgePanel, conditions);
+        // 更新徽章 Host
+        if (entry.BadgeHost.Tag is WrapPanel badgePanel)
+        {
+            SyncBadges(badgePanel, conditions);
+            // 徽章栏为空时隐藏
+            entry.BadgeHost.IsVisible = conditions.Count > 0;
+        }
+
+        // 定位名称/HP（Token 上方）
+        Canvas.SetLeft(entry.NameHost, screenPos.X - HalfWidth);
+        Canvas.SetTop (entry.NameHost, screenPos.Y - AboveToken);
+
+        // 定位徽章栏（Token 下方）
+        Canvas.SetLeft(entry.BadgeHost, screenPos.X - BadgeHalfWidth);
+        Canvas.SetTop (entry.BadgeHost, screenBottom + BelowToken);
     }
 
     private static void SyncBadges(WrapPanel panel, List<ConditionEntry> conditions)

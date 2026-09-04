@@ -29,7 +29,7 @@ public sealed class SpriteRendererComponent : ComponentBase
 
     public string Color { get; set; } = "#FF4444";
     public double Opacity { get; set; } = 1;
-    public string SourceAssetPath { get; set; } = string.Empty;
+    public string AssetRef { get; set; } = string.Empty;
     public string SourceAssetKind { get; set; } = string.Empty;
     public string SourceAssetName { get; set; } = string.Empty;
     /// <summary>横向对齐：0=左, 1=居中, 2=右</summary>
@@ -42,7 +42,7 @@ public sealed class SpriteRendererComponent : ComponentBase
     {
         Color = Color,
         Opacity = Opacity,
-        SourceAssetPath = SourceAssetPath,
+        AssetRef = AssetRef,
         SourceAssetKind = SourceAssetKind,
         SourceAssetName = SourceAssetName,
         AlignX = AlignX,
@@ -107,6 +107,9 @@ public sealed class TokenComponent : ComponentBase
     /// <summary>当前状态列表（中毒/昏迷/隐形等）。</summary>
     public List<ConditionEntry> Conditions { get; set; } = [];
 
+    /// <summary>Token 形状：Rectangle | Circle。用于精灵图裁剪。</summary>
+    public string Shape { get; set; } = "Rectangle";
+
     public override IComponent Clone() => new TokenComponent
     {
         TokenName = TokenName,
@@ -124,7 +127,8 @@ public sealed class TokenComponent : ComponentBase
             StackCount = c.StackCount,
             RemainingRounds = c.RemainingRounds,
             ColorHex = c.ColorHex
-        }).ToList()
+        }).ToList(),
+        Shape = Shape
     };
 }
 

@@ -82,7 +82,7 @@ public partial class MainWindowViewModel
             IsLocked = item.IsLocked,
             SortOrder = item.SortOrder,
             HasMapPosition = item.HasMapPosition,
-            SourceAssetPath = item.SourceAssetPath,
+            AssetRef = item.AssetRef,
             SourceAssetKind = item.SourceAssetKind,
             SourceAssetName = item.SourceAssetName,
             Tags = item.Tags.ToList(),
@@ -124,11 +124,11 @@ public partial class MainWindowViewModel
         dto.Rotation = item.Rotation;
         dto.ScaleX = item.ScaleX; dto.ScaleY = item.ScaleY;
 
-        if (!string.IsNullOrEmpty(item.SourceAssetPath))
+        if (!string.IsNullOrEmpty(item.AssetRef))
         {
             dto.SpriteV2 = new MapEngine.Core.Data.SpriteData
             {
-                TexturePath = item.SourceAssetPath,
+                TexturePath = item.AssetRef,
                 Opacity = item.Opacity,
                 TintColor = item.SpriteColor,
                 AlignX = item.SpriteAlignX,
@@ -137,7 +137,7 @@ public partial class MainWindowViewModel
             };
         }
         // 同步旧字段
-        dto.SourceAssetPath = item.SourceAssetPath;
+        dto.AssetRef = item.AssetRef;
         dto.Opacity = item.Opacity;
         dto.SpriteColor = item.SpriteColor;
 
@@ -168,12 +168,37 @@ public partial class MainWindowViewModel
         // Shape / Text 是可选组件，只有挂载了才写入存档
         if (item.BackingObject.GetComponent<ShapeComponent>() is { } shape)
         {
-            dto.ShapeV2 = LegacyMigrator.ToShapeData(shape);
+            dto.ShapeV2 = new ShapeData
+            {
+                ShapeType = shape.ShapeType,
+                Width = shape.Width,
+                Height = shape.Height,
+                X2 = shape.X2,
+                Y2 = shape.Y2,
+                Points = shape.Points.Select(p => new PointData { X = p.X, Y = p.Y }).ToList(),
+                ConeAngle = shape.ConeAngle,
+                ConeRadius = shape.ConeRadius,
+                Rotation = shape.Rotation,
+                StrokeColor = shape.StrokeColor,
+                FillColor = shape.FillColor,
+                StrokeWidth = shape.StrokeWidth,
+                IsFilled = shape.IsFilled,
+                StrokeStyle = (int)shape.StrokeStyle
+            };
         }
 
         if (item.BackingObject.GetComponent<TextComponent>() is { } text)
         {
-            dto.TextV2 = LegacyMigrator.ToTextData(text);
+            dto.TextV2 = new TextData
+            {
+                Text = text.Text,
+                FontSize = text.FontSize,
+                Color = text.Color,
+                BackgroundColor = text.BackgroundColor,
+                IsBold = text.IsBold,
+                IsItalic = text.IsItalic,
+                Align = (int)text.Align
+            };
         }
 
         // Token 组件：只要挂载了 TokenComponent 就写入存档（包括无状态标记的情况）
@@ -185,7 +210,8 @@ public partial class MainWindowViewModel
                 IsPlayerControlled = token.IsPlayerControlled,
                 MovementSpeed = token.MovementSpeed,
                 CurrentHP = token.CurrentHP,
-                MaxHP = token.MaxHP
+                MaxHP = token.MaxHP,
+                Shape = token.Shape
             };
             dto.ConditionsV2 = token.Conditions.Select(c => new ConditionData
             {
@@ -195,6 +221,43 @@ public partial class MainWindowViewModel
                 StackCount = c.StackCount,
                 RemainingRounds = c.RemainingRounds,
                 ColorHex = c.ColorHex
+            }).ToList();
+        }
+
+        // 拓扑节点：任意对象挂了 GraphNodeComponent 就是节点
+        if (item.BackingObject.GetComponent<GraphNodeComponent>() is { } graphNode)
+        {
+            dto.GraphNodeV2 = new GraphNodeData
+            {
+                Kind         = (int)graphNode.Kind,
+                DisplayName  = graphNode.DisplayName,
+                Description  = graphNode.Description,
+                Visibility   = (int)graphNode.Visibility,
+                RenderMode   = (int)graphNode.RenderMode,
+                IconAssetRef = graphNode.IconAssetRef,
+                Color        = graphNode.Color,
+                Size         = graphNode.Size,
+                Shape        = graphNode.Shape
+            };
+        }
+
+        // 拓扑出边：一个对象可挂多条，全部写入
+        var graphLinks = item.BackingObject.GetComponents<GraphLinkComponent>().ToList();
+        if (graphLinks.Count > 0)
+        {
+            dto.GraphLinksV2 = graphLinks.Select(l => new GraphLinkData
+            {
+                LinkId          = l.LinkId,
+                TargetNodeId    = l.TargetNodeId,
+                Kind            = (int)l.Kind,
+                IsBidirectional = l.IsBidirectional,
+                Label           = l.Label,
+                Visibility      = (int)l.Visibility,
+                IsPassable      = l.IsPassable,
+                Cost            = l.Cost,
+                Color           = l.Color,
+                Width           = l.Width,
+                StrokeStyle     = (int)l.StrokeStyle
             }).ToList();
         }
 
@@ -222,7 +285,7 @@ public partial class MainWindowViewModel
             SpriteColor = source.SpriteColor,
             Opacity = source.Opacity,
             HasMapPosition = source.HasMapPosition,
-            SourceAssetPath = source.SourceAssetPath,
+            AssetRef = source.AssetRef,
             SourceAssetKind = source.SourceAssetKind,
             SourceAssetName = source.SourceAssetName,
             VisionEnabled = source.VisionEnabled,
@@ -244,6 +307,8 @@ public partial class MainWindowViewModel
                 ? sd with { Points = sd.Points is null ? [] : [.. sd.Points] }
                 : null,
             TextV2 = source.TextV2,
+            // TokenV2 没有旧扁平字段兜底，不显式拷就会丢 HP/先攻/速度
+            TokenV2 = source.TokenV2,
             ConditionsV2 = source.ConditionsV2?.Select(c => new ConditionData
             {
                 Id = Guid.NewGuid().ToString("N"),
@@ -253,6 +318,11 @@ public partial class MainWindowViewModel
                 RemainingRounds = c.RemainingRounds,
                 ColorHex = c.ColorHex
             }).ToList(),
+            GraphNodeV2 = source.GraphNodeV2,
+            // 副本的每条边都要换新 LinkId，否则与原节点撞 ID（目标指向保持不变）
+            GraphLinksV2 = source.GraphLinksV2?
+                .Select(l => l with { LinkId = Guid.NewGuid().ToString("N") })
+                .ToList(),
             Children = source.Children.Select(CloneHierarchySnapshot).ToList()
         };
     }
@@ -411,6 +481,9 @@ public partial class MainWindowViewModel
         var visionEnabled = bool.TryParse(visionProps?.GetValueOrDefault("enabled"), out var ve) && ve;
         var visionRadius = double.TryParse(visionProps?.GetValueOrDefault("radius"), out var vr) ? vr : 60.0;
 
+        // .asset 里的 assetRef 就是图片内容哈希，图片入库时已由 AssetImporter 写好，这里直接取。
+        var assetRef = spriteProps?.GetValueOrDefault("assetRef");
+
         var dto = new HierarchyNodeDto
         {
             Id = CreateId("node"),
@@ -444,7 +517,7 @@ public partial class MainWindowViewModel
             X = x ?? 0,
             Y = y ?? 0,
             HasMapPosition = x.HasValue && y.HasValue,
-            SourceAssetPath = asset.FullPath,
+            AssetRef = assetRef ?? string.Empty,
             SourceAssetKind = asset.Kind,
             SourceAssetName = asset.Name,
             Tags =

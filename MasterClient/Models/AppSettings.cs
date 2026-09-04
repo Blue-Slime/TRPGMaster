@@ -13,6 +13,12 @@ public class AppSettings
     /// </summary>
     public string DefaultRoomsPath { get; set; } = GetDefaultRoomsPath();
 
+    /// <summary>
+    /// 全局素材库路径（所有模块共享：地图/卡牌/骰子）
+    /// null 表示使用各模块默认路径
+    /// </summary>
+    public string? AssetLibraryPath { get; set; }
+
     // ===== 登录设置 =====
     public bool RememberPassword { get; set; } = true;
     public bool AutoLogin { get; set; } = false;

@@ -69,6 +69,75 @@ public sealed class MapRenderScene
     /// 每个徽章是一个圆角矩形 + emoji 图标，渲染在 Token Sprite 下方。
     /// </summary>
     public IReadOnlyList<MapRenderConditionBadge> ConditionBadges { get; init; } = Array.Empty<MapRenderConditionBadge>();
+
+    /// <summary>
+    /// 拓扑连线。必须在 GraphNodes 之前绘制，否则线会盖在节点图标上。
+    /// </summary>
+    public IReadOnlyList<MapRenderGraphLink> GraphLinks { get; init; } = Array.Empty<MapRenderGraphLink>();
+
+    /// <summary>
+    /// 拓扑节点图标。有 TexturePath 的走贴图，否则按 Shape 画纯色形状。
+    /// </summary>
+    public IReadOnlyList<MapRenderGraphNode> GraphNodes { get; init; } = Array.Empty<MapRenderGraphNode>();
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 拓扑图数据结构
+// ─────────────────────────────────────────────────────────────────────────────
+
+public enum GraphNodeShape { Circle, Square, Diamond }
+
+/// <summary>
+/// 一个拓扑节点的渲染指令。坐标系为世界内容坐标（与 WallLines 等一致）。
+/// </summary>
+public sealed class MapRenderGraphNode
+{
+    /// <summary>对象 Id，供点击命中回查</summary>
+    public string ObjectId { get; init; } = string.Empty;
+
+    public double CenterX { get; init; }
+    public double CenterY { get; init; }
+    /// <summary>直径（世界单位）</summary>
+    public double Size { get; init; } = 48;
+
+    public GraphNodeShape Shape { get; init; } = GraphNodeShape.Circle;
+    public MapRenderColor FillColor { get; init; }
+
+    /// <summary>图标贴图路径（已由 assetRef 解析成实际路径）。空则画纯色形状。</summary>
+    public string? TexturePath { get; init; }
+
+    /// <summary>未揭示节点整体降透明度，GM 才看得到</summary>
+    public float Opacity { get; init; } = 1f;
+
+    /// <summary>是否画选中高亮环</summary>
+    public bool IsSelected { get; init; }
+}
+
+/// <summary>
+/// 一条拓扑连线的渲染指令。两端坐标已由 SceneBuilder 解析好，
+/// 渲染层不需要再查节点。
+/// </summary>
+public sealed class MapRenderGraphLink
+{
+    /// <summary>边 Id，供点击命中回查</summary>
+    public string LinkId { get; init; } = string.Empty;
+
+    public double X1 { get; init; }
+    public double Y1 { get; init; }
+    public double X2 { get; init; }
+    public double Y2 { get; init; }
+
+    public MapRenderColor Color { get; init; }
+    public float Width { get; init; } = 2f;
+    public VectorStrokeStyle StrokeStyle { get; init; } = VectorStrokeStyle.Solid;
+
+    /// <summary>单向边在终点画箭头</summary>
+    public bool ShowArrow { get; init; }
+
+    /// <summary>封锁的边画成半透明，直观区分“有路但走不通”</summary>
+    public float Opacity { get; init; } = 1f;
+
+    public bool IsSelected { get; init; }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -140,7 +209,8 @@ public readonly record struct MapRenderSprite(
     double Height,
     double Rotation,
     string TexturePath,
-    MapRenderColor TintColor);
+    MapRenderColor TintColor,
+    string Shape);
 
 /// <summary>
 /// 扇形（用于视野锥渲染）

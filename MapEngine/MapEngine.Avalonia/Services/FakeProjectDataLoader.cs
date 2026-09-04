@@ -105,7 +105,7 @@ public sealed class HierarchyNodeDto
 
     public bool HasMapPosition { get; set; }
 
-    public string SourceAssetPath { get; set; } = string.Empty;
+    public string AssetRef { get; set; } = string.Empty;
 
     public string SourceAssetKind { get; set; } = string.Empty;
 
@@ -141,7 +141,7 @@ public sealed class HierarchyNodeDto
 
     /// <summary>
     /// Sprite 数据（新架构）
-    /// 访问优先级：SpriteV2 > (SourceAssetPath, Opacity, SpriteColor)
+    /// 访问优先级：SpriteV2 > (AssetRef, Opacity, SpriteColor)
     /// </summary>
     public SpriteData? SpriteV2 { get; set; }
 
@@ -171,6 +171,16 @@ public sealed class HierarchyNodeDto
     /// </summary>
     public TokenData? TokenV2 { get; set; }
 
+    /// <summary>
+    /// 拓扑节点数据（挂了 GraphNodeComponent 时存在）
+    /// </summary>
+    public GraphNodeData? GraphNodeV2 { get; set; }
+
+    /// <summary>
+    /// 拓扑出边列表（挂了 GraphLinkComponent 时存在，一个对象可有多条）
+    /// </summary>
+    public List<GraphLinkData>? GraphLinksV2 { get; set; }
+
     public List<string> Tags { get; set; } = [];
 
     public List<HierarchyNodeDto> Children { get; set; } = [];
@@ -196,12 +206,12 @@ public sealed class HierarchyNodeDto
             };
         }
 
-        // Sprite 迁移（如果有纹理路径）
-        if (SpriteV2 == null && !string.IsNullOrEmpty(SourceAssetPath))
+        // Sprite 迁移（如果有素材引用）
+        if (SpriteV2 == null && !string.IsNullOrEmpty(AssetRef))
         {
             SpriteV2 = new SpriteData
             {
-                TexturePath = SourceAssetPath,
+                TexturePath = AssetRef,
                 Opacity = Opacity,
                 TintColor = SpriteColor,
                 AlignX = 1,
@@ -256,7 +266,7 @@ public sealed class HierarchyNodeDto
         if (SpriteV2.HasValue)
         {
             var s = SpriteV2.Value;
-            SourceAssetPath = s.TexturePath;
+            AssetRef = s.TexturePath;
             Opacity = s.Opacity;
             SpriteColor = s.TintColor;
         }

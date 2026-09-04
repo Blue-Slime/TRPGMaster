@@ -81,8 +81,9 @@ public sealed class MapSyncHandler
     {
         lock (_lock)
         {
-            // 导出完整场景文档
-            var document = MapEngine.Core.Components.SceneSerializer.ToDocument(_world.AllObjects());
+            // 导出完整场景文档。必须传 Roots：ToDocument 自身会递归 Children，
+            // 传 AllObjects() 会让每个子对象既作为父的 child、又作为顶层对象各出现一次。
+            var document = MapEngine.Core.Components.SceneSerializer.ToDocument(_world.Roots);
             return new MapFullSync
             {
                 Document = document,
