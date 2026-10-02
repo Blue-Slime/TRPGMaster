@@ -62,6 +62,7 @@ public static class SceneFileLoader
         var token = go.GetComponent<TokenComponent>();
         var graphNode = go.GetComponent<GraphNodeComponent>();
         var graphLinks = go.GetComponents<GraphLinkComponent>().ToList();
+        var wallPath = go.GetComponent<WallPathComponent>();
 
         return new HierarchyNodeDto
         {
@@ -159,6 +160,30 @@ public static class SceneFileLoader
                     StrokeStyle     = (int)l.StrokeStyle
                 }).ToList()
                 : null,
+            WallPathV2 = wallPath is null ? null : new MapEngine.Core.Data.WallPathData
+            {
+                Points = wallPath.Points.Select(p => new MapEngine.Core.Data.PointData { X = p.X, Y = p.Y }).ToList(),
+                IsClosed = wallPath.IsClosed,
+                Sight = (int)wallPath.Sight,
+                Move = (int)wallPath.Move,
+                Sound = (int)wallPath.Sound,
+                Light = (int)wallPath.Light,
+                Thickness = wallPath.Thickness,
+                Color = wallPath.Color,
+                Doors = wallPath.Doors.Count > 0
+                    ? wallPath.Doors.Select(d => new MapEngine.Core.Data.DoorSegmentData
+                    {
+                        Id = d.Id,
+                        StartAnchorIndex = d.StartAnchorIndex,
+                        EndAnchorIndex = d.EndAnchorIndex,
+                        Kind = (int)d.Kind,
+                        State = (int)d.State,
+                        Swing = (int)d.Swing,
+                        SightOverride = d.SightOverride.HasValue ? (int)d.SightOverride.Value : null,
+                        MoveOverride = d.MoveOverride.HasValue ? (int)d.MoveOverride.Value : null
+                    }).ToList()
+                    : null
+            },
             Tags = [.. go.Tags],
             Children = go.Children.Select(GameObjectToDto).ToList()
         };

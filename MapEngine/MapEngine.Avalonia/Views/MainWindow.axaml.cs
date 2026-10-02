@@ -64,9 +64,7 @@ public partial class MapEditorView : UserControl
     private double _scaleHandleStartScaleY;
     private Point _scaleHandleDragStartPos;
 
-    // Token UI 覆盖层管理
-    private Canvas? _tokenUIOverlay;
-    private TokenUIManager? _tokenUIManager;
+    // 地图文本覆盖层管理
     private Canvas? _mapTextOverlay;
     private MapTextManager? _mapTextManager;
 
@@ -88,7 +86,6 @@ public partial class MapEditorView : UserControl
             _mapSilkCanvas.RuntimeInfoAvailable += OnRuntimeInfoAvailable;
         }
 
-        _tokenUIOverlay = this.FindControl<Canvas>("TokenUIOverlay");
         _mapTextOverlay = this.FindControl<Canvas>("MapTextOverlay");
         _toolOverlayCanvas = this.FindControl<Canvas>("ToolOverlayCanvas");
         _assetItemsListBox = null; // 底部抽屉素材卡片用 ItemsControl，不再是 ListBox

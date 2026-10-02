@@ -282,6 +282,49 @@ public sealed class HierarchyItemViewModel : ViewModelBase, IGlobalSelectionItem
             }
         }
 
+        // 挂载 WallPathComponent(可选):墙体路径（带门窗）
+        if (dto.WallPathV2 is { } wpd)
+        {
+            var wallPath = new WallPathComponent
+            {
+                Points = wpd.Points?.Select(p => ((double)p.X, (double)p.Y)).ToList() ?? [],
+                IsClosed = wpd.IsClosed,
+                Sight = (SenseLevel)wpd.Sight,
+                Move = (SenseLevel)wpd.Move,
+                Sound = (SenseLevel)wpd.Sound,
+                Light = (SenseLevel)wpd.Light,
+                Thickness = wpd.Thickness,
+                Color = wpd.Color ?? "#D32F2F"
+            };
+
+            // 挂载门窗列表
+            if (wpd.Doors is not null)
+            {
+                foreach (var dd in wpd.Doors)
+                {
+                    var door = new DoorSegment
+                    {
+                        Id = string.IsNullOrEmpty(dd.Id) ? Guid.NewGuid().ToString("N") : dd.Id,
+                        StartAnchorIndex = dd.StartAnchorIndex,
+                        EndAnchorIndex = dd.EndAnchorIndex,
+                        Kind = (DoorKind)dd.Kind,
+                        State = (DoorState)dd.State,
+                        Swing = (DoorSwing)dd.Swing
+                    };
+
+                    // 处理可选的感知覆盖
+                    if (dd.SightOverride.HasValue)
+                        door.SightOverride = (SenseLevel)dd.SightOverride.Value;
+                    if (dd.MoveOverride.HasValue)
+                        door.MoveOverride = (SenseLevel)dd.MoveOverride.Value;
+
+                    wallPath.Doors.Add(door);
+                }
+            }
+
+            BackingObject.AddComponent(wallPath);
+        }
+
         // UI 专用字段
         _instanceId = dto.InstanceId;
 
@@ -312,6 +355,7 @@ public sealed class HierarchyItemViewModel : ViewModelBase, IGlobalSelectionItem
                 SpriteRendererComponent s => new SpriteRendererComponentEditor(this, s),
                 VisionComponent v => new VisionComponentEditor(this, v),
                 WallComponent w => new WallComponentEditor(this, w),
+                WallPathComponent wp => new WallPathComponentEditor(this, wp),
                 TokenComponent tk => new TokenComponentEditor(this, tk),
                 ShapeComponent sh => new ShapeComponentEditor(this, sh),
                 TextComponent tx => new TextComponentEditor(this, tx),

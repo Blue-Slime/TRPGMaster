@@ -181,6 +181,11 @@ public sealed class HierarchyNodeDto
     /// </summary>
     public List<GraphLinkData>? GraphLinksV2 { get; set; }
 
+    /// <summary>
+    /// 墙体路径数据（ObjectType == "Wall" 时存在）
+    /// </summary>
+    public WallPathData? WallPathV2 { get; set; }
+
     public List<string> Tags { get; set; } = [];
 
     public List<HierarchyNodeDto> Children { get; set; } = [];

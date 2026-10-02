@@ -242,6 +242,7 @@ public partial class MainWindowViewModel : ViewModelBase
             new("draw",    "🖌️", "画笔", "画笔工具 (D)"),
             new("text",    "T",   "文本", "文本工具 (T)"),
             new("shape",   "🔲",  "形状", "形状工具 (S)"),
+            new("wall",    "🧱",  "墙体", "墙体工具 (W)"),
             new("measure", "📏",  "测量", "测量工具 (M)"),
             new("laser",   "🎯",  "激光", "激光笔 (L)", isToggle: true),
             new("fog",     "☁️", "迷雾", "迷雾工具 (F)"),

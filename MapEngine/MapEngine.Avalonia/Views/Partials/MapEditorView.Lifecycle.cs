@@ -8,6 +8,7 @@ using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Platform.Storage;
 using Avalonia.Threading;
+using MapEngine.Avalonia.Commands;
 using MapEngine.Avalonia.Controls;
 using MapEngine.Avalonia.Graphics;
 using MapEngine.Avalonia.Layout;
@@ -65,6 +66,16 @@ public partial class MapEditorView
                     e.Handled = true;
                     break;
 
+                // 墙体路径：Enter 完成提交，Esc 取消
+                case Key.Enter when HasPendingWall:
+                    CommitPendingWall();
+                    e.Handled = true;
+                    break;
+                case Key.Escape when HasPendingWall:
+                    CancelToolOverlay();
+                    e.Handled = true;
+                    break;
+
                 // Esc 无待定多边形时：取消当前拖拽并回到选择工具
                 case Key.Escape:
                     CancelToolOverlay();
@@ -74,6 +85,22 @@ public partial class MapEditorView
 
                 case Key.Delete:
                 case Key.Back:
+                    // 删除墙体锚点（如果正在拖拽锚点则删除该锚点）
+                    if (_isDraggingWallHandle && _wallHandleDragItem is not null)
+                    {
+                        var wallPath = _wallHandleDragItem.GetComponent<MapEngine.Core.Components.WallPathComponent>();
+                        if (wallPath is not null && wallPath.Points.Count > 2)
+                        {
+                            _viewModel.CommandBus.Execute(new VmDeleteWallAnchorCommand(
+                                _viewModel, _wallHandleDragItem.Id, _wallHandleDragIndex));
+                            _isDraggingWallHandle = false;
+                            _wallHandleDragItem = null;
+                            e.Handled = true;
+                            break;
+                        }
+                    }
+
+                    // 删除选中对象
                     if (_viewModel.SelectedHierarchyItem is not null)
                     {
                         _viewModel.DeleteHierarchyItem(_viewModel.SelectedHierarchyItem);
@@ -88,6 +115,7 @@ public partial class MapEditorView
                 case Key.D when !IsTextInputFocused(): SwitchTool("draw");    e.Handled = true; break;
                 case Key.T when !IsTextInputFocused(): SwitchTool("text");    e.Handled = true; break;
                 case Key.S when !IsTextInputFocused(): SwitchTool("shape");   e.Handled = true; break;
+                case Key.W when !IsTextInputFocused(): SwitchTool("wall");    e.Handled = true; break;
                 case Key.M when !IsTextInputFocused(): SwitchTool("measure"); e.Handled = true; break;
                 case Key.L when !IsTextInputFocused(): SwitchTool("laser");   e.Handled = true; break;
                 case Key.F when !IsTextInputFocused(): SwitchTool("fog");     e.Handled = true; break;
@@ -181,15 +209,6 @@ public partial class MapEditorView
             if (_mapSilkCanvas?.RuntimeInfo is GraphicsRuntimeInfo runtimeInfo)
                 _viewModel.SetGraphicsRuntimeInfo(runtimeInfo);
 
-            if (_tokenUIOverlay is not null)
-            {
-                _tokenUIManager = new TokenUIManager(
-                    _tokenUIOverlay,
-                    _viewModel,
-                    () => (_cameraContentCenter, _viewModel?.ZoomScale ?? 1.0));
-                Dispatcher.UIThread.Post(() => _tokenUIManager?.Sync(), DispatcherPriority.Loaded);
-            }
-
             if (_mapTextOverlay is not null)
             {
                 _mapTextManager = new MapTextManager(
@@ -281,7 +300,6 @@ public partial class MapEditorView
 
                 _lastZoomScale = newZoomScale;
                 SyncMapViewport();
-                _tokenUIManager?.SyncFromViewModel(_cameraContentCenter, newZoomScale);
                 _mapTextManager?.SyncFromViewModel(_cameraContentCenter, newZoomScale);
                 break;
         }

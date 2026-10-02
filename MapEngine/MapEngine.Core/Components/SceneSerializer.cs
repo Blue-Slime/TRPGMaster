@@ -172,6 +172,31 @@ public static class SceneSerializer
                 props["width"] = gl.Width;
                 props["strokeStyle"] = (int)gl.StrokeStyle;
                 break;
+            case WallPathComponent wp:
+                if (wp.Points.Count > 0)
+                    props["points"] = wp.Points
+                        .Select(p => new PointData { X = p.X, Y = p.Y })
+                        .ToList();
+                props["isClosed"] = wp.IsClosed;
+                props["sight"] = (int)wp.Sight;
+                props["move"] = (int)wp.Move;
+                props["sound"] = (int)wp.Sound;
+                props["light"] = (int)wp.Light;
+                props["thickness"] = wp.Thickness;
+                props["color"] = wp.Color;
+                if (wp.Doors.Count > 0)
+                    props["doors"] = wp.Doors.Select(d => new DoorSegmentData
+                    {
+                        Id = d.Id,
+                        StartAnchorIndex = d.StartAnchorIndex,
+                        EndAnchorIndex = d.EndAnchorIndex,
+                        Kind = (int)d.Kind,
+                        State = (int)d.State,
+                        Swing = (int)d.Swing,
+                        SightOverride = d.SightOverride.HasValue ? (int)d.SightOverride.Value : null,
+                        MoveOverride = d.MoveOverride.HasValue ? (int)d.MoveOverride.Value : null
+                    }).ToList();
+                break;
         }
         return new ComponentData { Type = component.TypeName, Properties = props };
     }
@@ -327,6 +352,18 @@ public static class SceneSerializer
                 Width = GetDouble(data, "width", 2),
                 StrokeStyle = (StrokeStyle)(int)GetDouble(data, "strokeStyle")
             },
+            "WallPath" => new WallPathComponent
+            {
+                Points = GetPoints(data),
+                IsClosed = GetBool(data, "isClosed"),
+                Sight = (SenseLevel)(int)GetDouble(data, "sight", 20),
+                Move = (SenseLevel)(int)GetDouble(data, "move", 20),
+                Sound = (SenseLevel)(int)GetDouble(data, "sound", 20),
+                Light = (SenseLevel)(int)GetDouble(data, "light", 20),
+                Thickness = GetDouble(data, "thickness", 5),
+                Color = GetString(data, "color", "#D32F2F"),
+                Doors = GetDoorSegments(data)
+            },
             _ => null
         };
     }
@@ -385,6 +422,35 @@ public static class SceneSerializer
         return result;
     }
 
+    private static List<DoorSegment> GetDoorSegments(ComponentData data)
+    {
+        if (!data.Properties.TryGetValue("doors", out var raw)) return [];
+        if (raw is not JsonElement el || el.ValueKind != JsonValueKind.Array) return [];
+        var result = new List<DoorSegment>();
+        foreach (var item in el.EnumerateArray())
+        {
+            var door = new DoorSegment
+            {
+                Id = item.TryGetProperty("id", out var idEl) ? idEl.GetString() ?? Guid.NewGuid().ToString("N") : Guid.NewGuid().ToString("N"),
+                StartAnchorIndex = item.TryGetProperty("startAnchorIndex", out var siEl) && siEl.TryGetInt32(out var si) ? si : 0,
+                EndAnchorIndex = item.TryGetProperty("endAnchorIndex", out var eiEl) && eiEl.TryGetInt32(out var ei) ? ei : 0,
+                Kind = item.TryGetProperty("kind", out var kEl) && kEl.TryGetInt32(out var k) ? (DoorKind)k : DoorKind.Door,
+                State = item.TryGetProperty("state", out var stEl) && stEl.TryGetInt32(out var st) ? (DoorState)st : DoorState.Closed,
+                Swing = item.TryGetProperty("swing", out var swEl) && swEl.TryGetInt32(out var sw) ? (DoorSwing)sw : DoorSwing.None
+            };
+
+            // 处理可选的感知覆盖
+            if (item.TryGetProperty("sightOverride", out var sightEl) && sightEl.ValueKind != JsonValueKind.Null && sightEl.TryGetInt32(out var sight))
+                door.SightOverride = (SenseLevel)sight;
+
+            if (item.TryGetProperty("moveOverride", out var moveEl) && moveEl.ValueKind != JsonValueKind.Null && moveEl.TryGetInt32(out var move))
+                door.MoveOverride = (SenseLevel)move;
+
+            result.Add(door);
+        }
+        return result;
+    }
+
     private static double GetDouble(ComponentData data, string key, double fallback = 0)
     {
         if (data.Properties.TryGetValue(key, out var val) && val is JsonElement el)
@@ -434,4 +500,16 @@ public sealed class ComponentData
 {
     public string Type { get; set; } = string.Empty;
     public Dictionary<string, object?> Properties { get; set; } = [];
+}
+
+public sealed class DoorSegmentData
+{
+    public string Id { get; set; } = string.Empty;
+    public int StartAnchorIndex { get; set; }
+    public int EndAnchorIndex { get; set; }
+    public int Kind { get; set; }
+    public int State { get; set; }
+    public int Swing { get; set; }
+    public int? SightOverride { get; set; }
+    public int? MoveOverride { get; set; }
 }

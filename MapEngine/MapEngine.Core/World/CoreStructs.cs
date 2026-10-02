@@ -286,3 +286,126 @@ public struct TokenData
         Shape = "Rectangle";
     }
 }
+
+/// <summary>
+/// 墙体路径数据（WallPathComponent 的存档投影）
+/// 描述一条由锚点定义的墙体折线/闭合路径
+/// </summary>
+public struct WallPathData
+{
+    /// <summary>
+    /// 锚点列表（墙体骨架）
+    /// </summary>
+    public List<PointData> Points { get; set; }
+
+    /// <summary>
+    /// 是否闭合路径（首尾相连）
+    /// </summary>
+    public bool IsClosed { get; set; }
+
+    /// <summary>
+    /// 视线阻挡等级（0=穿透, 1=半透明, 2=完全阻挡）
+    /// </summary>
+    public int Sight { get; set; }
+
+    /// <summary>
+    /// 移动阻挡等级（0=可穿过, 1=困难地形, 2=阻挡）
+    /// </summary>
+    public int Move { get; set; }
+
+    /// <summary>
+    /// 声音阻挡等级（0=穿透, 1=衰减, 2=隔绝）
+    /// </summary>
+    public int Sound { get; set; }
+
+    /// <summary>
+    /// 光照阻挡等级（0=穿透, 1=衰减, 2=阻挡）
+    /// </summary>
+    public int Light { get; set; }
+
+    /// <summary>
+    /// 墙体厚度（像素）
+    /// </summary>
+    public double Thickness { get; set; }
+
+    /// <summary>
+    /// 墙体颜色（十六进制，如 "#E74C3C"）
+    /// </summary>
+    public string Color { get; set; }
+
+    /// <summary>
+    /// 门窗段列表（可选）
+    /// </summary>
+    public List<DoorSegmentData>? Doors { get; set; }
+
+    public WallPathData()
+    {
+        Points = [];
+        IsClosed = false;
+        Sight = 2;      // 默认完全阻挡视线
+        Move = 2;       // 默认阻挡移动
+        Sound = 1;      // 默认衰减声音
+        Light = 1;      // 默认衰减光照
+        Thickness = 5;
+        Color = "#E74C3C";
+        Doors = null;
+    }
+}
+
+/// <summary>
+/// 门窗段数据（定义在墙体锚点区间上的门窗）
+/// </summary>
+public struct DoorSegmentData
+{
+    /// <summary>
+    /// 门窗唯一标识
+    /// </summary>
+    public string Id { get; set; }
+
+    /// <summary>
+    /// 起始锚点索引（在 WallPathData.Points 中的位置）
+    /// </summary>
+    public int StartAnchorIndex { get; set; }
+
+    /// <summary>
+    /// 结束锚点索引（在 WallPathData.Points 中的位置）
+    /// </summary>
+    public int EndAnchorIndex { get; set; }
+
+    /// <summary>
+    /// 门窗类型（0=普通门, 1=窗户, 2=拱门, 3=密门）
+    /// </summary>
+    public int Kind { get; set; }
+
+    /// <summary>
+    /// 门状态（0=关闭, 1=开启, 2=锁定）
+    /// </summary>
+    public int State { get; set; }
+
+    /// <summary>
+    /// 开门方向（0=向左, 1=向右, 2=双向）
+    /// </summary>
+    public int Swing { get; set; }
+
+    /// <summary>
+    /// 视线覆盖值（null=继承墙体配置）
+    /// </summary>
+    public int? SightOverride { get; set; }
+
+    /// <summary>
+    /// 移动覆盖值（null=继承墙体配置）
+    /// </summary>
+    public int? MoveOverride { get; set; }
+
+    public DoorSegmentData()
+    {
+        Id = Guid.NewGuid().ToString("N");
+        StartAnchorIndex = 0;
+        EndAnchorIndex = 0;
+        Kind = 0;           // 普通门
+        State = 0;          // 关闭
+        Swing = 0;          // 向左
+        SightOverride = null;
+        MoveOverride = null;
+    }
+}

@@ -36,6 +36,7 @@ public static class MapSceneBuilder
         var (wallLines, wallHandles) = (BuildWallLines(viewModel), BuildWallHandles(viewModel));
         var (visionCones, visionFans) = BuildVision(viewModel);
         var (graphNodes, graphLinks) = BuildGraph(viewModel);
+        var (tokenLabels, tokenHealthBars, tokenBadges) = BuildTokenUI(viewModel);
 
         return new MapRenderScene
         {
@@ -66,6 +67,9 @@ public static class MapSceneBuilder
             FogRevealedPolygons = viewModel.IsFogEnabled
                 ? viewModel.FogRevealedRegions.Select(r => r.Points).ToList()
                 : Array.Empty<IReadOnlyList<(double, double)>>(),
+            TokenLabels = tokenLabels,
+            TokenHealthBars = tokenHealthBars,
+            TokenBadges = tokenBadges,
         };
     }
 
@@ -495,24 +499,25 @@ public static class MapSceneBuilder
 
         foreach (var item in viewModel.MapRenderableItems)
         {
-            if (!item.ShouldRenderOnMap || !item.HasWallComponent)
+            if (!item.ShouldRenderOnMap)
                 continue;
 
-            var wall = item.GetComponent<MapEngine.Core.Components.WallComponent>();
-            if (wall == null)
-                continue;
-
-            var color = wall.Door != MapEngine.Core.Components.DoorKind.None
-                ? (wall.State == MapEngine.Core.Components.DoorState.Open ? doorOpenColor : doorClosedColor)
-                : (wall.Sight == MapEngine.Core.Components.SenseLevel.None ? windowColor : wallColor);
-
-            var objCenterX = item.MapLeft + (MapViewportConstants.CellSize * item.ScaleX) / 2.0;
-            var objCenterY = item.MapTop + (MapViewportConstants.CellSize * item.ScaleY) / 2.0;
-            var rotRad = item.Rotation * Math.PI / 180.0;
-            var rotCos = Math.Cos(rotRad);
-            var rotSin = Math.Sin(rotRad);
-
+            // ── 旧墙体组件（单线段）────────────────────────────────────
+            if (item.HasWallComponent)
             {
+                var wall = item.GetComponent<MapEngine.Core.Components.WallComponent>();
+                if (wall == null) continue;
+
+                var color = wall.Door != MapEngine.Core.Components.DoorKind.None
+                    ? (wall.State == MapEngine.Core.Components.DoorState.Open ? doorOpenColor : doorClosedColor)
+                    : (wall.Sight == MapEngine.Core.Components.SenseLevel.None ? windowColor : wallColor);
+
+                var objCenterX = item.MapLeft + (MapViewportConstants.CellSize * item.ScaleX) / 2.0;
+                var objCenterY = item.MapTop + (MapViewportConstants.CellSize * item.ScaleY) / 2.0;
+                var rotRad = item.Rotation * Math.PI / 180.0;
+                var rotCos = Math.Cos(rotRad);
+                var rotSin = Math.Sin(rotRad);
+
                 var (lx1, ly1) = (wall.X1 * rotCos - wall.Y1 * rotSin, wall.X1 * rotSin + wall.Y1 * rotCos);
                 var (lx2, ly2) = (wall.X2 * rotCos - wall.Y2 * rotSin, wall.X2 * rotSin + wall.Y2 * rotCos);
 
@@ -525,7 +530,7 @@ public static class MapSceneBuilder
                 var dy = y2 - y1;
                 var length = Math.Sqrt(dx * dx + dy * dy);
 
-                if (length < 0.1) goto nextItem;
+                if (length < 0.1) continue;
 
                 var angle   = Math.Atan2(dy, dx) * 180.0 / Math.PI;
                 var centerX = (x1 + x2) / 2.0;
@@ -536,7 +541,66 @@ public static class MapSceneBuilder
                     centerY - wall.Thickness / 2.0,
                     length, wall.Thickness, angle, color, null, 1.0f));
             }
-            nextItem:;
+
+            // ── 墙体路径组件（多锚点）──────────────────────────────────
+            if (item.ObjectType == "WallPathV2")
+            {
+                var wallPath = item.GetComponent<MapEngine.Core.Components.WallPathComponent>();
+                if (wallPath == null || wallPath.Points.Count < 2) continue;
+
+                var thickness = wallPath.Thickness;
+                var baseColor = ParseHexColor(wallPath.Color, defaultAlpha: 1.0f);
+
+                // 构建门窗区段集合（用于着色区分）
+                var doorSegments = new HashSet<int>();
+                var doorColors = new Dictionary<int, MapRenderColor>();
+                foreach (var door in wallPath.Doors)
+                {
+                    var color = door.Kind switch
+                    {
+                        MapEngine.Core.Components.DoorKind.Window => windowColor,
+                        _ => door.State == MapEngine.Core.Components.DoorState.Open ? doorOpenColor : doorClosedColor
+                    };
+
+                    foreach (var segIdx in door.GetCoveredSegments())
+                    {
+                        doorSegments.Add(segIdx);
+                        doorColors[segIdx] = color;
+                    }
+                }
+
+                // 绘制每条线段
+                int segmentCount = wallPath.IsClosed ? wallPath.Points.Count : wallPath.Points.Count - 1;
+                for (int i = 0; i < segmentCount; i++)
+                {
+                    var p1 = wallPath.Points[i];
+                    var p2 = wallPath.Points[(i + 1) % wallPath.Points.Count];
+
+                    var x1 = MapViewportConstants.WorldOriginContent + p1.X;
+                    var y1 = MapViewportConstants.WorldOriginContent - p1.Y;
+                    var x2 = MapViewportConstants.WorldOriginContent + p2.X;
+                    var y2 = MapViewportConstants.WorldOriginContent - p2.Y;
+
+                    var dx = x2 - x1;
+                    var dy = y2 - y1;
+                    var length = Math.Sqrt(dx * dx + dy * dy);
+
+                    if (length < 0.1) continue;
+
+                    var angle = Math.Atan2(dy, dx) * 180.0 / Math.PI;
+                    var centerX = (x1 + x2) / 2.0;
+                    var centerY = (y1 + y2) / 2.0;
+
+                    var segmentColor = doorSegments.Contains(i) && doorColors.TryGetValue(i, out var dc)
+                        ? dc
+                        : baseColor;
+
+                    lines.Add(new MapRenderRect(
+                        centerX - length / 2.0,
+                        centerY - thickness / 2.0,
+                        length, thickness, angle, segmentColor, null, 1.0f));
+                }
+            }
         }
 
         return lines;
@@ -545,41 +609,122 @@ public static class MapSceneBuilder
     private static IReadOnlyList<MapRenderRect> BuildWallHandles(MainWindowViewModel viewModel)
     {
         var handles = new List<MapRenderRect>();
-        var handleColor = new MapRenderColor(1.0f, 1.0f, 1.0f, 1.0f);
+        var normalHandleColor = new MapRenderColor(0.22f, 0.59f, 0.93f, 1.0f); // 蓝色：普通锚点
+        var doorHandleColor = new MapRenderColor(0.95f, 0.61f, 0.07f, 1.0f);   // 橙色：门窗锚点
         const double handleSize = 8.0;
 
         foreach (var item in viewModel.MapRenderableItems)
         {
-            if (!item.ShouldRenderOnMap || !item.HasWallComponent)
+            if (!item.ShouldRenderOnMap)
                 continue;
 
-            var wall = item.GetComponent<MapEngine.Core.Components.WallComponent>();
-            if (wall == null)
-                continue;
-
-            var objCenterX = item.MapLeft + (MapViewportConstants.CellSize * item.ScaleX) / 2.0;
-            var objCenterY = item.MapTop + (MapViewportConstants.CellSize * item.ScaleY) / 2.0;
-            var rotRad = item.Rotation * Math.PI / 180.0;
-            var rotCos = Math.Cos(rotRad);
-            var rotSin = Math.Sin(rotRad);
-
-            var pts = new[] { (X: wall.X1, Y: wall.Y1), (X: wall.X2, Y: wall.Y2) };
-            foreach (var pt in pts)
+            // ── 旧墙体组件（单线段）────────────────────────────────────
+            if (item.HasWallComponent)
             {
-                var rx = pt.X * rotCos - pt.Y * rotSin;
-                var ry = pt.X * rotSin + pt.Y * rotCos;
-                var x = objCenterX + rx;
-                var y = objCenterY + ry;
+                var wall = item.GetComponent<MapEngine.Core.Components.WallComponent>();
+                if (wall == null) continue;
 
-                handles.Add(new MapRenderRect(
-                    x - handleSize / 2.0,
-                    y - handleSize / 2.0,
-                    handleSize,
-                    handleSize,
-                    0,
-                    handleColor,
-                    null,
-                    1.0f));
+                var objCenterX = item.MapLeft + (MapViewportConstants.CellSize * item.ScaleX) / 2.0;
+                var objCenterY = item.MapTop + (MapViewportConstants.CellSize * item.ScaleY) / 2.0;
+                var rotRad = item.Rotation * Math.PI / 180.0;
+                var rotCos = Math.Cos(rotRad);
+                var rotSin = Math.Sin(rotRad);
+
+                var pts = new[] { (X: wall.X1, Y: wall.Y1), (X: wall.X2, Y: wall.Y2) };
+                foreach (var pt in pts)
+                {
+                    var rx = pt.X * rotCos - pt.Y * rotSin;
+                    var ry = pt.X * rotSin + pt.Y * rotCos;
+                    var x = objCenterX + rx;
+                    var y = objCenterY + ry;
+
+                    handles.Add(new MapRenderRect(
+                        x - handleSize / 2.0,
+                        y - handleSize / 2.0,
+                        handleSize,
+                        handleSize,
+                        0,
+                        normalHandleColor,
+                        null,
+                        1.0f));
+                }
+            }
+
+            // ── 墙体路径组件（多锚点可编辑）──────────────────────────
+            if (item.ObjectType == "WallPathV2" && item.IsSelected)
+            {
+                var wallPath = item.GetComponent<MapEngine.Core.Components.WallPathComponent>();
+                if (wallPath == null || wallPath.Points.Count == 0) continue;
+
+                // 构建门窗锚点索引集合（用于着色区分）
+                var doorAnchorIndices = new HashSet<int>();
+                foreach (var door in wallPath.Doors)
+                {
+                    doorAnchorIndices.Add(door.StartAnchorIndex);
+                    doorAnchorIndices.Add(door.EndAnchorIndex);
+                }
+
+                // 为每个锚点生成 Handle
+                for (int i = 0; i < wallPath.Points.Count; i++)
+                {
+                    var (wx, wy) = wallPath.Points[i];
+                    var cx = MapViewportConstants.WorldOriginContent + wx;
+                    var cy = MapViewportConstants.WorldOriginContent - wy;
+
+                    var color = doorAnchorIndices.Contains(i) ? doorHandleColor : normalHandleColor;
+
+                    handles.Add(new MapRenderRect(
+                        cx - handleSize / 2.0,
+                        cy - handleSize / 2.0,
+                        handleSize,
+                        handleSize,
+                        0,
+                        color,
+                        null,
+                        1.0f));
+                }
+
+                // ── 门窗图标（在锚点区间的中点绘制） ──────────────────
+                foreach (var door in wallPath.Doors)
+                {
+                    if (door.StartAnchorIndex >= wallPath.Points.Count || door.EndAnchorIndex >= wallPath.Points.Count)
+                        continue;
+
+                    var p1 = wallPath.Points[door.StartAnchorIndex];
+                    var p2 = wallPath.Points[door.EndAnchorIndex];
+
+                    // 门窗图标绘制在起止锚点的中点
+                    var iconWorldX = (p1.X + p2.X) / 2.0;
+                    var iconWorldY = (p1.Y + p2.Y) / 2.0;
+
+                    var iconCX = MapViewportConstants.WorldOriginContent + iconWorldX;
+                    var iconCY = MapViewportConstants.WorldOriginContent - iconWorldY;
+
+                    // 门窗图标颜色
+                    var iconColor = door.Kind switch
+                    {
+                        MapEngine.Core.Components.DoorKind.Window => new MapRenderColor(0.4f, 0.6f, 0.9f, 1.0f), // 蓝色：窗户
+                        MapEngine.Core.Components.DoorKind.Archway => new MapRenderColor(0.3f, 0.7f, 0.3f, 1.0f), // 绿色：拱门
+                        MapEngine.Core.Components.DoorKind.Secret => new MapRenderColor(0.8f, 0.2f, 0.8f, 1.0f), // 紫色：密门
+                        _ => door.State switch
+                        {
+                            MapEngine.Core.Components.DoorState.Open => new MapRenderColor(0.3f, 0.7f, 0.3f, 0.9f),   // 绿色：开启
+                            MapEngine.Core.Components.DoorState.Locked => new MapRenderColor(0.9f, 0.2f, 0.2f, 1.0f), // 红色：锁定
+                            _ => new MapRenderColor(0.95f, 0.61f, 0.07f, 1.0f)  // 橙色：关闭
+                        }
+                    };
+
+                    const double iconSize = 10.0;
+                    handles.Add(new MapRenderRect(
+                        iconCX - iconSize / 2.0,
+                        iconCY - iconSize / 2.0,
+                        iconSize,
+                        iconSize,
+                        0,
+                        iconColor,
+                        null,
+                        1.0f));
+                }
             }
         }
 
@@ -924,5 +1069,97 @@ public static class MapSceneBuilder
             color.G / 255f,
             color.B / 255f,
             color.A / 255f);
+    }
+
+    /// <summary>
+    /// 构建 Token UI 数据（名称标签 + HP 条 + 状态徽章）。
+    /// 仅渲染 ShouldRenderOnMap=true 且 Name 非空的 Token。
+    /// </summary>
+    private static (
+        IReadOnlyList<SkiaLabel> labels,
+        IReadOnlyList<SkiaHealthBar> healthBars,
+        IReadOnlyList<SkiaBadge> badges
+    ) BuildTokenUI(MainWindowViewModel viewModel)
+    {
+        var labels = new List<SkiaLabel>();
+        var healthBars = new List<SkiaHealthBar>();
+        var badges = new List<SkiaBadge>();
+
+        const double labelOffsetY = 30.0;      // 名称标签位于 Token 上方 30px
+        const double hpBarOffsetY = 20.0;      // HP 条位于 Token 上方 20px
+        const double hpBarWidth = 48.0;        // HP 条宽度
+        const double hpBarHeight = 6.0;        // HP 条高度
+        const double badgeSize = 24.0;         // 徽章边长
+        const double badgeSpacing = 4.0;       // 徽章间距
+        const int maxBadges = 5;               // 最多显示 5 个徽章
+
+        foreach (var item in viewModel.MapRenderableItems)
+        {
+            if (!item.ShouldRenderOnMap)
+                continue;
+
+            var token = item.GetComponent<TokenComponent>();
+            if (token is null || string.IsNullOrWhiteSpace(token.TokenName))
+                continue;
+
+            // Token 中心点
+            var tokenCenterX = item.MapLeft + item.SpriteWidth / 2.0;
+            var tokenTop = item.MapTop;
+
+            // ── 名称标签（Token 上方 30px）──────────────────────────────
+            labels.Add(new SkiaLabel
+            {
+                Text = token.TokenName,
+                CenterX = tokenCenterX,
+                CenterY = tokenTop - labelOffsetY,
+                FontSize = 14f,
+                Color = new MapRenderColor(1f, 1f, 1f, 1f)
+            });
+
+            // ── HP 条（Token 上方 20px）────────────────────────────────
+            var hpPercentage = token.MaxHP > 0
+                ? Math.Clamp(token.CurrentHP / (float)token.MaxHP, 0f, 1f)
+                : 1f;
+
+            healthBars.Add(new SkiaHealthBar
+            {
+                X = tokenCenterX - hpBarWidth / 2.0,
+                Y = tokenTop - hpBarOffsetY,
+                Width = hpBarWidth,
+                Height = hpBarHeight,
+                Percentage = hpPercentage,
+                CurrentHP = token.CurrentHP,
+                MaxHP = token.MaxHP
+            });
+
+            // ── 状态徽章（Token 右上角）────────────────────────────────
+            if (token.Conditions.Count > 0)
+            {
+                var visibleCount = Math.Min(token.Conditions.Count, maxBadges);
+                var totalWidth = visibleCount * badgeSize + (visibleCount - 1) * badgeSpacing;
+                var startX = tokenCenterX + item.SpriteWidth / 2.0 - totalWidth;
+
+                for (var i = 0; i < visibleCount; i++)
+                {
+                    var condition = token.Conditions[i];
+                    var badgeCenterX = startX + i * (badgeSize + badgeSpacing) + badgeSize / 2.0;
+                    var badgeCenterY = tokenTop + badgeSize / 2.0;
+
+                    var bgColor = ParseHexColor(condition.ColorHex, defaultAlpha: 0.9f);
+
+                    badges.Add(new SkiaBadge
+                    {
+                        CenterX = badgeCenterX,
+                        CenterY = badgeCenterY,
+                        Size = badgeSize,
+                        Icon = condition.Icon,
+                        StackCount = condition.StackCount,
+                        BackgroundColor = bgColor
+                    });
+                }
+            }
+        }
+
+        return (labels, healthBars, badges);
     }
 }

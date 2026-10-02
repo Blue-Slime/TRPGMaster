@@ -51,6 +51,11 @@ public partial class MapEditorView
     private Polyline?            _polygonPreview;       // 已确认段
     private Line?                _polygonGhostEdge;     // 鼠标跟随的虚边
 
+    // ── Wall — 墙体锚点模式 ───────────────────────────────────────────────
+    private readonly List<Point> _wallPoints = [];      // 已确认的屏幕锚点
+    private Polyline?            _wallPreview;          // 已确认段
+    private Line?                _wallGhostEdge;        // 鼠标跟随的虚边
+
     // ── Draw ──────────────────────────────────────────────────────────────
     private Polyline?            _drawPolyline;
     private readonly List<Point> _drawPoints = [];
@@ -98,6 +103,9 @@ public partial class MapEditorView
                     return true;
                 }
                 BeginShape(screenPos);
+                return true;
+            case "wall":
+                WallAddPoint(screenPos, e.ClickCount >= 2);
                 return true;
             case "draw":
                 BeginDraw(screenPos);
@@ -245,6 +253,13 @@ public partial class MapEditorView
             return _polygonPoints.Count > 0;
         }
 
+        // wall：鼠标移动时更新虚边（无需按住）
+        if (key == "wall")
+        {
+            WallUpdateGhost(screenPos);
+            return _wallPoints.Count > 0;
+        }
+
         if (!_isToolDragging) return false;
 
         switch (key)
@@ -270,6 +285,10 @@ public partial class MapEditorView
         // polygon：released 不触发 commit（由双击或 Enter 触发）
         if (ActiveToolKey == "shape" && (_viewModel?.ShapeSubTool ?? "") == "polygon")
             return _polygonPoints.Count > 0;
+
+        // wall：released 不触发 commit（由双击或 Enter 触发）
+        if (ActiveToolKey == "wall")
+            return _wallPoints.Count > 0;
 
         if (!_isToolDragging) return false;
 
@@ -299,6 +318,12 @@ public partial class MapEditorView
 
     /// <summary>闭合并提交当前锚点多边形（Enter 快捷键）。</summary>
     private void CommitPendingPolygon() => PolygonCommit();
+
+    /// <summary>是否有未完成的墙体路径（供 Enter/Esc 快捷键判断）。</summary>
+    private bool HasPendingWall => _wallPoints.Count > 0;
+
+    /// <summary>完成并提交当前墙体路径（Enter 快捷键）。</summary>
+    private void CommitPendingWall() => WallCommit(false);
 
     // ─────────────────────────────────────────────────────────────────────
     // Measure
@@ -687,6 +712,103 @@ public partial class MapEditorView
     }
 
     // ─────────────────────────────────────────────────────────────────────
+    // Wall（墙体绘制：单击添加锚点，双击完成）
+    // ─────────────────────────────────────────────────────────────────────
+
+    private void WallAddPoint(Point screenPos, bool commitNow)
+    {
+        if (commitNow)
+        {
+            WallCommit(false);
+            return;
+        }
+
+        if (_wallPoints.Count == 0)
+        {
+            ClearOverlay();
+            _wallPreview = new Polyline
+            {
+                Stroke = new SolidColorBrush(Color.Parse("#EF4444")),
+                StrokeThickness = 5,
+                StrokeJoin      = PenLineJoin.Round,
+                IsHitTestVisible = false,
+            };
+            _toolOverlayCanvas!.Children.Add(_wallPreview);
+
+            _wallGhostEdge = new Line
+            {
+                Stroke = new SolidColorBrush(Color.Parse("#80EF4444")),
+                StrokeThickness = 3,
+                StrokeDashArray = new AvaloniaList<double> { 6, 4 },
+                IsHitTestVisible = false,
+            };
+            _toolOverlayCanvas!.Children.Add(_wallGhostEdge);
+        }
+
+        _wallPoints.Add(screenPos);
+        if (_wallPreview is not null)
+            _wallPreview.Points = new AvaloniaList<Point>(_wallPoints);
+
+        // 检测首尾接近（< 20 单位）→ 提示闭合
+        if (_wallPoints.Count >= 3)
+        {
+            var first = _wallPoints[0];
+            var last = _wallPoints[^1];
+            var dx = last.X - first.X;
+            var dy = last.Y - first.Y;
+            var dist = Math.Sqrt(dx * dx + dy * dy);
+            if (dist < 20)
+            {
+                _viewModel!.StatusMessage = "接近起点，双击闭合路径";
+            }
+        }
+    }
+
+    private void WallUpdateGhost(Point screenPos)
+    {
+        if (_wallGhostEdge is null || _wallPoints.Count == 0) return;
+        _wallGhostEdge.StartPoint = _wallPoints[^1];
+        _wallGhostEdge.EndPoint   = screenPos;
+    }
+
+    private void WallCommit(bool isClosed)
+    {
+        if (_viewModel is null || _wallPoints.Count < 2)
+        {
+            ClearOverlay();
+            return;
+        }
+
+        var zs     = _viewModel.ZoomScale <= 0 ? 1.0 : _viewModel.ZoomScale;
+        var vpSize = GetViewportSize();
+
+        double ScrToWorldX(double sx) => _cameraContentCenter.X + (sx - vpSize.Width  / 2.0) / zs - MapViewportConstants.WorldOriginContent;
+        double ScrToWorldY(double sy) => -((_cameraContentCenter.Y + (sy - vpSize.Height / 2.0) / zs) - MapViewportConstants.WorldOriginContent);
+
+        var worldPts = new List<(double X, double Y)>(_wallPoints.Count);
+        foreach (var p in _wallPoints)
+            worldPts.Add((ScrToWorldX(p.X), ScrToWorldY(p.Y)));
+
+        // 检测首尾自动闭合（距离 < 20 屏幕单位）
+        if (!isClosed && worldPts.Count >= 3)
+        {
+            var first = _wallPoints[0];
+            var last = _wallPoints[^1];
+            var dx = last.X - first.X;
+            var dy = last.Y - first.Y;
+            var dist = Math.Sqrt(dx * dx + dy * dy);
+            if (dist < 20)
+            {
+                isClosed = true;
+                worldPts.RemoveAt(worldPts.Count - 1); // 移除重复的闭合点
+            }
+        }
+
+        _viewModel.CreateWallPathAt(worldPts, isClosed);
+        ClearOverlay();
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
     // Draw（自由绘制）
     // ─────────────────────────────────────────────────────────────────────
 
@@ -773,6 +895,9 @@ public partial class MapEditorView
         _polygonPreview   = null;
         _polygonGhostEdge = null;
         _polygonPoints.Clear();
+        _wallPreview      = null;
+        _wallGhostEdge    = null;
+        _wallPoints.Clear();
         _drawPolyline = null;
         _drawPoints.Clear();
         _fogPreviewRect = null;

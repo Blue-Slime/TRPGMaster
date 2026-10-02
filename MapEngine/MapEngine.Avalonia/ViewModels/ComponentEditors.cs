@@ -152,6 +152,371 @@ public sealed class WallComponentEditor(HierarchyItemViewModel owner, WallCompon
     public override IComponent Component { get; } = component;
 }
 
+/// <summary>WallPath 组件编辑器(墙体路径,可移除)。</summary>
+public sealed class WallPathComponentEditor : ComponentEditorViewModel
+{
+    private readonly WallPathComponent _component;
+
+    public WallPathComponentEditor(HierarchyItemViewModel owner, WallPathComponent component)
+        : base(owner)
+    {
+        _component = component;
+
+        // 构建门窗列表 VM
+        Doors = new ObservableCollection<DoorItemViewModel>(
+            component.Doors.Select(d => new DoorItemViewModel(this, d))
+        );
+
+        PickColorCommand = new RelayCommand<string?>(hex =>
+        {
+            if (!string.IsNullOrWhiteSpace(hex))
+            {
+                Color = hex;
+            }
+        });
+
+        AddDoorCommand = new RelayCommand(() =>
+        {
+            // 添加门的实际逻辑由外部工具处理（右键线段插入锚点 + 创建 DoorSegment）
+            // 这里仅提供一个空实现，供 UI 绑定使用
+        });
+
+        RemoveDoorCommand = new RelayCommand<DoorItemViewModel>(door =>
+        {
+            if (door is null) return;
+            _component.Doors.Remove(door.Source);
+            Doors.Remove(door);
+            Owner.NotifyBoundsChanged();
+        });
+    }
+
+    public override string Title => "Wall Path";
+    public override string Icon => "🧱";
+    public override string IconPath => IconPaths.Wall;
+    public override IComponent Component => _component;
+
+    // ── 路径几何 ──────────────────────────────────────────
+
+    public bool IsClosed
+    {
+        get => _component.IsClosed;
+        set
+        {
+            if (_component.IsClosed != value)
+            {
+                _component.IsClosed = value;
+                OnPropertyChanged();
+                Owner.NotifyBoundsChanged();
+            }
+        }
+    }
+
+    // ── 四感知通道（索引绑定到下拉框）─────────────────────
+
+    /// <summary>感知等级选项（索引与 SenseLevel 枚举一致）。</summary>
+    public IReadOnlyList<string> SenseLevelOptions { get; } = ["无阻挡", "限制", "阻挡"];
+
+    public int SightIndex
+    {
+        get => _component.Sight switch
+        {
+            SenseLevel.None => 0,
+            SenseLevel.Limited => 1,
+            SenseLevel.Normal => 2,
+            _ => 2
+        };
+        set
+        {
+            var newLevel = value switch
+            {
+                0 => SenseLevel.None,
+                1 => SenseLevel.Limited,
+                2 => SenseLevel.Normal,
+                _ => SenseLevel.Normal
+            };
+            if (_component.Sight != newLevel)
+            {
+                _component.Sight = newLevel;
+                OnPropertyChanged();
+                Owner.NotifyBoundsChanged();
+            }
+        }
+    }
+
+    public int MoveIndex
+    {
+        get => _component.Move switch
+        {
+            SenseLevel.None => 0,
+            SenseLevel.Limited => 1,
+            SenseLevel.Normal => 2,
+            _ => 2
+        };
+        set
+        {
+            var newLevel = value switch
+            {
+                0 => SenseLevel.None,
+                1 => SenseLevel.Limited,
+                2 => SenseLevel.Normal,
+                _ => SenseLevel.Normal
+            };
+            if (_component.Move != newLevel)
+            {
+                _component.Move = newLevel;
+                OnPropertyChanged();
+                Owner.NotifyBoundsChanged();
+            }
+        }
+    }
+
+    public int SoundIndex
+    {
+        get => _component.Sound switch
+        {
+            SenseLevel.None => 0,
+            SenseLevel.Limited => 1,
+            SenseLevel.Normal => 2,
+            _ => 2
+        };
+        set
+        {
+            var newLevel = value switch
+            {
+                0 => SenseLevel.None,
+                1 => SenseLevel.Limited,
+                2 => SenseLevel.Normal,
+                _ => SenseLevel.Normal
+            };
+            if (_component.Sound != newLevel)
+            {
+                _component.Sound = newLevel;
+                OnPropertyChanged();
+                Owner.NotifyBoundsChanged();
+            }
+        }
+    }
+
+    public int LightIndex
+    {
+        get => _component.Light switch
+        {
+            SenseLevel.None => 0,
+            SenseLevel.Limited => 1,
+            SenseLevel.Normal => 2,
+            _ => 2
+        };
+        set
+        {
+            var newLevel = value switch
+            {
+                0 => SenseLevel.None,
+                1 => SenseLevel.Limited,
+                2 => SenseLevel.Normal,
+                _ => SenseLevel.Normal
+            };
+            if (_component.Light != newLevel)
+            {
+                _component.Light = newLevel;
+                OnPropertyChanged();
+                Owner.NotifyBoundsChanged();
+            }
+        }
+    }
+
+    // ── 渲染参数 ──────────────────────────────────────────
+
+    public double Thickness
+    {
+        get => _component.Thickness;
+        set
+        {
+            var clamped = Math.Clamp(value, 1, 50);
+            if (Math.Abs(_component.Thickness - clamped) < 1e-9) return;
+            _component.Thickness = clamped;
+            OnPropertyChanged();
+            Owner.NotifyBoundsChanged();
+        }
+    }
+
+    public string Color
+    {
+        get => _component.Color;
+        set
+        {
+            if (_component.Color != value)
+            {
+                _component.Color = value ?? "#D32F2F";
+                OnPropertyChanged();
+                Owner.NotifyBoundsChanged();
+            }
+        }
+    }
+
+    /// <summary>与 Shape/Text 编辑器共用调色板。</summary>
+    public IReadOnlyList<string> ColorPalette => ShapeComponentEditor.SharedPalette;
+
+    public IRelayCommand<string?> PickColorCommand { get; }
+
+    // ── 门窗列表 ──────────────────────────────────────────
+
+    public ObservableCollection<DoorItemViewModel> Doors { get; }
+
+    public IRelayCommand AddDoorCommand { get; }
+    public IRelayCommand<DoorItemViewModel> RemoveDoorCommand { get; }
+}
+
+/// <summary>
+/// 单个门窗条目的 ViewModel（嵌套在门窗列表中显示）。
+/// </summary>
+public sealed class DoorItemViewModel : ViewModelBase
+{
+    private readonly WallPathComponentEditor _owner;
+    public readonly DoorSegment Source;
+
+    public DoorItemViewModel(WallPathComponentEditor owner, DoorSegment source)
+    {
+        _owner = owner;
+        Source = source;
+    }
+
+    /// <summary>门窗显示标签（例如 "🚪 门 - 锚点 3→5"）。</summary>
+    public string DoorLabel
+    {
+        get
+        {
+            var kindIcon = Source.Kind switch
+            {
+                DoorKind.Door => "🚪",
+                DoorKind.Window => "🪟",
+                DoorKind.Archway => "🏛",
+                DoorKind.Secret => "🔒",
+                _ => "⚪"
+            };
+            var kindName = Source.Kind switch
+            {
+                DoorKind.Door => "门",
+                DoorKind.Window => "窗",
+                DoorKind.Archway => "拱门",
+                DoorKind.Secret => "密门",
+                _ => "门"
+            };
+            return $"{kindIcon} {kindName} - 锚点 {Source.StartAnchorIndex}→{Source.EndAnchorIndex}";
+        }
+    }
+
+    // ── 下拉框绑定（索引 ↔ 枚举双向转换）──────────────────
+
+    /// <summary>门窗类型选项（索引与 DoorKind 枚举一致）。</summary>
+    public IReadOnlyList<string> KindOptions { get; } = ["普通墙", "门", "密门", "窗户", "拱门"];
+
+    public int KindIndex
+    {
+        get => (int)Source.Kind;
+        set
+        {
+            if ((int)Source.Kind == value) return;
+            Source.Kind = (DoorKind)value;
+            OnPropertyChanged();
+            OnPropertyChanged(nameof(DoorLabel));
+            _owner.Owner.NotifyBoundsChanged();
+        }
+    }
+
+    /// <summary>门状态选项（索引与 DoorState 枚举一致）。</summary>
+    public IReadOnlyList<string> StateOptions { get; } = ["关闭", "开启", "锁定"];
+
+    public int StateIndex
+    {
+        get => (int)Source.State;
+        set
+        {
+            if ((int)Source.State == value) return;
+            Source.State = (DoorState)value;
+            OnPropertyChanged();
+            _owner.Owner.NotifyBoundsChanged();
+        }
+    }
+
+    /// <summary>开门方向选项（索引与 DoorSwing 枚举一致）。</summary>
+    public IReadOnlyList<string> SwingOptions { get; } = ["无", "向左", "向右"];
+
+    public int SwingIndex
+    {
+        get => (int)Source.Swing;
+        set
+        {
+            if ((int)Source.Swing == value) return;
+            Source.Swing = (DoorSwing)value;
+            OnPropertyChanged();
+            _owner.Owner.NotifyBoundsChanged();
+        }
+    }
+
+    // ── 感知覆盖（null = 继承墙体设置）───────────────────
+
+    /// <summary>感知等级选项（含"继承"选项）。</summary>
+    public IReadOnlyList<string> SenseOverrideOptions { get; } = ["继承", "无阻挡", "限制", "阻挡"];
+
+    public int SightOverrideIndex
+    {
+        get => Source.SightOverride switch
+        {
+            null => 0,
+            SenseLevel.None => 1,
+            SenseLevel.Limited => 2,
+            SenseLevel.Normal => 3,
+            _ => 0
+        };
+        set
+        {
+            var newLevel = value switch
+            {
+                0 => (SenseLevel?)null,
+                1 => SenseLevel.None,
+                2 => SenseLevel.Limited,
+                3 => SenseLevel.Normal,
+                _ => null
+            };
+            if (Source.SightOverride != newLevel)
+            {
+                Source.SightOverride = newLevel;
+                OnPropertyChanged();
+                _owner.Owner.NotifyBoundsChanged();
+            }
+        }
+    }
+
+    public int MoveOverrideIndex
+    {
+        get => Source.MoveOverride switch
+        {
+            null => 0,
+            SenseLevel.None => 1,
+            SenseLevel.Limited => 2,
+            SenseLevel.Normal => 3,
+            _ => 0
+        };
+        set
+        {
+            var newLevel = value switch
+            {
+                0 => (SenseLevel?)null,
+                1 => SenseLevel.None,
+                2 => SenseLevel.Limited,
+                3 => SenseLevel.Normal,
+                _ => null
+            };
+            if (Source.MoveOverride != newLevel)
+            {
+                Source.MoveOverride = newLevel;
+                OnPropertyChanged();
+                _owner.Owner.NotifyBoundsChanged();
+            }
+        }
+    }
+}
+
 /// <summary>Token 组件编辑器(可选,可移除)。</summary>
 public sealed class TokenComponentEditor : ComponentEditorViewModel
 {

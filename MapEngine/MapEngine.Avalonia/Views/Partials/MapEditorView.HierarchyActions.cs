@@ -2,6 +2,7 @@ using System;
 using System.Linq;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
+using MapEngine.Avalonia.Commands;
 using MapEngine.Avalonia.ViewModels;
 
 namespace MapEngine.Avalonia.Views;
@@ -174,6 +175,183 @@ public partial class MapEditorView
 
         menu.Open(anchor);
     }
+
+    /// <summary>
+    /// 右键门窗图标 → 显示门窗操作菜单（切换状态/删除/编辑）
+    /// </summary>
+    private void ShowDoorContextMenu(HierarchyItemViewModel wallItem, string doorId, Control anchor)
+    {
+        if (_viewModel is null) return;
+        var vm = _viewModel;
+
+        var wallPath = wallItem.GetComponent<MapEngine.Core.Components.WallPathComponent>();
+        if (wallPath is null) return;
+
+        var door = wallPath.Doors.Find(d => d.Id == doorId);
+        if (door is null) return;
+
+        var menu = new ContextMenu();
+
+        // ── 标题行 ──────────────────────────────────────────
+        var kindText = door.Kind switch
+        {
+            MapEngine.Core.Components.DoorKind.Window => "窗户",
+            MapEngine.Core.Components.DoorKind.Archway => "拱门",
+            MapEngine.Core.Components.DoorKind.Secret => "密门",
+            _ => "门"
+        };
+
+        var header = new MenuItem
+        {
+            Header = $"{kindText} - {wallItem.Name}",
+            Icon = MenuIcon("M8,3H16V7L15.5,7C14.97,9.29 13.07,11 10.75,11C8.43,11 6.53,9.29 6,7L6,7M4,2V22H8V2H4M16,2V7H20V22H16V2H16Z"),
+            IsEnabled = false
+        };
+        menu.Items.Add(header);
+        menu.Items.Add(new Separator());
+
+        // ── 状态切换（仅门类型有状态） ──────────────────────────
+        if (door.Kind == MapEngine.Core.Components.DoorKind.Door || door.Kind == MapEngine.Core.Components.DoorKind.Secret)
+        {
+            var stateText = door.State switch
+            {
+                MapEngine.Core.Components.DoorState.Closed => "关闭",
+                MapEngine.Core.Components.DoorState.Open => "开启",
+                MapEngine.Core.Components.DoorState.Locked => "锁定",
+                _ => "未知"
+            };
+
+            var toggleStateItem = new MenuItem
+            {
+                Header = $"当前状态：{stateText}（单击切换）",
+                Icon = MenuIcon(door.State switch
+                {
+                    MapEngine.Core.Components.DoorState.Open => "M10,21V19H6.41L9.91,15.5L8.5,14.09L5,17.59V14H3V21H10M14.5,9.91L18,6.41V10H20V3H13V5H16.59L13.09,8.5L14.5,9.91Z",
+                    MapEngine.Core.Components.DoorState.Locked => "M12,17A2,2 0 0,0 14,15C14,13.89 13.1,13 12,13A2,2 0 0,0 10,15A2,2 0 0,0 12,17M18,8A2,2 0 0,1 20,10V20A2,2 0 0,1 18,22H6A2,2 0 0,1 4,20V10C4,8.89 4.9,8 6,8H7V6A5,5 0 0,1 12,1A5,5 0 0,1 17,6V8H18M12,3A3,3 0 0,0 9,6V8H15V6A3,3 0 0,0 12,3Z",
+                    _ => "M8,3H16V7L15.5,7C14.97,9.29 13.07,11 10.75,11C8.43,11 6.53,9.29 6,7L6,7M4,2V22H8V2H4M16,2V7H20V22H16V2H16Z"
+                }),
+            };
+            toggleStateItem.Click += (_, _) =>
+            {
+                vm.CommandBus.Execute(new VmToggleDoorStateCommand(vm, wallItem.Id, doorId));
+            };
+            menu.Items.Add(toggleStateItem);
+            menu.Items.Add(new Separator());
+        }
+
+        // ── 删除门窗 ────────────────────────────────────────
+        var deleteItem = new MenuItem
+        {
+            Header = "删除门窗",
+            Icon = MenuIcon("M19,4H15.5L14.5,3H9.5L8.5,4H5V6H19M6,19A2,2 0 0,0 8,21H16A2,2 0 0,0 18,19V7H6V19Z"),
+        };
+        deleteItem.Click += (_, _) =>
+        {
+            vm.CommandBus.Execute(new VmDeleteDoorCommand(vm, wallItem.Id, doorId));
+        };
+        menu.Items.Add(deleteItem);
+
+        menu.Items.Add(new Separator());
+
+        // ── 提示信息 ────────────────────────────────────────
+        var hintItem = new MenuItem
+        {
+            Header = "💡 拖拽锚点可调整门窗宽度",
+            IsEnabled = false
+        };
+        menu.Items.Add(hintItem);
+
+        menu.Open(anchor);
+    }
+
+    /// <summary>
+    /// 右键墙体线段 → 显示添加门窗菜单
+    /// </summary>
+    private void ShowWallSegmentContextMenu(HierarchyItemViewModel wallItem, int segmentIndex, (double X, double Y) worldPos, Control anchor)
+    {
+        if (_viewModel is null) return;
+        var vm = _viewModel;
+
+        var wallPath = wallItem.GetComponent<MapEngine.Core.Components.WallPathComponent>();
+        if (wallPath is null || segmentIndex < 0) return;
+
+        var menu = new ContextMenu();
+
+        // ── 标题行 ──────────────────────────────────────────
+        var header = new MenuItem
+        {
+            Header = $"{wallItem.Name} - 线段 {segmentIndex}",
+            Icon = MenuIcon("M3,11H11V3H3M3,21H11V13H3M13,21H21V13H13M13,3V11H21V3"),
+            IsEnabled = false
+        };
+        menu.Items.Add(header);
+        menu.Items.Add(new Separator());
+
+        // 计算线段参数 t（点击位置在线段上的相对位置）
+        var p1 = wallPath.Points[segmentIndex];
+        var p2 = wallPath.Points[(segmentIndex + 1) % wallPath.Points.Count];
+        var dx = p2.X - p1.X;
+        var dy = p2.Y - p1.Y;
+        var segmentLengthSq = dx * dx + dy * dy;
+        var t = segmentLengthSq > 0.01
+            ? Math.Clamp(((worldPos.X - p1.X) * dx + (worldPos.Y - p1.Y) * dy) / segmentLengthSq, 0.1, 0.9)
+            : 0.5;
+
+        // ── 添加门（宽60）──────────────────────────────────
+        var addDoorItem = new MenuItem
+        {
+            Header = "添加门 (宽 60)",
+            Icon = MenuIcon("M8,3H16V7L15.5,7C14.97,9.29 13.07,11 10.75,11C8.43,11 6.53,9.29 6,7L6,7M4,2V22H8V2H4M16,2V7H20V22H16V2H16Z"),
+        };
+        addDoorItem.Click += (_, _) =>
+        {
+            vm.CommandBus.Execute(new VmAddDoorCommand(
+                vm, wallItem.Id, segmentIndex, t, 60,
+                MapEngine.Core.Components.DoorKind.Door));
+        };
+        menu.Items.Add(addDoorItem);
+
+        // ── 添加窗户（宽80）────────────────────────────────
+        var addWindowItem = new MenuItem
+        {
+            Header = "添加窗户 (宽 80)",
+            Icon = MenuIcon("M8,3H16V9H8V3M8,11H16V21H8V11M2,3H6V21H2V3M18,3H22V21H18V3Z"),
+        };
+        addWindowItem.Click += (_, _) =>
+        {
+            vm.CommandBus.Execute(new VmAddDoorCommand(
+                vm, wallItem.Id, segmentIndex, t, 80,
+                MapEngine.Core.Components.DoorKind.Window));
+        };
+        menu.Items.Add(addWindowItem);
+
+        // ── 添加拱门（宽100）───────────────────────────────
+        var addArchwayItem = new MenuItem
+        {
+            Header = "添加拱门 (宽 100)",
+            Icon = MenuIcon("M12,3C7.03,3 3,7.03 3,12H5C5,8.13 8.13,5 12,5C15.87,5 19,8.13 19,12H21C21,7.03 16.97,3 12,3M12,7C9.24,7 7,9.24 7,12H9C9,10.34 10.34,9 12,9C13.66,9 15,10.34 15,12H17C17,9.24 14.76,7 12,7M7,13V21H17V13H7M9,15H15V19H9V15Z"),
+        };
+        addArchwayItem.Click += (_, _) =>
+        {
+            vm.CommandBus.Execute(new VmAddDoorCommand(
+                vm, wallItem.Id, segmentIndex, t, 100,
+                MapEngine.Core.Components.DoorKind.Archway));
+        };
+        menu.Items.Add(addArchwayItem);
+
+        menu.Items.Add(new Separator());
+
+        // ── Shift+单击插入锚点提示 ──────────────────────────
+        var hintItem = new MenuItem
+        {
+            Header = "💡 Shift+单击可插入锚点",
+            IsEnabled = false
+        };
+        menu.Items.Add(hintItem);
+
+        menu.Open(anchor);
+    }
+
     private async void AddHierarchyChild_Click(object? sender, RoutedEventArgs e)
     {
         if (_viewModel is null || GetMenuParameter<HierarchyItemViewModel>(sender) is not { } parent)

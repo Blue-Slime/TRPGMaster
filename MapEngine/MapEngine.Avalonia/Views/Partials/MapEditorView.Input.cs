@@ -42,7 +42,7 @@ public partial class MapEditorView
             return;
         }
 
-        // 右键：墙壁控制点删除 或 对象上下文菜单
+        // 右键：墙壁控制点删除 或 门窗菜单 或 墙体线段添加门窗 或 对象上下文菜单
         if (useSelectTool && point.Properties.IsRightButtonPressed)
         {
             var (delItem, delIndex) = HitTestWallHandle(point.Position, control);
@@ -58,6 +58,24 @@ public partial class MapEditorView
                 }
             }
 
+            // 检测门窗图标：右键 → 门窗操作菜单
+            var (doorWallItem, doorId) = HitTestDoorIcon(point.Position, control);
+            if (doorWallItem is not null && !string.IsNullOrEmpty(doorId))
+            {
+                ShowDoorContextMenu(doorWallItem, doorId, control);
+                e.Handled = true;
+                return;
+            }
+
+            // 检测墙体线段：右键线段 → 添加门窗菜单
+            var (segItem, segIdx, segPos) = HitTestWallPathSegment(point.Position, control);
+            if (segItem is not null && segIdx >= 0)
+            {
+                ShowWallSegmentContextMenu(segItem, segIdx, segPos, control);
+                e.Handled = true;
+                return;
+            }
+
             var hitObj = HitTestMapObject(point.Position, control);
             if (hitObj is not null)
             {
@@ -70,7 +88,30 @@ public partial class MapEditorView
 
         if (useSelectTool && point.Properties.IsLeftButtonPressed)
         {
-            // 双击线段 → 插入控制点
+            // 单击门窗图标 → 切换状态
+            var (doorWallItem, doorId) = HitTestDoorIcon(point.Position, control);
+            if (doorWallItem is not null && !string.IsNullOrEmpty(doorId))
+            {
+                _viewModel.CommandBus.Execute(new VmToggleDoorStateCommand(
+                    _viewModel, doorWallItem.Id, doorId));
+                e.Handled = true;
+                return;
+            }
+
+            // Shift+单击线段 → 插入锚点
+            if (e.KeyModifiers.HasFlag(KeyModifiers.Shift))
+            {
+                var (segItem, insertIdx, worldPos) = HitTestWallPathSegment(point.Position, control);
+                if (segItem is not null && insertIdx >= 0)
+                {
+                    _viewModel.CommandBus.Execute(new VmInsertWallAnchorCommand(
+                        _viewModel, segItem.Id, insertIdx, worldPos));
+                    e.Handled = true;
+                    return;
+                }
+            }
+
+            // 双击线段 → 插入控制点（旧墙体系统）
             if (e.ClickCount >= 2)
             {
                 var (segItem, insertIdx, localPos) = HitTestWallSegment(point.Position, control);
@@ -91,11 +132,22 @@ public partial class MapEditorView
                 _isDraggingWallHandle = true;
                 _wallHandleDragItem = wallItem;
                 _wallHandleDragIndex = handleIndex;
-                var wall = wallItem.GetComponent<MapEngine.Core.Components.WallComponent>();
-                if (wall is not null && handleIndex < 2)
+
+                // 保存起始位置（WallPathComponent 或 WallComponent）
+                var wallPath = wallItem.GetComponent<MapEngine.Core.Components.WallPathComponent>();
+                if (wallPath is not null && handleIndex < wallPath.Points.Count)
                 {
-                    _wallHandleDragStart = handleIndex == 0 ? (wall.X1, wall.Y1) : (wall.X2, wall.Y2);
+                    _wallHandleDragStart = wallPath.Points[handleIndex];
                 }
+                else
+                {
+                    var wall = wallItem.GetComponent<MapEngine.Core.Components.WallComponent>();
+                    if (wall is not null && handleIndex < 2)
+                    {
+                        _wallHandleDragStart = handleIndex == 0 ? (wall.X1, wall.Y1) : (wall.X2, wall.Y2);
+                    }
+                }
+
                 _dragStartPointerPosition = point.Position;
                 e.Pointer.Capture(control);
                 e.Handled = true;
@@ -190,6 +242,19 @@ public partial class MapEditorView
             var deltaWorldX = (float)(delta.X / zoomScale);
             var deltaWorldY = -(float)(delta.Y / zoomScale);
 
+            // ── WallPathComponent（多锚点墙体）────────────────────────
+            var wallPath = _wallHandleDragItem.GetComponent<MapEngine.Core.Components.WallPathComponent>();
+            if (wallPath is not null && _wallHandleDragIndex >= 0 && _wallHandleDragIndex < wallPath.Points.Count)
+            {
+                var (wx, wy) = wallPath.Points[_wallHandleDragIndex];
+                wallPath.Points[_wallHandleDragIndex] = (wx + deltaWorldX, wy + deltaWorldY);
+                _dragStartPointerPosition = currentPosition;
+                _mapSilkCanvas?.RequestFrame();
+                e.Handled = true;
+                return;
+            }
+
+            // ── WallComponent（旧单线段墙体）──────────────────────────
             var wall = _wallHandleDragItem.GetComponent<MapEngine.Core.Components.WallComponent>();
             if (wall is not null && _wallHandleDragIndex < 2)
             {
@@ -301,6 +366,32 @@ public partial class MapEditorView
 
         if (_isDraggingWallHandle && _wallHandleDragItem is not null)
         {
+            // ── WallPathComponent（多锚点墙体）────────────────────────
+            var wallPath = _wallHandleDragItem.GetComponent<MapEngine.Core.Components.WallPathComponent>();
+            if (wallPath is not null && _wallHandleDragIndex >= 0 && _wallHandleDragIndex < wallPath.Points.Count)
+            {
+                var finalPos = wallPath.Points[_wallHandleDragIndex];
+                var moved = Math.Abs(finalPos.X - _wallHandleDragStart.X) > 0.5 ||
+                           Math.Abs(finalPos.Y - _wallHandleDragStart.Y) > 0.5;
+
+                if (moved && _viewModel is not null)
+                {
+                    // 恢复到起始位置，让 Command 执行
+                    wallPath.Points[_wallHandleDragIndex] = _wallHandleDragStart;
+                    _viewModel.CommandBus.Execute(new VmUpdateWallAnchorCommand(
+                        _viewModel, _wallHandleDragItem.Id, _wallHandleDragIndex, finalPos));
+                }
+
+                _isDraggingWallHandle = false;
+                _wallHandleDragItem = null;
+                _wallHandleDragIndex = -1;
+                if (Equals(e.Pointer.Captured, control))
+                    e.Pointer.Capture(null);
+                e.Handled = true;
+                return;
+            }
+
+            // ── WallComponent（旧单线段墙体）──────────────────────────
             var wall = _wallHandleDragItem.GetComponent<MapEngine.Core.Components.WallComponent>();
             if (wall is not null && _wallHandleDragIndex < 2)
             {
@@ -497,32 +588,57 @@ public partial class MapEditorView
 
         foreach (var item in _viewModel.MapRenderableItems)
         {
-            if (!item.ShouldRenderOnMap || !item.HasWallComponent) continue;
+            if (!item.ShouldRenderOnMap) continue;
 
-            var wall = item.GetComponent<MapEngine.Core.Components.WallComponent>();
-            if (wall is null || wall.NoCutaway) continue; // 编辑把手：仅 NoCutaway=false 时显示
-
-            var objCenterX = item.MapLeft + (MapViewportConstants.CellSize * item.ScaleX) / 2.0;
-            var objCenterY = item.MapTop + (MapViewportConstants.CellSize * item.ScaleY) / 2.0;
-            var rotRad = item.Rotation * Math.PI / 180.0;
-            var rotCos = Math.Cos(rotRad);
-            var rotSin = Math.Sin(rotRad);
-
-            var pts = new[] { (wall.X1, wall.Y1), (wall.X2, wall.Y2) };
-            for (int i = 0; i < pts.Length; i++)
+            // ── WallPathComponent（多锚点墙体）──────────────────────────
+            if (item.ObjectType == "WallPathV2" && item.IsSelected)
             {
-                var (px, py) = pts[i];
-                var rx = px * rotCos - py * rotSin;
-                var ry = px * rotSin + py * rotCos;
-                var handleX = objCenterX + rx;
-                var handleY = objCenterY + ry;
+                var wallPath = item.GetComponent<MapEngine.Core.Components.WallPathComponent>();
+                if (wallPath is null || wallPath.Points.Count == 0) continue;
 
-                var dx = contentX - handleX;
-                var dy = contentY - handleY;
-                var dist = Math.Sqrt(dx * dx + dy * dy);
+                for (int i = 0; i < wallPath.Points.Count; i++)
+                {
+                    var (wx, wy) = wallPath.Points[i];
+                    var handleX = MapViewportConstants.WorldOriginContent + wx;
+                    var handleY = MapViewportConstants.WorldOriginContent - wy;
 
-                if (dist <= hitTolerance)
-                    return (item, i);
+                    var dx = contentX - handleX;
+                    var dy = contentY - handleY;
+                    var dist = Math.Sqrt(dx * dx + dy * dy);
+
+                    if (dist <= hitTolerance)
+                        return (item, i);
+                }
+            }
+
+            // ── WallComponent（旧单线段墙体）────────────────────────────
+            if (item.HasWallComponent)
+            {
+                var wall = item.GetComponent<MapEngine.Core.Components.WallComponent>();
+                if (wall is null || wall.NoCutaway) continue;
+
+                var objCenterX = item.MapLeft + (MapViewportConstants.CellSize * item.ScaleX) / 2.0;
+                var objCenterY = item.MapTop + (MapViewportConstants.CellSize * item.ScaleY) / 2.0;
+                var rotRad = item.Rotation * Math.PI / 180.0;
+                var rotCos = Math.Cos(rotRad);
+                var rotSin = Math.Sin(rotRad);
+
+                var pts = new[] { (wall.X1, wall.Y1), (wall.X2, wall.Y2) };
+                for (int i = 0; i < pts.Length; i++)
+                {
+                    var (px, py) = pts[i];
+                    var rx = px * rotCos - py * rotSin;
+                    var ry = px * rotSin + py * rotCos;
+                    var handleX = objCenterX + rx;
+                    var handleY = objCenterY + ry;
+
+                    var dx = contentX - handleX;
+                    var dy = contentY - handleY;
+                    var dist = Math.Sqrt(dx * dx + dy * dy);
+
+                    if (dist <= hitTolerance)
+                        return (item, i);
+                }
             }
         }
 
@@ -571,6 +687,64 @@ public partial class MapEditorView
             {
                 var midLocal = ((wall.X1 + wall.X2) / 2.0, (wall.Y1 + wall.Y2) / 2.0);
                 return (item, 1, midLocal);
+            }
+        }
+
+        return (null, -1, default);
+    }
+
+    /// <summary>
+    /// 命中测试墙体路径的线段（用于 Shift+单击插入锚点）。
+    /// 返回 (item, insertIndex, worldPos) 其中 insertIndex 是插入位置，worldPos 是世界坐标。
+    /// </summary>
+    private (HierarchyItemViewModel? item, int insertIndex, (double X, double Y) worldPos) HitTestWallPathSegment(Point screenPosition, Control viewport)
+    {
+        if (_viewModel is null) return (null, -1, default);
+
+        var zoomScale = _viewModel.ZoomScale <= 0 ? 1.0 : _viewModel.ZoomScale;
+        var contentX = _cameraContentCenter.X + (screenPosition.X - viewport.Bounds.Width / 2.0) / zoomScale;
+        var contentY = _cameraContentCenter.Y + (screenPosition.Y - viewport.Bounds.Height / 2.0) / zoomScale;
+
+        foreach (var item in _viewModel.MapRenderableItems)
+        {
+            if (!item.ShouldRenderOnMap || item.ObjectType != "WallPathV2") continue;
+
+            var wallPath = item.GetComponent<MapEngine.Core.Components.WallPathComponent>();
+            if (wallPath is null || wallPath.Points.Count < 2) continue;
+
+            var hitTolerance = Math.Max(6.0, wallPath.Thickness / 2.0 + 4.0);
+
+            // 检测每条线段
+            int segmentCount = wallPath.IsClosed ? wallPath.Points.Count : wallPath.Points.Count - 1;
+            for (int i = 0; i < segmentCount; i++)
+            {
+                var p1 = wallPath.Points[i];
+                var p2 = wallPath.Points[(i + 1) % wallPath.Points.Count];
+
+                var x1 = MapViewportConstants.WorldOriginContent + p1.X;
+                var y1 = MapViewportConstants.WorldOriginContent - p1.Y;
+                var x2 = MapViewportConstants.WorldOriginContent + p2.X;
+                var y2 = MapViewportConstants.WorldOriginContent - p2.Y;
+
+                var dx = x2 - x1;
+                var dy = y2 - y1;
+                var lenSq = dx * dx + dy * dy;
+                if (lenSq < 0.01) continue;
+
+                var t = ((contentX - x1) * dx + (contentY - y1) * dy) / lenSq;
+                if (t < 0 || t > 1) continue;
+
+                var nearX = x1 + t * dx;
+                var nearY = y1 + t * dy;
+                var dist = Math.Sqrt((contentX - nearX) * (contentX - nearX) + (contentY - nearY) * (contentY - nearY));
+
+                if (dist <= hitTolerance)
+                {
+                    // 转换回世界坐标
+                    var worldX = nearX - MapViewportConstants.WorldOriginContent;
+                    var worldY = -(nearY - MapViewportConstants.WorldOriginContent);
+                    return (item, i + 1, (worldX, worldY));
+                }
             }
         }
 
@@ -679,4 +853,54 @@ public partial class MapEditorView
         e.Handled = true;
     }
 
+    /// <summary>
+    /// 检测鼠标是否点击了墙体上的门窗图标（用于切换状态或显示菜单）。
+    /// 返回 (wallItem, doorId)，doorId 是门窗的唯一标识。
+    /// </summary>
+    private (HierarchyItemViewModel? wallItem, string? doorId) HitTestDoorIcon(Point screenPosition, Control viewport)
+    {
+        if (_viewModel is null) return (null, null);
+
+        var zoomScale = _viewModel.ZoomScale <= 0 ? 1.0 : _viewModel.ZoomScale;
+        var contentX = _cameraContentCenter.X + (screenPosition.X - viewport.Bounds.Width / 2.0) / zoomScale;
+        var contentY = _cameraContentCenter.Y + (screenPosition.Y - viewport.Bounds.Height / 2.0) / zoomScale;
+
+        const double iconHitRadius = 12.0; // 门窗图标的点击半径（内容像素）
+
+        foreach (var item in _viewModel.MapRenderableItems)
+        {
+            if (!item.ShouldRenderOnMap || item.ObjectType != "WallPathV2") continue;
+
+            var wallPath = item.GetComponent<MapEngine.Core.Components.WallPathComponent>();
+            if (wallPath is null || wallPath.Doors.Count == 0) continue;
+
+            // 检测每个门窗的中心位置（图标绘制位置）
+            foreach (var door in wallPath.Doors)
+            {
+                if (door.StartAnchorIndex >= wallPath.Points.Count || door.EndAnchorIndex >= wallPath.Points.Count)
+                    continue;
+
+                var p1 = wallPath.Points[door.StartAnchorIndex];
+                var p2 = wallPath.Points[door.EndAnchorIndex];
+
+                // 门窗图标绘制在起止锚点的中点
+                var iconWorldX = (p1.X + p2.X) / 2.0;
+                var iconWorldY = (p1.Y + p2.Y) / 2.0;
+
+                var iconContentX = MapViewportConstants.WorldOriginContent + iconWorldX;
+                var iconContentY = MapViewportConstants.WorldOriginContent - iconWorldY;
+
+                var dx = contentX - iconContentX;
+                var dy = contentY - iconContentY;
+                var distSq = dx * dx + dy * dy;
+
+                if (distSq <= iconHitRadius * iconHitRadius)
+                {
+                    return (item, door.Id);
+                }
+            }
+        }
+
+        return (null, null);
+    }
 }

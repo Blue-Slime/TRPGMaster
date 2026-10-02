@@ -18,7 +18,7 @@ namespace MapEngine.Avalonia.Services;
 /// 自己实现代价远高于收益。文本量小、不需要逐帧几何变换，
 /// 用 Avalonia TextBlock 贴在 Canvas 上即可，缩放时按 zoom 折算字号。
 ///
-/// 与 <see cref="TokenUIManager"/> 同构：字典 diff 复用控件，只增删变化的条目。
+/// 字典 diff 复用控件，只增删变化的条目。
 /// </summary>
 public sealed class MapTextManager
 {

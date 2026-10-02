@@ -142,26 +142,6 @@
             </Grid>
         </DataTemplate>
 
-        <DataTemplate DataType="vm:TokenUIViewModel">
-            <Border Width="96" Background="#E0000000" CornerRadius="4" Padding="8,4"
-                    IsVisible="{Binding IsVisible}">
-                <Border.RenderTransform><TranslateTransform X="-48" Y="-56"/></Border.RenderTransform>
-                <StackPanel Spacing="2">
-                    <TextBlock Text="{Binding Name}" Foreground="{StaticResource TextPrimaryBrush}" FontSize="12"
-                               FontWeight="SemiBold" HorizontalAlignment="Center"/>
-                    <Grid Width="80" Height="6">
-                        <Border Background="{Binding HPBarBackground}" CornerRadius="3"/>
-                        <Border Background="{Binding HPBarColor}" CornerRadius="3"
-                                HorizontalAlignment="Left"
-                                Width="{Binding HPPercent, Converter={StaticResource PercentToWidthConverter}}"/>
-                    </Grid>
-                    <TextBlock Foreground="{StaticResource TextTertiaryBrush}" FontSize="10" HorizontalAlignment="Center">
-                        <Run Text="{Binding CurrentHP}"/><Run Text="/"/><Run Text="{Binding MaxHP}"/>
-                    </TextBlock>
-                </StackPanel>
-            </Border>
-        </DataTemplate>
-
         <!-- ── Transform 组件编辑器字段 ─────────────────────────── -->
         <DataTemplate DataType="vm:TransformComponentEditor">
             <StackPanel Spacing="0" Margin="10,4,10,4">
@@ -463,6 +443,254 @@
                                    BorderBrush="{StaticResource BorderBrushToken}" BorderThickness="1"
                                    Foreground="{StaticResource TextPrimaryBrush}" CornerRadius="4" Padding="4,2"/>
                 </Grid>
+            </StackPanel>
+        </DataTemplate>
+
+        <!-- ── WallPath 组件编辑器字段（墙体路径+门窗系统）─────────── -->
+        <DataTemplate DataType="vm:WallPathComponentEditor">
+            <StackPanel Spacing="0" Margin="10,4,10,6">
+
+                <!-- 路径几何 -->
+                <Grid ColumnDefinitions="60,*" Margin="0,2">
+                    <TextBlock Grid.Column="0" Text="闭合路径" FontSize="11"
+                               Foreground="{StaticResource TextTertiaryBrush}" VerticalAlignment="Center"/>
+                    <CheckBox Grid.Column="1" IsChecked="{Binding IsClosed, Mode=TwoWay}"
+                              Foreground="{StaticResource TextSecondaryBrush}" FontSize="11"/>
+                </Grid>
+
+                <!-- 感知通道分组 -->
+                <Border Margin="0,6,0,2" BorderBrush="{StaticResource CapsuleBorderBrush}" BorderThickness="0,1,0,0">
+                    <TextBlock Text="感知通道" FontSize="11" FontWeight="SemiBold"
+                               Foreground="{StaticResource TextTertiaryBrush}" Margin="0,6,0,2"/>
+                </Border>
+
+                <!-- 视觉 -->
+                <Grid ColumnDefinitions="60,*" Margin="0,2">
+                    <TextBlock Grid.Column="0" Text="视觉" FontSize="11"
+                               Foreground="{StaticResource TextTertiaryBrush}" VerticalAlignment="Center"/>
+                    <ComboBox Grid.Column="1" ItemsSource="{Binding SenseLevelOptions}"
+                              SelectedIndex="{Binding SightIndex, Mode=TwoWay}"
+                              FontSize="11" Height="26" Padding="6,0"
+                              Background="{StaticResource ToolbarBackgroundBrush}"
+                              BorderBrush="{StaticResource BorderBrushToken}" BorderThickness="1"
+                              Foreground="{StaticResource TextPrimaryBrush}" CornerRadius="4"/>
+                </Grid>
+
+                <!-- 移动 -->
+                <Grid ColumnDefinitions="60,*" Margin="0,2">
+                    <TextBlock Grid.Column="0" Text="移动" FontSize="11"
+                               Foreground="{StaticResource TextTertiaryBrush}" VerticalAlignment="Center"/>
+                    <ComboBox Grid.Column="1" ItemsSource="{Binding SenseLevelOptions}"
+                              SelectedIndex="{Binding MoveIndex, Mode=TwoWay}"
+                              FontSize="11" Height="26" Padding="6,0"
+                              Background="{StaticResource ToolbarBackgroundBrush}"
+                              BorderBrush="{StaticResource BorderBrushToken}" BorderThickness="1"
+                              Foreground="{StaticResource TextPrimaryBrush}" CornerRadius="4"/>
+                </Grid>
+
+                <!-- 声音 -->
+                <Grid ColumnDefinitions="60,*" Margin="0,2">
+                    <TextBlock Grid.Column="0" Text="声音" FontSize="11"
+                               Foreground="{StaticResource TextTertiaryBrush}" VerticalAlignment="Center"/>
+                    <ComboBox Grid.Column="1" ItemsSource="{Binding SenseLevelOptions}"
+                              SelectedIndex="{Binding SoundIndex, Mode=TwoWay}"
+                              FontSize="11" Height="26" Padding="6,0"
+                              Background="{StaticResource ToolbarBackgroundBrush}"
+                              BorderBrush="{StaticResource BorderBrushToken}" BorderThickness="1"
+                              Foreground="{StaticResource TextPrimaryBrush}" CornerRadius="4"/>
+                </Grid>
+
+                <!-- 光线 -->
+                <Grid ColumnDefinitions="60,*" Margin="0,2">
+                    <TextBlock Grid.Column="0" Text="光线" FontSize="11"
+                               Foreground="{StaticResource TextTertiaryBrush}" VerticalAlignment="Center"/>
+                    <ComboBox Grid.Column="1" ItemsSource="{Binding SenseLevelOptions}"
+                              SelectedIndex="{Binding LightIndex, Mode=TwoWay}"
+                              FontSize="11" Height="26" Padding="6,0"
+                              Background="{StaticResource ToolbarBackgroundBrush}"
+                              BorderBrush="{StaticResource BorderBrushToken}" BorderThickness="1"
+                              Foreground="{StaticResource TextPrimaryBrush}" CornerRadius="4"/>
+                </Grid>
+
+                <!-- 渲染参数 -->
+                <Border Margin="0,6,0,2" BorderBrush="{StaticResource CapsuleBorderBrush}" BorderThickness="0,1,0,0">
+                    <TextBlock Text="渲染" FontSize="11" FontWeight="SemiBold"
+                               Foreground="{StaticResource TextTertiaryBrush}" Margin="0,6,0,2"/>
+                </Border>
+
+                <!-- 线宽 -->
+                <Grid ColumnDefinitions="60,*,32" Margin="0,2">
+                    <TextBlock Grid.Column="0" Text="线宽" FontSize="11"
+                               Foreground="{StaticResource TextTertiaryBrush}" VerticalAlignment="Center"/>
+                    <Slider Grid.Column="1" Value="{Binding Thickness, Mode=TwoWay}"
+                            Minimum="1" Maximum="50" TickFrequency="1" IsSnapToTickEnabled="True"
+                            VerticalAlignment="Center"/>
+                    <TextBlock Grid.Column="2" Text="{Binding Thickness, StringFormat={}{0:F0}px}"
+                               FontSize="10" Foreground="{StaticResource TextSecondaryBrush}"
+                               VerticalAlignment="Center" HorizontalAlignment="Right"/>
+                </Grid>
+
+                <!-- 颜色：色块 + hex -->
+                <Grid ColumnDefinitions="60,20,4,*" Margin="0,2">
+                    <TextBlock Grid.Column="0" Text="颜色" FontSize="11"
+                               Foreground="{StaticResource TextTertiaryBrush}" VerticalAlignment="Center"/>
+                    <Border Grid.Column="1" Width="18" Height="18" CornerRadius="4"
+                            BorderBrush="{StaticResource BorderBrushToken}" BorderThickness="1"
+                            Background="{Binding Color, Converter={StaticResource HexToBrushConverter}}"/>
+                    <TextBox Grid.Column="3" Text="{Binding Color, Mode=TwoWay}"
+                             FontSize="11" PlaceholderText="#D32F2F"
+                             Background="{StaticResource ToolbarBackgroundBrush}"
+                             BorderBrush="{StaticResource BorderBrushToken}" BorderThickness="1"
+                             Foreground="{StaticResource TextPrimaryBrush}" CornerRadius="4" Padding="4,2"/>
+                </Grid>
+
+                <!-- 调色板 -->
+                <ItemsControl ItemsSource="{Binding ColorPalette}" Margin="60,2,0,4">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <WrapPanel Orientation="Horizontal"/>
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Button Width="20" Height="20" Padding="0" Margin="0,0,4,0"
+                                    CornerRadius="4" BorderThickness="1"
+                                    BorderBrush="{StaticResource BorderBrushToken}"
+                                    Background="{Binding Converter={StaticResource HexToBrushConverter}}"
+                                    ToolTip.Tip="{Binding}"
+                                    Command="{Binding $parent[ItemsControl].DataContext.PickColorCommand}"
+                                    CommandParameter="{Binding}"/>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+
+                <!-- 门窗列表 -->
+                <Border Margin="0,8,0,2" BorderBrush="{StaticResource CapsuleBorderBrush}" BorderThickness="0,1,0,0">
+                    <Grid ColumnDefinitions="*,Auto" Margin="0,6,0,2">
+                        <TextBlock Grid.Column="0" Text="门窗" FontSize="11" FontWeight="SemiBold"
+                                   Foreground="{StaticResource TextTertiaryBrush}" VerticalAlignment="Center"/>
+                        <Button Grid.Column="1"
+                                Background="Transparent" BorderThickness="0"
+                                Padding="4,2" CornerRadius="4"
+                                ToolTip.Tip="添加门窗"
+                                Command="{Binding AddDoorCommand}">
+                            <StackPanel Orientation="Horizontal" Spacing="3">
+                                <Path Data="{StaticResource IconPlus}" Width="10" Height="10" Stretch="Uniform"
+                                      Fill="{StaticResource CapsulePurpleBrush}" VerticalAlignment="Center"/>
+                                <TextBlock Text="添加" FontSize="10"
+                                           Foreground="{StaticResource CapsulePurpleBrush}" VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </Button>
+                    </Grid>
+                </Border>
+
+                <!-- 门窗条目列表 -->
+                <ItemsControl ItemsSource="{Binding Doors}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate DataType="vm:DoorItemViewModel">
+                            <Border Margin="0,2" Padding="8,6"
+                                    Background="{StaticResource ToolbarBackgroundBrush}"
+                                    BorderBrush="{StaticResource BorderBrushToken}" BorderThickness="1"
+                                    CornerRadius="6">
+                                <StackPanel Spacing="4">
+                                    <!-- 标题行：图标+标签 + 删除 -->
+                                    <Grid ColumnDefinitions="*,Auto">
+                                        <TextBlock Grid.Column="0" Text="{Binding DoorLabel}"
+                                                   FontSize="11" FontWeight="SemiBold"
+                                                   Foreground="{StaticResource TextPrimaryBrush}"
+                                                   VerticalAlignment="Center"/>
+                                        <Button Grid.Column="1"
+                                                Background="Transparent" BorderThickness="0"
+                                                Width="18" Height="18" Padding="0" CornerRadius="4"
+                                                ToolTip.Tip="删除门窗"
+                                                Command="{Binding $parent[ItemsControl].DataContext.RemoveDoorCommand}"
+                                                CommandParameter="{Binding}">
+                                            <Path Data="{StaticResource IconClose}" Width="9" Height="9" Stretch="Uniform"
+                                                  Fill="{StaticResource TextTertiaryBrush}"
+                                                  HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                        </Button>
+                                    </Grid>
+
+                                    <!-- 类型 / 状态 -->
+                                    <Grid ColumnDefinitions="*,8,*">
+                                        <StackPanel Grid.Column="0" Spacing="2">
+                                            <TextBlock Text="类型" FontSize="9"
+                                                       Foreground="{StaticResource TextTertiaryBrush}"/>
+                                            <ComboBox ItemsSource="{Binding KindOptions}"
+                                                      SelectedIndex="{Binding KindIndex, Mode=TwoWay}"
+                                                      FontSize="10" Height="24" Padding="4,0"
+                                                      Background="{StaticResource AppBackgroundBrush}"
+                                                      BorderBrush="{StaticResource BorderBrushToken}" BorderThickness="1"
+                                                      Foreground="{StaticResource TextPrimaryBrush}" CornerRadius="3"/>
+                                        </StackPanel>
+                                        <StackPanel Grid.Column="2" Spacing="2">
+                                            <TextBlock Text="状态" FontSize="9"
+                                                       Foreground="{StaticResource TextTertiaryBrush}"/>
+                                            <ComboBox ItemsSource="{Binding StateOptions}"
+                                                      SelectedIndex="{Binding StateIndex, Mode=TwoWay}"
+                                                      FontSize="10" Height="24" Padding="4,0"
+                                                      Background="{StaticResource AppBackgroundBrush}"
+                                                      BorderBrush="{StaticResource BorderBrushToken}" BorderThickness="1"
+                                                      Foreground="{StaticResource TextPrimaryBrush}" CornerRadius="3"/>
+                                        </StackPanel>
+                                    </Grid>
+
+                                    <!-- 开门方向 -->
+                                    <StackPanel Spacing="2">
+                                        <TextBlock Text="开门方向" FontSize="9"
+                                                   Foreground="{StaticResource TextTertiaryBrush}"/>
+                                        <ComboBox ItemsSource="{Binding SwingOptions}"
+                                                  SelectedIndex="{Binding SwingIndex, Mode=TwoWay}"
+                                                  FontSize="10" Height="24" Padding="4,0"
+                                                  Background="{StaticResource AppBackgroundBrush}"
+                                                  BorderBrush="{StaticResource BorderBrushToken}" BorderThickness="1"
+                                                  Foreground="{StaticResource TextPrimaryBrush}" CornerRadius="3"/>
+                                    </StackPanel>
+
+                                    <!-- 感知覆盖（可折叠） -->
+                                    <Expander Header="感知覆盖（可选）" FontSize="9" Padding="0,2">
+                                        <StackPanel Spacing="3" Margin="0,4,0,0">
+                                            <Grid ColumnDefinitions="40,*">
+                                                <TextBlock Grid.Column="0" Text="视觉" FontSize="9"
+                                                           Foreground="{StaticResource TextTertiaryBrush}" VerticalAlignment="Center"/>
+                                                <ComboBox Grid.Column="1" ItemsSource="{Binding SenseOverrideOptions}"
+                                                          SelectedIndex="{Binding SightOverrideIndex, Mode=TwoWay}"
+                                                          FontSize="10" Height="22" Padding="4,0"
+                                                          Background="{StaticResource AppBackgroundBrush}"
+                                                          BorderBrush="{StaticResource BorderBrushToken}" BorderThickness="1"
+                                                          Foreground="{StaticResource TextPrimaryBrush}" CornerRadius="3"/>
+                                            </Grid>
+                                            <Grid ColumnDefinitions="40,*">
+                                                <TextBlock Grid.Column="0" Text="移动" FontSize="9"
+                                                           Foreground="{StaticResource TextTertiaryBrush}" VerticalAlignment="Center"/>
+                                                <ComboBox Grid.Column="1" ItemsSource="{Binding SenseOverrideOptions}"
+                                                          SelectedIndex="{Binding MoveOverrideIndex, Mode=TwoWay}"
+                                                          FontSize="10" Height="22" Padding="4,0"
+                                                          Background="{StaticResource AppBackgroundBrush}"
+                                                          BorderBrush="{StaticResource BorderBrushToken}" BorderThickness="1"
+                                                          Foreground="{StaticResource TextPrimaryBrush}" CornerRadius="3"/>
+                                            </Grid>
+                                        </StackPanel>
+                                    </Expander>
+                                </StackPanel>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+
+                <!-- 空态提示 + 操作提示 -->
+                <StackPanel IsVisible="{Binding Doors.Count, Converter={x:Static ObjectConverters.Equal}, ConverterParameter=0}"
+                            Spacing="3" Margin="0,2,0,4">
+                    <TextBlock Text="无门窗" FontSize="10" FontStyle="Italic"
+                               Foreground="{StaticResource TextTertiaryBrush}"/>
+                    <Border Background="{StaticResource AppBackgroundBrush}"
+                            BorderBrush="{StaticResource BorderBrushToken}" BorderThickness="1"
+                            CornerRadius="4" Padding="6,4">
+                        <TextBlock Text="💡 右键墙体线段可添加门窗" FontSize="10"
+                                   Foreground="{StaticResource TextSecondaryBrush}" TextWrapping="Wrap"/>
+                    </Border>
+                </StackPanel>
+
             </StackPanel>
         </DataTemplate>
 
@@ -1191,11 +1419,6 @@
                                         VerticalAlignment="Stretch"/>
                 <!-- 地图文本标注覆盖层（GL 层无字体栈，文本走 Avalonia） -->
                 <Canvas x:Name="MapTextOverlay"
-                        IsHitTestVisible="False"
-                        HorizontalAlignment="Stretch"
-                        VerticalAlignment="Stretch"
-                        Background="Transparent"/>
-                <Canvas x:Name="TokenUIOverlay"
                         IsHitTestVisible="False"
                         HorizontalAlignment="Stretch"
                         VerticalAlignment="Stretch"

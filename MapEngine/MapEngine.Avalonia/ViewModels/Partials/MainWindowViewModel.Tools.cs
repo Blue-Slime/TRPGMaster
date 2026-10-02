@@ -54,6 +54,7 @@ public partial class MainWindowViewModel
         OnPropertyChanged(nameof(IsShapeToolActive));
         OnPropertyChanged(nameof(IsFogToolActive));
         OnPropertyChanged(nameof(IsGraphToolActive));
+        OnPropertyChanged(nameof(IsWallToolActive));
 
         // 换工具时丢掉半成品连线，否则回到 graph 工具会接着上次的起点连
         if (!IsGraphToolActive) CancelGraphLinkDrag();
@@ -292,6 +293,68 @@ public partial class MainWindowViewModel
                 foreach (var d in Descend(child))
                     yield return d;
         }
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
+    // Wall 工具（墙体绘制：点击添加锚点，双击闭合，Esc 取消）
+    // ─────────────────────────────────────────────────────────────────────
+
+    /// <summary>墙体工具是否为当前主工具。</summary>
+    public bool IsWallToolActive =>
+        string.Equals(SelectedPrimaryTool?.Key, "wall", StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// 在指定世界坐标创建墙体路径。走 CommandBus 以支持撤销与联机同步。
+    /// </summary>
+    public HierarchyItemViewModel? CreateWallPathAt(List<(double X, double Y)> worldPoints, bool isClosed)
+    {
+        if (worldPoints.Count < 2)
+        {
+            StatusMessage = "墙体至少需要 2 个锚点";
+            return null;
+        }
+
+        var parent = HierarchyRoots.Count > 0 ? HierarchyRoots[0] : EnsureSceneRoot();
+        if (parent is null)
+        {
+            StatusMessage = "当前没有可用的层级父对象";
+            return null;
+        }
+
+        // 转换为 PointData 结构
+        var points = worldPoints.Select(p => new Core.Data.PointData { X = p.X, Y = p.Y }).ToList();
+
+        var dto = new Services.HierarchyNodeDto
+        {
+            Id             = CreateId("wall"),
+            Name           = "墙体",
+            Icon           = "🧱",
+            ObjectType     = "WallPathV2",
+            IsActive       = true,
+            HasMapPosition = false,
+            WallPathV2     = new Core.Data.WallPathData
+            {
+                Points    = points,
+                IsClosed  = isClosed,
+                Thickness = 5.0,
+                Color     = "#E74C3C",
+                Sight     = 2,
+                Move      = 2,
+                Sound     = 1,
+                Light     = 2,
+                Doors     = new List<Core.Data.DoorSegmentData>(),
+            },
+        };
+
+        _commandBus.Execute(new VmAddEmptyObjectCommand(this, parent.Id, dto));
+        var created = FindHierarchyById(dto.Id);
+        if (created is not null)
+        {
+            SelectedHierarchyItem = created;
+            StatusMessage = $"已创建墙体路径（{worldPoints.Count} 个锚点）";
+            RefreshMapRenderableItems();
+        }
+        return created;
     }
 
     // ─────────────────────────────────────────────────────────────────────

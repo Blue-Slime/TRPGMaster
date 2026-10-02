@@ -4,6 +4,7 @@ using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.PixelFormats;
 using Silk.NET.OpenGL;
 using MapEngine.Render;
+using MapEngine.Render.UI;
 
 namespace MapEngine
 {
@@ -341,7 +342,7 @@ namespace MapEngine
             }
         }
 
-        public unsafe void Render(MapRenderScene? scene)
+        public unsafe void Render(MapRenderScene? scene, SkiaSharp.SKCanvas? canvas = null)
         {
             if (_gl == null)
             {
@@ -452,6 +453,25 @@ namespace MapEngine
             if (error != GLEnum.NoError)
             {
                 Console.WriteLine($"OpenGL Error ({_shaderProfileName}): {error}");
+            }
+
+            // ── Token UI 渲染（Skia 层，在所有 GL 内容之上）─────────────────────
+            if (canvas != null && scene != null)
+            {
+                foreach (var label in scene.TokenLabels)
+                {
+                    label.Draw(canvas);
+                }
+
+                foreach (var bar in scene.TokenHealthBars)
+                {
+                    bar.Draw(canvas);
+                }
+
+                foreach (var badge in scene.TokenBadges)
+                {
+                    badge.Draw(canvas);
+                }
             }
         }
 

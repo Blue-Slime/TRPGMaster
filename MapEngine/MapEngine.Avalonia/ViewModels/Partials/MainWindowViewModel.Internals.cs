@@ -261,6 +261,35 @@ public partial class MainWindowViewModel
             }).ToList();
         }
 
+        // 墙体路径：任意对象挂了 WallPathComponent 就序列化
+        if (item.BackingObject.GetComponent<WallPathComponent>() is { } wallPath)
+        {
+            dto.WallPathV2 = new WallPathData
+            {
+                Points = wallPath.Points.Select(p => new PointData { X = p.X, Y = p.Y }).ToList(),
+                IsClosed = wallPath.IsClosed,
+                Sight = (int)wallPath.Sight,
+                Move = (int)wallPath.Move,
+                Sound = (int)wallPath.Sound,
+                Light = (int)wallPath.Light,
+                Thickness = wallPath.Thickness,
+                Color = wallPath.Color,
+                Doors = wallPath.Doors.Count > 0
+                    ? wallPath.Doors.Select(d => new MapEngine.Core.Data.DoorSegmentData
+                    {
+                        Id = d.Id,
+                        StartAnchorIndex = d.StartAnchorIndex,
+                        EndAnchorIndex = d.EndAnchorIndex,
+                        Kind = (int)d.Kind,
+                        State = (int)d.State,
+                        Swing = (int)d.Swing,
+                        SightOverride = d.SightOverride.HasValue ? (int)d.SightOverride.Value : null,
+                        MoveOverride = d.MoveOverride.HasValue ? (int)d.MoveOverride.Value : null
+                    }).ToList()
+                    : null
+            };
+        }
+
         return dto;
     }
 

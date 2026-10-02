@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using MapEngine.Render.UI;
 
 namespace MapEngine.Render;
 
@@ -79,6 +80,21 @@ public sealed class MapRenderScene
     /// 拓扑节点图标。有 TexturePath 的走贴图，否则按 Shape 画纯色形状。
     /// </summary>
     public IReadOnlyList<MapRenderGraphNode> GraphNodes { get; init; } = Array.Empty<MapRenderGraphNode>();
+
+    /// <summary>
+    /// Token 名称标签（Skia 层渲染）。
+    /// </summary>
+    public IReadOnlyList<SkiaLabel> TokenLabels { get; init; } = Array.Empty<SkiaLabel>();
+
+    /// <summary>
+    /// Token HP 条（Skia 层渲染）。
+    /// </summary>
+    public IReadOnlyList<SkiaHealthBar> TokenHealthBars { get; init; } = Array.Empty<SkiaHealthBar>();
+
+    /// <summary>
+    /// Token 状态徽章（Skia 层渲染）。
+    /// </summary>
+    public IReadOnlyList<SkiaBadge> TokenBadges { get; init; } = Array.Empty<SkiaBadge>();
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -281,3 +297,67 @@ public readonly record struct MapRenderConditionBadge(
     string Icon,
     int StackCount,
     MapRenderColor BackgroundColor);
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Token UI 数据结构（Skia 层渲染）
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// <summary>
+/// Token 名称标签（Skia 层渲染，带阴影和描边）。
+/// 坐标系：世界内容坐标，Y 轴向上。
+/// </summary>
+public sealed class SkiaLabel
+{
+    /// <summary>标签文本（Token 名称）。</summary>
+    public string Text { get; init; } = string.Empty;
+    /// <summary>标签中心 X（世界内容坐标）。</summary>
+    public double CenterX { get; init; }
+    /// <summary>标签中心 Y（世界内容坐标）。</summary>
+    public double CenterY { get; init; }
+    /// <summary>字体大小（逻辑像素）。</summary>
+    public float FontSize { get; init; } = 14f;
+    /// <summary>文本颜色。</summary>
+    public MapRenderColor Color { get; init; } = new(1f, 1f, 1f, 1f);
+}
+
+/// <summary>
+/// Token HP 条（Skia 层渲染，带渐变填充）。
+/// 坐标系：世界内容坐标，Y 轴向上。
+/// </summary>
+public sealed class SkiaHealthBar
+{
+    /// <summary>HP 条左上角 X（世界内容坐标）。</summary>
+    public double X { get; init; }
+    /// <summary>HP 条左上角 Y（世界内容坐标）。</summary>
+    public double Y { get; init; }
+    /// <summary>HP 条宽度（世界单位）。</summary>
+    public double Width { get; init; }
+    /// <summary>HP 条高度（世界单位）。</summary>
+    public double Height { get; init; }
+    /// <summary>当前 HP 百分比（0.0 - 1.0）。</summary>
+    public float Percentage { get; init; }
+    /// <summary>当前 HP 值。</summary>
+    public int CurrentHP { get; init; }
+    /// <summary>最大 HP 值。</summary>
+    public int MaxHP { get; init; }
+}
+
+/// <summary>
+/// Token 状态徽章（Skia 层渲染，图标 + 数字）。
+/// 坐标系：世界内容坐标，Y 轴向上。
+/// </summary>
+public sealed class SkiaBadge
+{
+    /// <summary>徽章中心 X（世界内容坐标）。</summary>
+    public double CenterX { get; init; }
+    /// <summary>徽章中心 Y（世界内容坐标）。</summary>
+    public double CenterY { get; init; }
+    /// <summary>徽章大小（边长，世界单位）。</summary>
+    public double Size { get; init; }
+    /// <summary>图标文本（emoji）。</summary>
+    public string Icon { get; init; } = string.Empty;
+    /// <summary>堆叠计数（显示在右上角）。</summary>
+    public int StackCount { get; init; }
+    /// <summary>背景颜色。</summary>
+    public MapRenderColor BackgroundColor { get; init; }
+}

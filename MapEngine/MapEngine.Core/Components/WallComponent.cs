@@ -74,7 +74,7 @@ public enum SenseType  { Sight, Move, Sound, Light }
 public enum WallDir    { Both, Left, Right }
 
 /// <summary>门类型。</summary>
-public enum DoorKind   { None, Door, Secret }
+public enum DoorKind   { None, Door, Secret, Window, Archway }
 
 /// <summary>门状态。Open = 对所有感知透明；Locked = 对 Move 仍阻挡。</summary>
 public enum DoorState  { Closed, Open, Locked }
