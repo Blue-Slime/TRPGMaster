@@ -1070,7 +1070,8 @@ public sealed class HierarchyItemViewModel : ViewModelBase, IGlobalSelectionItem
     public bool CanNavigateToMap => HasMapPosition;
 
     public bool ShouldRenderOnMap
-        => IsActive && (CanNavigateToMap || IsPreviewInstance) && !string.IsNullOrWhiteSpace(Icon);
+        => IsActive && (CanNavigateToMap || IsPreviewInstance || ObjectType == "WallPathV2")
+           && !string.IsNullOrWhiteSpace(Icon);
 
     // Shape/Text 不是精灵，没有格子尺寸的概念。若沿用 CellSize，
     // 一个 600 单位长的锥形只会得到 50×50 的选中框和命中区，选不中也看不出范围。
