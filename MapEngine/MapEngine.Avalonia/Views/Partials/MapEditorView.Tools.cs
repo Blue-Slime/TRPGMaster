@@ -566,24 +566,17 @@ public partial class MapEditorView
         const double halfAngle = 30.0 * Math.PI / 180.0; // 30° half-angle
         var a1 = dirAngle - halfAngle;
         var a2 = dirAngle + halfAngle;
-
-        // 📍 修复：分别计算 X/Y 方向半径，避免非方形视口压扁
-        // 在屏幕空间用绝对距离作为 X 半径，按视口宽高比缩放 Y 半径
-        var vpSize = GetViewportSize();
-        var aspectRatio = vpSize.Height / vpSize.Width;  // 高/宽比
-        var radiusX = radius;
-        var radiusY = radius * aspectRatio;  // Y 方向按比例拉伸，补偿渲染时的压扁
-
-        var x1 = origin.X + radiusX * Math.Cos(a1);
-        var y1 = origin.Y + radiusY * Math.Sin(a1);
-        var x2 = origin.X + radiusX * Math.Cos(a2);
-        var y2 = origin.Y + radiusY * Math.Sin(a2);
+        var x1 = origin.X + radius * Math.Cos(a1);
+        var y1 = origin.Y + radius * Math.Sin(a1);
+        var x2 = origin.X + radius * Math.Cos(a2);
+        var y2 = origin.Y + radius * Math.Sin(a2);
 
         var geo = new StreamGeometry();
         using var ctx = geo.Open();
         ctx.BeginFigure(origin, isFilled: true);
         ctx.LineTo(new Point(x1, y1));
-        ctx.ArcTo(new Point(x2, y2), new Size(radiusX, radiusY), 0, isLargeArc: false, SweepDirection.Clockwise);
+        // 屏幕像素坐标是正方形的，直接用圆形弧（radius, radius）
+        ctx.ArcTo(new Point(x2, y2), new Size(radius, radius), 0, isLargeArc: false, SweepDirection.Clockwise);
         ctx.EndFigure(true);
 
         _shapePreviewPath.Data = geo;
