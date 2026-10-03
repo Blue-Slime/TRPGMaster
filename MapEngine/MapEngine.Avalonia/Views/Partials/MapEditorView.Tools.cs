@@ -614,8 +614,8 @@ public partial class MapEditorView
             {
                 var radius = Math.Sqrt(dxW * dxW + dyW * dyW);
                 if (radius < 2) break;
-                // 世界坐标系：Y 向上，wy1/wy2 已经翻转过，直接用 dyW 不需要再负号
-                var dirDeg = Math.Atan2(dyW, dxW) * 180.0 / Math.PI;
+                // 世界坐标 Y 向上，但渲染时 Y 轴会翻转，所以角度需要取反匹配
+                var dirDeg = Math.Atan2(-dyW, dxW) * 180.0 / Math.PI;
                 _viewModel.CommandBus.Execute(new VmCreateShapeCommand(_viewModel, sub,
                     wx1, wy1, radius, 0, wx1, wy1, wx2, wy2, dirDeg, 30.0));
                 break;
