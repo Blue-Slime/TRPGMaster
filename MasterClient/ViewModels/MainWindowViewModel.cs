@@ -336,8 +336,8 @@ public partial class MainWindowViewModel : ViewModelBase
         // 初始化已知服务器列表（不再自动创建本地服务器记录）
         InitializeKnownServers();
 
-        // 静默扫描本地服务器
-        _ = ScanLocalServerSilentlyAsync();
+        // 移除自动扫描：用户通过输入地址手动连接服务器
+        // _ = ScanLocalServerSilentlyAsync();
     }
 
     private void LoadSettings()

@@ -1487,11 +1487,11 @@
         </views:DicePanel>
 
         <!-- ════════════════════════════════════════════════════════════════
-             工具栏左侧：角色选择器（仅游玩模式显示）
+             工具栏右侧：角色选择器（仅游玩模式显示，由 DrawerLayoutBehavior 动态定位）
              ════════════════════════════════════════════════════════════ -->
         <Border x:Name="CharacterSelectorCapsule"
                 HorizontalAlignment="Left" VerticalAlignment="Top"
-                Margin="14,14,0,0" ZIndex="35"
+                Margin="76,14,0,0" ZIndex="35"
                 CornerRadius="16"
                 Background="{StaticResource CapsuleActionBrush}"
                 BorderBrush="{StaticResource CapsuleBorderBrush}" BorderThickness="1"

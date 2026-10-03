@@ -95,6 +95,12 @@ public partial class MapEditorView : UserControl
             Interval = TimeSpan.FromMilliseconds(140)
         };
         _mapDragFinalizeTimer.Tick += OnMapDragFinalizeTimerTick;
+
+        // 初始化 overlay 变换（布局完成后会再次更新）
+        AttachedToVisualTree += (_, _) => {
+            if (_toolOverlayCanvas is not null && _mapViewportSurface is not null)
+                UpdateOverlayTransform();
+        };
         _mapViewportSurface?.AddHandler(InputElement.PointerWheelChangedEvent, MapViewportHost_PointerWheelChanged, RoutingStrategies.Tunnel, true);
         _mapViewportSurface?.AddHandler(InputElement.PointerPressedEvent, MapViewportHost_PointerPressed, RoutingStrategies.Tunnel, true);
         _mapViewportSurface?.AddHandler(InputElement.PointerMovedEvent, MapViewportHost_PointerMoved, RoutingStrategies.Tunnel, true);

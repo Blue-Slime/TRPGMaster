@@ -1,6 +1,7 @@
 using System;
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Media;
 using Avalonia.Threading;
 using MapEngine.Avalonia.Graphics;
 using MapEngine.Avalonia.ViewModels;
@@ -91,6 +92,7 @@ public partial class MapEditorView
         _ = zoomScale;
         _mapSilkCanvas?.RequestFrame();
         _mapTextManager?.SyncFromViewModel(_cameraContentCenter, zoomScale);
+        UpdateOverlayTransform(); // 同步更新 overlay Canvas 的变换矩阵
     }
 
     private void PreserveViewportCenterOnZoom(double oldZoomScale, double newZoomScale)
@@ -125,9 +127,16 @@ public partial class MapEditorView
         {
             var zs = _viewModel.ZoomScale <= 0 ? 1.0 : _viewModel.ZoomScale;
             _cameraContentCenter = ClampCameraCenter(_cameraContentCenter, zs);
-            ApplyCameraTransform(zs);
+            ApplyCameraTransform(zs); // 已包含 UpdateOverlayTransform() 调用
         }
         Dispatcher.UIThread.Post(EnsureMapViewportInitialized, DispatcherPriority.Background);
+
+        // 强制刷新工具预览层，确保使用最新视口尺寸
+        Dispatcher.UIThread.Post(() =>
+        {
+            UpdateOverlayTransform();
+            _toolOverlayCanvas?.InvalidateVisual();
+        }, DispatcherPriority.Render);
     }
 
     private static double ContentToWorldX(double contentX)
@@ -135,4 +144,52 @@ public partial class MapEditorView
 
     private static double ContentToWorldY(double contentY)
         => MapViewportConstants.WorldOriginContent - contentY;
+
+    // ─────────────────────────────────────────────────────────────────────
+    // 坐标系统重构：统一使用世界坐标（Content单位）+ 视口变换矩阵
+    // ─────────────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// 获取世界坐标 → 屏幕像素的变换矩阵。
+    /// 用于 _toolOverlayCanvas.RenderTransform，让预览层可以直接用世界坐标绘制。
+    /// </summary>
+    private Matrix GetWorldToScreenMatrix()
+    {
+        var viewportSize = GetViewportSize();
+        var zoom = _viewModel?.ZoomScale ?? 1.0;
+        if (zoom <= 0) zoom = 1.0;
+
+        // 1. 缩放：世界单位（Content） → 屏幕像素
+        // 2. 平移：相机中心对齐到视口中心
+        var translateX = viewportSize.Width / 2.0 - _cameraContentCenter.X * zoom;
+        var translateY = viewportSize.Height / 2.0 - _cameraContentCenter.Y * zoom;
+
+        return Matrix.CreateScale(zoom, zoom) * Matrix.CreateTranslation(translateX, translateY);
+    }
+
+    /// <summary>
+    /// 屏幕像素坐标 → 世界坐标（Content单位）。
+    /// 用于输入层，将鼠标位置转换为世界坐标后再传递给工具方法。
+    /// </summary>
+    private Point ScreenToWorld(Point screenPos)
+    {
+        var viewportSize = GetViewportSize();
+        var zoom = _viewModel?.ZoomScale ?? 1.0;
+        if (zoom <= 0) zoom = 1.0;
+
+        var contentX = _cameraContentCenter.X + (screenPos.X - viewportSize.Width / 2.0) / zoom;
+        var contentY = _cameraContentCenter.Y + (screenPos.Y - viewportSize.Height / 2.0) / zoom;
+
+        return new Point(contentX, contentY);
+    }
+
+    /// <summary>
+    /// 更新 overlay Canvas 的 RenderTransform，使其跟随相机移动/缩放。
+    /// 调用时机：相机移动、缩放、视口尺寸改变。
+    /// </summary>
+    private void UpdateOverlayTransform()
+    {
+        if (_toolOverlayCanvas is null) return;
+        _toolOverlayCanvas.RenderTransform = new MatrixTransform(GetWorldToScreenMatrix());
+    }
 }

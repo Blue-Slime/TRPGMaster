@@ -127,16 +127,12 @@ public partial class MapEditorView
     // Graph（拓扑节点 / 连线）
     // ─────────────────────────────────────────────────────────────────────
 
-    /// <summary>屏幕坐标 → 世界坐标（与 PlaceText 用的同一套换算）。</summary>
-    private (double X, double Y) ScreenToWorld(Point screenPos)
+    /// <summary>将 Content 坐标转换为 GameObject 坐标（翻转 Y 轴并减去原点偏移）。</summary>
+    private (double X, double Y) ContentToGameObject(Point contentPos)
     {
-        var vpSize = GetViewportSize();
-        var zs = _viewModel!.ZoomScale <= 0 ? 1.0 : _viewModel.ZoomScale;
-        var wx = _cameraContentCenter.X + (screenPos.X - vpSize.Width  / 2.0) / zs
-                 - MapViewportConstants.WorldOriginContent;
-        var wy = -((_cameraContentCenter.Y + (screenPos.Y - vpSize.Height / 2.0) / zs)
-                 - MapViewportConstants.WorldOriginContent);
-        return (wx, wy);
+        var gameX = contentPos.X - MapViewportConstants.WorldOriginContent;
+        var gameY = -(contentPos.Y - MapViewportConstants.WorldOriginContent);
+        return (gameX, gameY);
     }
 
     /// <summary>
@@ -146,7 +142,8 @@ public partial class MapEditorView
     {
         if (_viewModel is null) return false;
 
-        var (wx, wy) = ScreenToWorld(screenPos);
+        var contentPos = ScreenToWorld(screenPos);
+        var (wx, wy) = ContentToGameObject(contentPos);
         var hit = _viewModel.HitTestGraphNode(wx, wy);
 
         if (_viewModel.IsGraphLinkSubTool)
@@ -207,7 +204,8 @@ public partial class MapEditorView
     {
         if (_viewModel is null) return;
 
-        var (wx, wy) = ScreenToWorld(screenPos);
+        var contentPos = ScreenToWorld(screenPos);
+        var (wx, wy) = ContentToGameObject(contentPos);
         var target = _viewModel.HitTestGraphNode(wx, wy);
         _viewModel.CompleteGraphLinkDrag(target);
 
@@ -335,10 +333,11 @@ public partial class MapEditorView
         _isToolDragging = true;
         _toolDragStart  = screenPos;
 
+        var worldPos = ScreenToWorld(screenPos);
         _measureLine = new Line
         {
-            StartPoint = screenPos,
-            EndPoint   = screenPos,
+            StartPoint = worldPos,
+            EndPoint   = worldPos,
             Stroke     = new SolidColorBrush(Color.Parse("#F59E0B")),
             StrokeThickness = 2,
             StrokeDashArray = [6, 4],
@@ -362,18 +361,15 @@ public partial class MapEditorView
     {
         if (_measureLine is null || _measureLabel is null || _viewModel is null) return;
 
-        _measureLine.EndPoint = screenPos;
+        var worldEnd = ScreenToWorld(screenPos);
+        _measureLine.EndPoint = worldEnd;
 
-        // 屏幕坐标 → 世界格数
-        var zs   = _viewModel.ZoomScale <= 0 ? 1.0 : _viewModel.ZoomScale;
-        var vpSize = GetViewportSize();
-        double ToWorldX(double sx) => _cameraContentCenter.X + (sx - vpSize.Width  / 2.0) / zs;
-        double ToWorldY(double sy) => _cameraContentCenter.Y + (sy - vpSize.Height / 2.0) / zs;
-
-        var wx1 = ToWorldX(_toolDragStart.X);
-        var wy1 = ToWorldY(_toolDragStart.Y);
-        var wx2 = ToWorldX(screenPos.X);
-        var wy2 = ToWorldY(screenPos.Y);
+        // 计算世界坐标距离
+        var worldStart = ScreenToWorld(_toolDragStart);
+        var wx1 = worldStart.X;
+        var wy1 = worldStart.Y;
+        var wx2 = worldEnd.X;
+        var wy2 = worldEnd.Y;
 
         var cellSize = MapViewportConstants.CellSize;
         var distCells = Math.Sqrt((wx2 - wx1) * (wx2 - wx1) + (wy2 - wy1) * (wy2 - wy1)) / cellSize;
@@ -381,9 +377,9 @@ public partial class MapEditorView
 
         _measureLabel.Text = $"{distCells:F1} 格  ·  {feet:F0} 尺";
 
-        // label 跟随线段中点偏上
-        var mx = (_toolDragStart.X + screenPos.X) / 2.0 + 8;
-        var my = (_toolDragStart.Y + screenPos.Y) / 2.0 - 22;
+        // label 跟随线段中点偏上（世界坐标）
+        var mx = (wx1 + wx2) / 2.0 + 8;
+        var my = (wy1 + wy2) / 2.0 - 22;
         Canvas.SetLeft(_measureLabel, mx);
         Canvas.SetTop(_measureLabel,  my);
     }
@@ -407,7 +403,8 @@ public partial class MapEditorView
         ClearOverlay();
         _isToolDragging = true;
         _laserTrail.Clear();
-        _laserTrail.Add(screenPos);
+        var worldPos = ScreenToWorld(screenPos);
+        _laserTrail.Add(worldPos);
 
         _laserTrailLine = new Polyline
         {
@@ -426,19 +423,20 @@ public partial class MapEditorView
 
         _toolOverlayCanvas!.Children.Add(_laserTrailLine);
         _toolOverlayCanvas!.Children.Add(_laserDot);
-        MoveLaserDot(screenPos);
+        MoveLaserDot(worldPos);
     }
 
     private void UpdateLaser(Point screenPos)
     {
         if (_laserTrailLine is null || _laserDot is null) return;
 
-        _laserTrail.Add(screenPos);
+        var worldPos = ScreenToWorld(screenPos);
+        _laserTrail.Add(worldPos);
         // 只保留最近 60 个点避免无限增长
         if (_laserTrail.Count > 60) _laserTrail.RemoveAt(0);
 
         _laserTrailLine.Points = new AvaloniaList<Point>(_laserTrail);
-        MoveLaserDot(screenPos);
+        MoveLaserDot(worldPos);
     }
 
     private void MoveLaserDot(Point p)
@@ -466,7 +464,7 @@ public partial class MapEditorView
     {
         ClearOverlay();
         _isToolDragging = true;
-        _toolDragStart  = screenPos;
+        _toolDragStart  = screenPos;  // 仍缓存屏幕坐标，UpdateShape 时转换
 
         var stroke = new SolidColorBrush(Color.Parse("#845EF7"));
         var fill   = new SolidColorBrush(Color.Parse("#40845EF7"));
@@ -483,9 +481,11 @@ public partial class MapEditorView
                 _toolOverlayCanvas!.Children.Add(_shapePreviewEllipse);
                 break;
             case "line":
+                // 线段使用世界坐标定位
+                var worldStart = ScreenToWorld(screenPos);
                 _shapePreviewLine = new Line
                 {
-                    StartPoint = screenPos, EndPoint = screenPos,
+                    StartPoint = worldStart, EndPoint = worldStart,
                     Stroke = stroke, StrokeThickness = 2,
                     IsHitTestVisible = false,
                 };
@@ -513,10 +513,14 @@ public partial class MapEditorView
 
     private void UpdateShape(Point screenPos)
     {
-        var x = Math.Min(_toolDragStart.X, screenPos.X);
-        var y = Math.Min(_toolDragStart.Y, screenPos.Y);
-        var w = Math.Abs(screenPos.X - _toolDragStart.X);
-        var h = Math.Abs(screenPos.Y - _toolDragStart.Y);
+        // 转换为世界坐标
+        var worldStart = ScreenToWorld(_toolDragStart);
+        var worldEnd = ScreenToWorld(screenPos);
+
+        var x = Math.Min(worldStart.X, worldEnd.X);
+        var y = Math.Min(worldStart.Y, worldEnd.Y);
+        var w = Math.Abs(worldEnd.X - worldStart.X);
+        var h = Math.Abs(worldEnd.Y - worldStart.Y);
 
         if (_shapePreviewRect is not null)
         {
@@ -531,8 +535,8 @@ public partial class MapEditorView
             if (_viewModel?.ShapeSubTool == "circle")
             {
                 var side = Math.Min(w, h);
-                Canvas.SetLeft(_shapePreviewEllipse, _toolDragStart.X - side / 2.0);
-                Canvas.SetTop(_shapePreviewEllipse,  _toolDragStart.Y - side / 2.0);
+                Canvas.SetLeft(_shapePreviewEllipse, worldStart.X - side / 2.0);
+                Canvas.SetTop(_shapePreviewEllipse,  worldStart.Y - side / 2.0);
                 _shapePreviewEllipse.Width  = side;
                 _shapePreviewEllipse.Height = side;
             }
@@ -546,17 +550,18 @@ public partial class MapEditorView
         }
         else if (_shapePreviewLine is not null)
         {
-            _shapePreviewLine.EndPoint = screenPos;
+            _shapePreviewLine.EndPoint = worldEnd;
         }
         else if (_shapePreviewPath is not null)
         {
-            UpdateConeWedgePreview(_toolDragStart, screenPos);
+            UpdateConeWedgePreview(worldStart, worldEnd);
         }
     }
 
     private void UpdateConeWedgePreview(Point origin, Point cursor)
     {
         if (_shapePreviewPath is null) return;
+        // origin 和 cursor 现在都是世界坐标
         var dx = cursor.X - origin.X;
         var dy = cursor.Y - origin.Y;
         var radius = Math.Sqrt(dx * dx + dy * dy);
@@ -575,7 +580,7 @@ public partial class MapEditorView
         using var ctx = geo.Open();
         ctx.BeginFigure(origin, isFilled: true);
         ctx.LineTo(new Point(x1, y1));
-        // 屏幕像素坐标是正方形的，直接用圆形弧（radius, radius）
+        // 世界坐标是等比例的，直接用圆形弧
         ctx.ArcTo(new Point(x2, y2), new Size(radius, radius), 0, isLargeArc: false, SweepDirection.Clockwise);
         ctx.EndFigure(true);
 
@@ -674,7 +679,8 @@ public partial class MapEditorView
             _toolOverlayCanvas!.Children.Add(_polygonGhostEdge);
         }
 
-        _polygonPoints.Add(screenPos);
+        var worldPos = ScreenToWorld(screenPos);
+        _polygonPoints.Add(worldPos);
         if (_polygonPreview is not null)
             _polygonPreview.Points = new AvaloniaList<Point>(_polygonPoints);
     }
@@ -682,23 +688,24 @@ public partial class MapEditorView
     private void PolygonUpdateGhost(Point screenPos)
     {
         if (_polygonGhostEdge is null || _polygonPoints.Count == 0) return;
+        var worldPos = ScreenToWorld(screenPos);
         _polygonGhostEdge.StartPoint = _polygonPoints[^1];
-        _polygonGhostEdge.EndPoint   = screenPos;
+        _polygonGhostEdge.EndPoint   = worldPos;
     }
 
     private void PolygonCommit()
     {
         if (_viewModel is null || _polygonPoints.Count < 3) { ClearOverlay(); return; }
 
-        var zs     = _viewModel.ZoomScale <= 0 ? 1.0 : _viewModel.ZoomScale;
-        var vpSize = GetViewportSize();
-
-        double ScrToWorldX(double sx) => _cameraContentCenter.X + (sx - vpSize.Width  / 2.0) / zs - MapViewportConstants.WorldOriginContent;
-        double ScrToWorldY(double sy) => -((_cameraContentCenter.Y + (sy - vpSize.Height / 2.0) / zs) - MapViewportConstants.WorldOriginContent);
-
+        // _polygonPoints 现在已经是世界坐标
         var worldPts = new List<(double X, double Y)>(_polygonPoints.Count);
         foreach (var p in _polygonPoints)
-            worldPts.Add((ScrToWorldX(p.X), ScrToWorldY(p.Y)));
+        {
+            // 转换为 GameObject 坐标系（Y轴翻转，原点偏移）
+            var gameX = p.X - MapViewportConstants.WorldOriginContent;
+            var gameY = -(p.Y - MapViewportConstants.WorldOriginContent);
+            worldPts.Add((gameX, gameY));
+        }
 
         double sumX = 0, sumY = 0;
         foreach (var (wx, wy) in worldPts) { sumX += wx; sumY += wy; }
@@ -747,11 +754,12 @@ public partial class MapEditorView
             _toolOverlayCanvas!.Children.Add(_wallGhostEdge);
         }
 
-        _wallPoints.Add(screenPos);
+        var worldPos = ScreenToWorld(screenPos);
+        _wallPoints.Add(worldPos);
         if (_wallPreview is not null)
             _wallPreview.Points = new AvaloniaList<Point>(_wallPoints);
 
-        // 检测首尾接近（< 20 单位）→ 提示闭合
+        // 检测首尾接近（< 20 世界单位）→ 提示闭合
         if (_wallPoints.Count >= 3)
         {
             var first = _wallPoints[0];
@@ -769,8 +777,9 @@ public partial class MapEditorView
     private void WallUpdateGhost(Point screenPos)
     {
         if (_wallGhostEdge is null || _wallPoints.Count == 0) return;
+        var worldPos = ScreenToWorld(screenPos);
         _wallGhostEdge.StartPoint = _wallPoints[^1];
-        _wallGhostEdge.EndPoint   = screenPos;
+        _wallGhostEdge.EndPoint   = worldPos;
     }
 
     private void WallCommit(bool isClosed)
@@ -781,17 +790,17 @@ public partial class MapEditorView
             return;
         }
 
-        var zs     = _viewModel.ZoomScale <= 0 ? 1.0 : _viewModel.ZoomScale;
-        var vpSize = GetViewportSize();
-
-        double ScrToWorldX(double sx) => _cameraContentCenter.X + (sx - vpSize.Width  / 2.0) / zs - MapViewportConstants.WorldOriginContent;
-        double ScrToWorldY(double sy) => -((_cameraContentCenter.Y + (sy - vpSize.Height / 2.0) / zs) - MapViewportConstants.WorldOriginContent);
-
+        // _wallPoints 现在已经是世界坐标
         var worldPts = new List<(double X, double Y)>(_wallPoints.Count);
         foreach (var p in _wallPoints)
-            worldPts.Add((ScrToWorldX(p.X), ScrToWorldY(p.Y)));
+        {
+            // 转换为 GameObject 坐标系（Y轴翻转，原点偏移）
+            var gameX = p.X - MapViewportConstants.WorldOriginContent;
+            var gameY = -(p.Y - MapViewportConstants.WorldOriginContent);
+            worldPts.Add((gameX, gameY));
+        }
 
-        // 检测首尾自动闭合（距离 < 20 屏幕单位）
+        // 检测首尾自动闭合（距离 < 20 世界单位）
         if (!isClosed && worldPts.Count >= 3)
         {
             var first = _wallPoints[0];
@@ -819,7 +828,8 @@ public partial class MapEditorView
         ClearOverlay();
         _isToolDragging = true;
         _drawPoints.Clear();
-        _drawPoints.Add(screenPos);
+        var worldPos = ScreenToWorld(screenPos);
+        _drawPoints.Add(worldPos);
 
         _drawPolyline = new Polyline
         {
@@ -836,16 +846,18 @@ public partial class MapEditorView
     {
         if (_drawPolyline is null) return;
 
-        // 抽稀：与上一个点距离 > 4px 才加入，减少顶点数
+        var worldPos = ScreenToWorld(screenPos);
+
+        // 抽稀：与上一个点距离 > 4 世界单位才加入，减少顶点数
         if (_drawPoints.Count > 0)
         {
             var last = _drawPoints[^1];
-            var dx = screenPos.X - last.X;
-            var dy = screenPos.Y - last.Y;
+            var dx = worldPos.X - last.X;
+            var dy = worldPos.Y - last.Y;
             if (dx * dx + dy * dy < 16) return;
         }
 
-        _drawPoints.Add(screenPos);
+        _drawPoints.Add(worldPos);
         _drawPolyline.Points = new AvaloniaList<Point>(_drawPoints);
     }
 
@@ -854,16 +866,15 @@ public partial class MapEditorView
         _isToolDragging = false;
         if (_viewModel is null || _drawPoints.Count < 2) { ClearOverlay(); return; }
 
-        var zs   = _viewModel.ZoomScale <= 0 ? 1.0 : _viewModel.ZoomScale;
-        var vpSize = GetViewportSize();
-
-        double ScrToWorldX(double sx) => _cameraContentCenter.X + (sx - vpSize.Width  / 2.0) / zs - MapViewportConstants.WorldOriginContent;
-        double ScrToWorldY(double sy) => -((_cameraContentCenter.Y + (sy - vpSize.Height / 2.0) / zs) - MapViewportConstants.WorldOriginContent);
-
-        // 计算世界坐标中心和相对顶点
+        // _drawPoints 现在已经是世界坐标
         var worldPts = new List<(double X, double Y)>(_drawPoints.Count);
         foreach (var p in _drawPoints)
-            worldPts.Add((ScrToWorldX(p.X), ScrToWorldY(p.Y)));
+        {
+            // 转换为 GameObject 坐标系（Y轴翻转，原点偏移）
+            var gameX = p.X - MapViewportConstants.WorldOriginContent;
+            var gameY = -(p.Y - MapViewportConstants.WorldOriginContent);
+            worldPts.Add((gameX, gameY));
+        }
 
         double sumX = 0, sumY = 0;
         foreach (var (wx, wy) in worldPts) { sumX += wx; sumY += wy; }

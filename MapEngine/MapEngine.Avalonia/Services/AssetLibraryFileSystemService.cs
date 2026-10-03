@@ -220,33 +220,44 @@ public static class AssetLibraryFileSystemService
 
     private static void EnsureRootScaffold(string rootPath)
     {
-        Directory.CreateDirectory(rootPath);
-
-        var staticObjectsPath = Path.Combine(rootPath, "StaticObjects");
-        Directory.CreateDirectory(staticObjectsPath);
-
-        var samplePath = Path.Combine(staticObjectsPath, $"示例静态对象{StaticObjectExtension}");
-        if (!File.Exists(samplePath))
+        try
         {
-            var json = JsonSerializer.Serialize(
-                new StaticObjectAssetDocument
-                {
-                    Name = "示例静态对象",
-                    Components =
-                    [
-                        new StaticObjectComponentDocument
-                        {
-                            Type = "Transform"
-                        },
-                        new StaticObjectComponentDocument
-                        {
-                            Type = "SpriteRenderer",
-                            Properties = []
-                        }
-                    ]
-                },
-                JsonOptions);
-            File.WriteAllText(samplePath, json);
+            Directory.CreateDirectory(rootPath);
+
+            var staticObjectsPath = Path.Combine(rootPath, "StaticObjects");
+            Directory.CreateDirectory(staticObjectsPath);
+
+            var samplePath = Path.Combine(staticObjectsPath, $"示例静态对象{StaticObjectExtension}");
+            if (!File.Exists(samplePath))
+            {
+                var json = JsonSerializer.Serialize(
+                    new StaticObjectAssetDocument
+                    {
+                        Name = "示例静态对象",
+                        Components =
+                        [
+                            new StaticObjectComponentDocument
+                            {
+                                Type = "Transform"
+                            },
+                            new StaticObjectComponentDocument
+                            {
+                                Type = "SpriteRenderer",
+                                Properties = []
+                            }
+                        ]
+                    },
+                    JsonOptions);
+                File.WriteAllText(samplePath, json);
+            }
+        }
+        catch (UnauthorizedAccessException)
+        {
+            // 无权创建目录，素材库将为空
+        }
+        catch (IOException)
+        {
+            // 磁盘或路径问题，素材库将为空
         }
     }
 
@@ -259,9 +270,23 @@ public static class AssetLibraryFileSystemService
             FullPath = path
         };
 
-        foreach (var directory in Directory.GetDirectories(path).OrderBy(Path.GetFileName, StringComparer.OrdinalIgnoreCase))
+        try
         {
-            folder.Children.Add(BuildFolder(directory));
+            if (Directory.Exists(path))
+            {
+                foreach (var directory in Directory.GetDirectories(path).OrderBy(Path.GetFileName, StringComparer.OrdinalIgnoreCase))
+                {
+                    folder.Children.Add(BuildFolder(directory));
+                }
+            }
+        }
+        catch (DirectoryNotFoundException)
+        {
+            // 目录在扫描期间被删除，返回空文件夹
+        }
+        catch (UnauthorizedAccessException)
+        {
+            // 无权访问子目录，返回空文件夹
         }
 
         return folder;
@@ -269,9 +294,23 @@ public static class AssetLibraryFileSystemService
 
     private static void CollectItems(AssetFolderDto folder, List<AssetItemDto> items)
     {
-        foreach (var filePath in Directory.GetFiles(folder.FullPath).OrderBy(Path.GetFileName, StringComparer.OrdinalIgnoreCase))
+        try
         {
-            items.Add(BuildItem(filePath, folder.FullPath));
+            if (Directory.Exists(folder.FullPath))
+            {
+                foreach (var filePath in Directory.GetFiles(folder.FullPath).OrderBy(Path.GetFileName, StringComparer.OrdinalIgnoreCase))
+                {
+                    items.Add(BuildItem(filePath, folder.FullPath));
+                }
+            }
+        }
+        catch (DirectoryNotFoundException)
+        {
+            // 目录在扫描期间被删除，跳过
+        }
+        catch (UnauthorizedAccessException)
+        {
+            // 无权访问目录，跳过
         }
 
         foreach (var child in folder.Children)
@@ -453,17 +492,33 @@ public static class AssetLibraryFileSystemService
 
     private static void CopyDirectory(string sourcePath, string targetPath)
     {
-        Directory.CreateDirectory(targetPath);
-
-        foreach (var filePath in Directory.GetFiles(sourcePath))
+        if (!Directory.Exists(sourcePath))
         {
-            File.Copy(filePath, Path.Combine(targetPath, Path.GetFileName(filePath)));
+            return; // 源目录不存在，跳过复制
         }
 
-        foreach (var directoryPath in Directory.GetDirectories(sourcePath))
+        Directory.CreateDirectory(targetPath);
+
+        try
         {
-            var childTargetPath = Path.Combine(targetPath, Path.GetFileName(directoryPath));
-            CopyDirectory(directoryPath, childTargetPath);
+            foreach (var filePath in Directory.GetFiles(sourcePath))
+            {
+                File.Copy(filePath, Path.Combine(targetPath, Path.GetFileName(filePath)));
+            }
+
+            foreach (var directoryPath in Directory.GetDirectories(sourcePath))
+            {
+                var childTargetPath = Path.Combine(targetPath, Path.GetFileName(directoryPath));
+                CopyDirectory(directoryPath, childTargetPath);
+            }
+        }
+        catch (DirectoryNotFoundException)
+        {
+            // 源目录在复制期间被删除，跳过
+        }
+        catch (UnauthorizedAccessException)
+        {
+            // 无权访问源目录，跳过
         }
     }
 

@@ -88,6 +88,10 @@ public sealed class DrawerLayoutBehavior : IDisposable
         double toolbarLeft = LayoutConstants.EdgeMargin + (left ? leftW + LayoutConstants.CapsuleGap : 0);
         SetMargin("ToolbarCapsule", toolbarLeft, LayoutConstants.EdgeMargin, 0, verticalBottom);
 
+        // ── CharacterSelectorCapsule：紧跟 ToolbarCapsule 右侧（仅游玩模式显示）───
+        double charSelectorLeft = toolbarLeft + LayoutConstants.ToolbarCapsuleWidth + LayoutConstants.CapsuleGap;
+        SetMargin("CharacterSelectorCapsule", charSelectorLeft, LayoutConstants.EdgeMargin, 0, 0);
+
         // ── 子工具胶囊：Margin.Left 跟随 ToolbarCapsule 右边缘 ───────
         double subLeft = toolbarLeft + LayoutConstants.ToolbarCapsuleWidth + LayoutConstants.CapsuleGap;
         SetMarginLeftOnly("ShapeSubToolCapsule", subLeft);
