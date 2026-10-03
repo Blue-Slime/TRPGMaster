@@ -856,7 +856,9 @@ namespace MapEngine
             const int segments = 32;
             var cx = ContentToNdcX(shape.CenterX, scene);
             var cy = ContentToNdcY(shape.CenterY, scene);
-            var radius = (float)(shape.Radius * scene.Zoom / scene.ViewportWidth * 2.0);
+            // 修复：扇形应该是圆形，X/Y 轴半径相等，使用较小的视口尺寸保证不变形
+            var radiusX = (float)(shape.Radius * scene.Zoom / scene.ViewportWidth * 2.0);
+            var radiusY = (float)(shape.Radius * scene.Zoom / scene.ViewportHeight * 2.0);
             var dirRad = shape.Direction * Math.PI / 180.0;
             var halfAngleRad = shape.HalfAngle * Math.PI / 180.0;
 
@@ -868,10 +870,10 @@ namespace MapEngine
             {
                 var angle1 = startAngle + (angleRange * i / segments);
                 var angle2 = startAngle + (angleRange * (i + 1) / segments);
-                var x1 = cx + (float)(Math.Cos(angle1) * radius);
-                var y1 = cy - (float)(Math.Sin(angle1) * radius);
-                var x2 = cx + (float)(Math.Cos(angle2) * radius);
-                var y2 = cy - (float)(Math.Sin(angle2) * radius);
+                var x1 = cx + (float)(Math.Cos(angle1) * radiusX);
+                var y1 = cy - (float)(Math.Sin(angle1) * radiusY);
+                var x2 = cx + (float)(Math.Cos(angle2) * radiusX);
+                var y2 = cy - (float)(Math.Sin(angle2) * radiusY);
 
                 AppendSolidVertex(vertices, cx, cy, shape.FillColor);
                 AppendSolidVertex(vertices, x1, y1, shape.FillColor);
@@ -973,7 +975,8 @@ namespace MapEngine
                         const int segments = 32;
                         var cx = ContentToNdcX(shape.CenterX, scene);
                         var cy = ContentToNdcY(shape.CenterY, scene);
-                        var radius = (float)(shape.Radius * scene.Zoom / scene.ViewportWidth * 2.0);
+                        var radiusX = (float)(shape.Radius * scene.Zoom / scene.ViewportWidth * 2.0);
+                        var radiusY = (float)(shape.Radius * scene.Zoom / scene.ViewportHeight * 2.0);
                         var dirRad = shape.Direction * Math.PI / 180.0;
                         var halfAngleRad = shape.HalfAngle * Math.PI / 180.0;
                         var startAngle = dirRad - halfAngleRad;
@@ -982,21 +985,21 @@ namespace MapEngine
                         // 从圆心开始
                         AppendSolidVertex(vertices, cx, cy, shape.StrokeColor);
                         // 左边线
-                        var x1 = cx + (float)(Math.Cos(startAngle) * radius);
-                        var y1 = cy - (float)(Math.Sin(startAngle) * radius);
+                        var x1 = cx + (float)(Math.Cos(startAngle) * radiusX);
+                        var y1 = cy - (float)(Math.Sin(startAngle) * radiusY);
                         AppendSolidVertex(vertices, x1, y1, shape.StrokeColor);
                         // 圆弧
                         var angleRange = endAngle - startAngle;
                         for (int i = 1; i < segments; i++)
                         {
                             var angle = startAngle + (angleRange * i / segments);
-                            var x = cx + (float)(Math.Cos(angle) * radius);
-                            var y = cy - (float)(Math.Sin(angle) * radius);
+                            var x = cx + (float)(Math.Cos(angle) * radiusX);
+                            var y = cy - (float)(Math.Sin(angle) * radiusY);
                             AppendSolidVertex(vertices, x, y, shape.StrokeColor);
                         }
                         // 右边线
-                        var x2 = cx + (float)(Math.Cos(endAngle) * radius);
-                        var y2 = cy - (float)(Math.Sin(endAngle) * radius);
+                        var x2 = cx + (float)(Math.Cos(endAngle) * radiusX);
+                        var y2 = cy - (float)(Math.Sin(endAngle) * radiusY);
                         AppendSolidVertex(vertices, x2, y2, shape.StrokeColor);
                         // 回到圆心闭合
                         AppendSolidVertex(vertices, cx, cy, shape.StrokeColor);

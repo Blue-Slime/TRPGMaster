@@ -829,97 +829,206 @@ public static class MapSceneBuilder
     }
 
     /// <summary>
-    /// 为选中对象生成旋转 handle（正上方圆形占位矩形）和四角缩放 handle。
-    /// 每个选中对象生成 6 个 handle rect：
-    ///   [0]   旋转 handle（正上方，空心圆用细边框近似 = 两个重叠矩形）
-    ///   [1-4] 四角缩放 handle（左上/右上/右下/左下）
-    ///   [5]   旋转连线（精灵中心到旋转 handle 的细线）
-    /// 碰撞检测在 View 层用世界坐标进行，与渲染是独立的。
+    /// 为选中对象生成控制点。
+    /// 根据对象类型（形状/普通对象）和形状种类（直线/扇形/多边形）生成不同的控制点布局。
     /// </summary>
     private static IReadOnlyList<MapRenderRect> BuildSelectionHandles(MainWindowViewModel viewModel)
     {
         var handles = new List<MapRenderRect>();
-        var handleColor   = new MapRenderColor(1.0f, 1.0f, 1.0f, 1.0f);        // 白色填充
-        var handleBorder  = new MapRenderColor(0.10f, 0.55f, 0.90f, 1.0f);     // 蓝色边框
-        var lineColor     = new MapRenderColor(1.0f, 1.0f, 1.0f, 0.60f);       // 连接线半透明白
-        const double cornerSize  = 9.0;   // 四角 handle 边长（内容像素）
-        const double rotSize     = 10.0;  // 旋转 handle 直径
-        const double rotOffset   = 20.0;  // 距精灵顶边的距离
-        const double lineThick   = 2.0;   // 连接线粗细
 
         foreach (var item in viewModel.MapRenderableItems)
         {
             if (!item.IsSelected || !item.ShouldRenderOnMap) continue;
 
-            var cx   = item.MapLeft + item.SpriteWidth  / 2.0;
-            var cy   = item.MapTop  + item.SpriteHeight / 2.0;
-            var hw   = item.SpriteWidth  / 2.0;
-            var hh   = item.SpriteHeight / 2.0;
-            var rotRad = item.Rotation * Math.PI / 180.0;
-            var rc   = Math.Cos(rotRad);
-            var rs   = Math.Sin(rotRad);
-
-            // ── 旋转连接线（精灵中心 → 旋转 handle 中心）──────────────────
-            // 旋转 handle 在精灵局部坐标 (0, -(hh + rotOffset + rotSize/2)) 处
-            var rotHandleLocalY = -(hh + rotOffset + rotSize / 2.0);
-            var rotHandleWorldX = cx + (0.0 * rc - rotHandleLocalY * rs);
-            var rotHandleWorldY = cy + (0.0 * rs + rotHandleLocalY * rc);
-
-            // 连线：从精灵顶边中点到旋转 handle 中心
-            var lineTopLocalY   = -hh;
-            var lineTopWorldX   = cx + (0.0 * rc - lineTopLocalY * rs);
-            var lineTopWorldY   = cy + (0.0 * rs + lineTopLocalY * rc);
-            var lineDx = rotHandleWorldX - lineTopWorldX;
-            var lineDy = rotHandleWorldY - lineTopWorldY;
-            var lineLen = Math.Sqrt(lineDx * lineDx + lineDy * lineDy);
-            if (lineLen > 1.0)
+            var shape = item.GetComponent<ShapeComponent>();
+            if (shape is not null)
             {
-                var lineAngle = Math.Atan2(lineDy, lineDx) * 180.0 / Math.PI;
-                handles.Add(new MapRenderRect(
-                    (lineTopWorldX + rotHandleWorldX) / 2.0 - lineLen / 2.0,
-                    (lineTopWorldY + rotHandleWorldY) / 2.0 - lineThick / 2.0,
-                    lineLen, lineThick, lineAngle, lineColor, null, 1.0f));
+                // 形状对象：根据 ShapeType 生成专用控制点
+                switch (shape.ShapeType)
+                {
+                    case "line":
+                        BuildLineHandles(handles, item, shape);
+                        break;
+                    case "polygon":
+                    case "freehand":
+                        BuildPolygonHandles(handles, item, shape);
+                        break;
+                    default: // rect, ellipse, circle, cone, wedge
+                        BuildDefaultHandles(handles, item);
+                        break;
+                }
             }
-
-            // ── 旋转 handle（外框蓝色 + 内填白色，模拟空心圆）─────────────
-            const double borderThick = 2.0;
-            handles.Add(new MapRenderRect(
-                rotHandleWorldX - rotSize / 2.0 - borderThick,
-                rotHandleWorldY - rotSize / 2.0 - borderThick,
-                rotSize + borderThick * 2.0, rotSize + borderThick * 2.0,
-                item.Rotation, handleBorder, null, 1.0f));
-            handles.Add(new MapRenderRect(
-                rotHandleWorldX - rotSize / 2.0,
-                rotHandleWorldY - rotSize / 2.0,
-                rotSize, rotSize,
-                item.Rotation, handleColor, null, 1.0f));
-
-            // ── 四角缩放 handle ────────────────────────────────────────────
-            // 局部坐标的四个角：(-hw,-hh) (hw,-hh) (hw,hh) (-hw,hh)
-            var corners = new[]
+            else
             {
-                (-hw, -hh), (hw, -hh), (hw, hh), (-hw, hh)
-            };
-            foreach (var (lx, ly) in corners)
-            {
-                var wx = cx + (lx * rc - ly * rs);
-                var wy = cy + (lx * rs + ly * rc);
-                // 蓝色边框
-                handles.Add(new MapRenderRect(
-                    wx - cornerSize / 2.0 - borderThick,
-                    wy - cornerSize / 2.0 - borderThick,
-                    cornerSize + borderThick * 2.0, cornerSize + borderThick * 2.0,
-                    item.Rotation, handleBorder, null, 1.0f));
-                // 白色填充
-                handles.Add(new MapRenderRect(
-                    wx - cornerSize / 2.0,
-                    wy - cornerSize / 2.0,
-                    cornerSize, cornerSize,
-                    item.Rotation, handleColor, null, 1.0f));
+                // 非形状对象：使用默认控制点（四角缩放 + 顶部旋转）
+                BuildDefaultHandles(handles, item);
             }
         }
 
         return handles;
+    }
+
+    /// <summary>直线控制点：2 个端点 + 1 个中点旋转控制点</summary>
+    private static void BuildLineHandles(List<MapRenderRect> handles, HierarchyItemViewModel item, ShapeComponent shape)
+    {
+        var handleColor  = new MapRenderColor(1.0f, 1.0f, 1.0f, 1.0f);
+        var handleBorder = new MapRenderColor(0.10f, 0.55f, 0.90f, 1.0f);
+        const double endpointSize = 6.0;   // 端点控制点半径
+        const double rotateSize = 8.0;     // 中点旋转控制点半径
+        const double borderThick = 2.0;
+
+        var cx = item.MapLeft + item.SpriteWidth / 2.0;
+        var cy = item.MapTop + item.SpriteHeight / 2.0;
+
+        // 端点 1（起点，世界坐标）
+        var p1x = MapViewportConstants.WorldOriginContent + item.X;
+        var p1y = MapViewportConstants.WorldOriginContent - item.Y;
+
+        // 端点 2（终点，相对起点偏移）
+        var p2x = p1x + shape.X2;
+        var p2y = p1y - shape.Y2;
+
+        // 中点（用于旋转）
+        var midX = (p1x + p2x) / 2.0;
+        var midY = (p1y + p2y) / 2.0;
+
+        // ── 端点 1 控制点（实心圆）──────────────────────────────────
+        handles.Add(new MapRenderRect(
+            p1x - endpointSize / 2.0 - borderThick,
+            p1y - endpointSize / 2.0 - borderThick,
+            endpointSize + borderThick * 2.0, endpointSize + borderThick * 2.0,
+            0, handleBorder, null, 1.0f));
+        handles.Add(new MapRenderRect(
+            p1x - endpointSize / 2.0,
+            p1y - endpointSize / 2.0,
+            endpointSize, endpointSize,
+            0, handleColor, null, 1.0f));
+
+        // ── 端点 2 控制点（实心圆）──────────────────────────────────
+        handles.Add(new MapRenderRect(
+            p2x - endpointSize / 2.0 - borderThick,
+            p2y - endpointSize / 2.0 - borderThick,
+            endpointSize + borderThick * 2.0, endpointSize + borderThick * 2.0,
+            0, handleBorder, null, 1.0f));
+        handles.Add(new MapRenderRect(
+            p2x - endpointSize / 2.0,
+            p2y - endpointSize / 2.0,
+            endpointSize, endpointSize,
+            0, handleColor, null, 1.0f));
+
+        // ── 中点旋转控制点（空心圆，略大）────────────────────────────
+        handles.Add(new MapRenderRect(
+            midX - rotateSize / 2.0 - borderThick,
+            midY - rotateSize / 2.0 - borderThick,
+            rotateSize + borderThick * 2.0, rotateSize + borderThick * 2.0,
+            0, handleBorder, null, 1.0f));
+        handles.Add(new MapRenderRect(
+            midX - rotateSize / 2.0,
+            midY - rotateSize / 2.0,
+            rotateSize, rotateSize,
+            0, handleColor, null, 1.0f));
+    }
+
+    /// <summary>多边形/自由笔触控制点：每个顶点一个控制点</summary>
+    private static void BuildPolygonHandles(List<MapRenderRect> handles, HierarchyItemViewModel item, ShapeComponent shape)
+    {
+        if (shape.Points.Count == 0) return;
+
+        var handleColor  = new MapRenderColor(1.0f, 1.0f, 1.0f, 1.0f);
+        var handleBorder = new MapRenderColor(0.10f, 0.55f, 0.90f, 1.0f);
+        const double vertexSize = 6.0;
+        const double borderThick = 2.0;
+
+        var cx = MapViewportConstants.WorldOriginContent + item.X;
+        var cy = MapViewportConstants.WorldOriginContent - item.Y;
+
+        foreach (var (px, py) in shape.Points)
+        {
+            var vx = cx + px;
+            var vy = cy - py;
+
+            handles.Add(new MapRenderRect(
+                vx - vertexSize / 2.0 - borderThick,
+                vy - vertexSize / 2.0 - borderThick,
+                vertexSize + borderThick * 2.0, vertexSize + borderThick * 2.0,
+                0, handleBorder, null, 1.0f));
+            handles.Add(new MapRenderRect(
+                vx - vertexSize / 2.0,
+                vy - vertexSize / 2.0,
+                vertexSize, vertexSize,
+                0, handleColor, null, 1.0f));
+        }
+    }
+
+    /// <summary>默认控制点：四角缩放 + 顶部旋转（用于矩形/椭圆/普通对象）</summary>
+    private static void BuildDefaultHandles(List<MapRenderRect> handles, HierarchyItemViewModel item)
+    {
+        var handleColor   = new MapRenderColor(1.0f, 1.0f, 1.0f, 1.0f);
+        var handleBorder  = new MapRenderColor(0.10f, 0.55f, 0.90f, 1.0f);
+        var lineColor     = new MapRenderColor(1.0f, 1.0f, 1.0f, 0.60f);
+        const double cornerSize  = 9.0;
+        const double rotSize     = 10.0;
+        const double rotOffset   = 20.0;
+        const double lineThick   = 2.0;
+        const double borderThick = 2.0;
+
+        var cx     = item.MapLeft + item.SpriteWidth  / 2.0;
+        var cy     = item.MapTop  + item.SpriteHeight / 2.0;
+        var hw     = item.SpriteWidth  / 2.0;
+        var hh     = item.SpriteHeight / 2.0;
+        var rotRad = item.Rotation * Math.PI / 180.0;
+        var rc     = Math.Cos(rotRad);
+        var rs     = Math.Sin(rotRad);
+
+        // ── 旋转连接线 ──────────────────────────────────────────────────
+        var rotHandleLocalY = -(hh + rotOffset + rotSize / 2.0);
+        var rotHandleWorldX = cx + (0.0 * rc - rotHandleLocalY * rs);
+        var rotHandleWorldY = cy + (0.0 * rs + rotHandleLocalY * rc);
+
+        var lineTopLocalY   = -hh;
+        var lineTopWorldX   = cx + (0.0 * rc - lineTopLocalY * rs);
+        var lineTopWorldY   = cy + (0.0 * rs + lineTopLocalY * rc);
+        var lineDx = rotHandleWorldX - lineTopWorldX;
+        var lineDy = rotHandleWorldY - lineTopWorldY;
+        var lineLen = Math.Sqrt(lineDx * lineDx + lineDy * lineDy);
+        if (lineLen > 1.0)
+        {
+            var lineAngle = Math.Atan2(lineDy, lineDx) * 180.0 / Math.PI;
+            handles.Add(new MapRenderRect(
+                (lineTopWorldX + rotHandleWorldX) / 2.0 - lineLen / 2.0,
+                (lineTopWorldY + rotHandleWorldY) / 2.0 - lineThick / 2.0,
+                lineLen, lineThick, lineAngle, lineColor, null, 1.0f));
+        }
+
+        // ── 旋转 handle ──────────────────────────────────────────────────
+        handles.Add(new MapRenderRect(
+            rotHandleWorldX - rotSize / 2.0 - borderThick,
+            rotHandleWorldY - rotSize / 2.0 - borderThick,
+            rotSize + borderThick * 2.0, rotSize + borderThick * 2.0,
+            item.Rotation, handleBorder, null, 1.0f));
+        handles.Add(new MapRenderRect(
+            rotHandleWorldX - rotSize / 2.0,
+            rotHandleWorldY - rotSize / 2.0,
+            rotSize, rotSize,
+            item.Rotation, handleColor, null, 1.0f));
+
+        // ── 四角缩放 handle ──────────────────────────────────────────────
+        var corners = new[] { (-hw, -hh), (hw, -hh), (hw, hh), (-hw, hh) };
+        foreach (var (lx, ly) in corners)
+        {
+            var wx = cx + (lx * rc - ly * rs);
+            var wy = cy + (lx * rs + ly * rc);
+            handles.Add(new MapRenderRect(
+                wx - cornerSize / 2.0 - borderThick,
+                wy - cornerSize / 2.0 - borderThick,
+                cornerSize + borderThick * 2.0, cornerSize + borderThick * 2.0,
+                item.Rotation, handleBorder, null, 1.0f));
+            handles.Add(new MapRenderRect(
+                wx - cornerSize / 2.0,
+                wy - cornerSize / 2.0,
+                cornerSize, cornerSize,
+                item.Rotation, handleColor, null, 1.0f));
+        }
     }
 
     private static MapRenderColor ResolveObjectColor(HierarchyItemViewModel item)
