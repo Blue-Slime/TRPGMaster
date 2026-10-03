@@ -585,8 +585,19 @@ public static class MapSceneBuilder
                 continue;
 
             // 应用楼层渲染决策
+            // 🐛 调试：输出墙体的楼层信息
+            if (item.ObjectType == "WallPathV2")
+            {
+                System.Diagnostics.Debug.WriteLine($"[DEBUG] 墙体: Floor={item.BackingObject?.Floor}, BuildingId={item.BackingObject?.BuildingId}, " +
+                    $"FocusFloor={focusFloor}, PlayerFloor={playerFloor}, PlayerBuilding={playerBuildingId}");
+            }
+
             if (item.BackingObject != null && !ShouldRenderWalls(item.BackingObject, playerFloor, playerBuildingId, focusFloor))
+            {
+                if (item.ObjectType == "WallPathV2")
+                    System.Diagnostics.Debug.WriteLine($"[DEBUG] 墙体被楼层过滤隐藏！");
                 continue;
+            }
 
             // ── 旧墙体组件（单线段）────────────────────────────────────
             if (item.HasWallComponent)

@@ -527,12 +527,12 @@ public partial class MapEditorView
         }
         else if (_shapePreviewEllipse is not null)
         {
-            // circle：强制 w==h（取短边）
+            // circle：强制 w==h（取短边），中心对齐拖拽起点
             if (_viewModel?.ShapeSubTool == "circle")
             {
                 var side = Math.Min(w, h);
-                Canvas.SetLeft(_shapePreviewEllipse, _toolDragStart.X);
-                Canvas.SetTop(_shapePreviewEllipse,  _toolDragStart.Y);
+                Canvas.SetLeft(_shapePreviewEllipse, _toolDragStart.X - side / 2.0);
+                Canvas.SetTop(_shapePreviewEllipse,  _toolDragStart.Y - side / 2.0);
                 _shapePreviewEllipse.Width  = side;
                 _shapePreviewEllipse.Height = side;
             }
@@ -614,7 +614,8 @@ public partial class MapEditorView
             {
                 var radius = Math.Sqrt(dxW * dxW + dyW * dyW);
                 if (radius < 2) break;
-                var dirDeg = Math.Atan2(-dyW, dxW) * 180.0 / Math.PI; // 注意 Y 轴翻转
+                // 世界坐标系：Y 向上，wy1/wy2 已经翻转过，直接用 dyW 不需要再负号
+                var dirDeg = Math.Atan2(dyW, dxW) * 180.0 / Math.PI;
                 _viewModel.CommandBus.Execute(new VmCreateShapeCommand(_viewModel, sub,
                     wx1, wy1, radius, 0, wx1, wy1, wx2, wy2, dirDeg, 30.0));
                 break;
