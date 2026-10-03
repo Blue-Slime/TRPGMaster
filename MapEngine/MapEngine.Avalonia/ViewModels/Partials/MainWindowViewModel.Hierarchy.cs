@@ -66,6 +66,10 @@ public partial class MainWindowViewModel
         }
 
         _commandBus.Execute(new MapEngine.Avalonia.Commands.VmDeleteHierarchyItemCommand(this, item.Id));
+
+        // 删除后刷新角色列表
+        RefreshPlayableCharacters();
+
         return true;
     }
 
@@ -237,6 +241,9 @@ public partial class MainWindowViewModel
 
         System.Diagnostics.Debug.WriteLine($"[AddTokenComponent] 已设置 ObjectType='{item.ObjectType}' for '{item.Name}'");
 
+        // 添加 Token 后刷新角色列表
+        RefreshPlayableCharacters();
+
         StatusMessage = $"已为 {item.Name} 添加 Token 组件";
     }
 
@@ -249,6 +256,10 @@ public partial class MainWindowViewModel
         }
 
         item.RemoveComponent<MapEngine.Core.Components.TokenComponent>();
+
+        // 移除 Token 后刷新角色列表
+        RefreshPlayableCharacters();
+
         StatusMessage = $"已移除 {item.Name} 的 Token 组件";
     }
 

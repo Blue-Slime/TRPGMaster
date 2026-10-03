@@ -11,6 +11,21 @@ public sealed class GameObject
     public int SortOrder { get; set; }
     public List<string> Tags { get; set; } = [];
 
+    /// <summary>
+    /// 所在楼层（0=地面，1=一层，2=二层...）
+    /// </summary>
+    public int Floor { get; set; } = 0;
+
+    /// <summary>
+    /// 所属建筑 ID（null=室外）
+    /// </summary>
+    public string? BuildingId { get; set; }
+
+    /// <summary>
+    /// 是否在室外（BuildingId 为空）
+    /// </summary>
+    public bool IsOutdoor => string.IsNullOrEmpty(BuildingId);
+
     public GameObject? Parent { get; set; }
     public List<GameObject> Children { get; } = [];
     public List<IComponent> Components { get; } = [];
@@ -66,7 +81,9 @@ public sealed class GameObject
             IsActive = IsActive,
             IsLocked = IsLocked,
             SortOrder = SortOrder,
-            Tags = [.. Tags]
+            Tags = [.. Tags],
+            Floor = Floor,
+            BuildingId = BuildingId
         };
 
         foreach (var component in Components)

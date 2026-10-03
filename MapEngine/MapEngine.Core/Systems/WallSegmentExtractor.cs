@@ -34,12 +34,16 @@ public static class WallSegmentExtractor
     /// <param name="origin">视野原点（世界坐标）</param>
     /// <param name="range">视野范围（距离剔除优化）</param>
     /// <param name="senseType">感知类型（默认视觉）</param>
+    /// <param name="focusFloor">关注楼层（玩家所在楼层）</param>
+    /// <param name="playerBuildingId">玩家所在建筑 ID（null=室外）</param>
     /// <returns>阻挡线段列表（转换为 VisionEngine.Segment 格式）</returns>
     public static List<VisionEngine.Segment> ExtractFOVSegments(
         World world,
         (double X, double Y) origin,
         double range,
-        SenseType senseType = SenseType.Sight)
+        SenseType senseType = SenseType.Sight,
+        int focusFloor = 0,
+        string? playerBuildingId = null)
     {
         var segments = new List<VisionEngine.Segment>();
         var rangeRect = RectD.FromCircle(origin.X, origin.Y, range);
@@ -49,6 +53,10 @@ public static class WallSegmentExtractor
         {
             var wallPath = obj.GetComponent<WallPathComponent>();
             if (wallPath == null || wallPath.Points.Count < 2)
+                continue;
+
+            // 楼层过滤：仅提取符合渲染规则的墙体
+            if (!ShouldExtractWall(obj, focusFloor, playerBuildingId))
                 continue;
 
             // Transform 支持（暂时假设无父级变换，直接使用世界坐标）
@@ -63,6 +71,10 @@ public static class WallSegmentExtractor
         {
             var wall = obj.GetComponent<WallComponent>();
             if (wall == null)
+                continue;
+
+            // 楼层过滤
+            if (!ShouldExtractWall(obj, focusFloor, playerBuildingId))
                 continue;
 
             var transform = obj.GetComponent<TransformComponent>();
@@ -189,6 +201,35 @@ public static class WallSegmentExtractor
 
             _ => true
         };
+    }
+
+    /// <summary>
+    /// 判断墙体是否应该被提取到 FOV 计算中（楼层过滤规则）
+    /// </summary>
+    /// <param name="obj">墙体对象</param>
+    /// <param name="focusFloor">关注楼层（玩家所在楼层）</param>
+    /// <param name="playerBuildingId">玩家所在建筑 ID</param>
+    /// <returns>true=应该提取，false=忽略</returns>
+    private static bool ShouldExtractWall(GameObject obj, int focusFloor, string? playerBuildingId)
+    {
+        // 规则：
+        // 1. 玩家所在建筑 + 玩家所在层：提取
+        // 2. 其他建筑 + 关注层：提取
+        // 3. 其他情况：不提取（非关注层墙体不参与 FOV）
+
+        bool sameBuilding = obj.BuildingId == playerBuildingId;
+        bool sameBuildingAndFloor = sameBuilding && obj.Floor == focusFloor;
+
+        if (sameBuildingAndFloor)
+            return true; // 规则 1
+
+        bool differentBuilding = !sameBuilding;
+        bool onFocusFloor = obj.Floor == focusFloor;
+
+        if (differentBuilding && onFocusFloor)
+            return true; // 规则 2
+
+        return false; // 规则 3
     }
 
     /// <summary>

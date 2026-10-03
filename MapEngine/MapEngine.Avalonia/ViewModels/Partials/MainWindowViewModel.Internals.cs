@@ -112,6 +112,10 @@ public partial class MainWindowViewModel
             };
         }
 
+        // 楼层信息序列化
+        dto.Floor = item.BackingObject.Floor;
+        dto.BuildingId = item.BackingObject.BuildingId;
+
         // 写入新 V2 结构化字段
         dto.TransformV2 = new MapEngine.Core.Data.TransformData
         {

@@ -365,6 +365,10 @@ public partial class MainWindowViewModel
         var item = new HierarchyItemViewModel(dto);
         _hierarchyIndex[item.Id] = item;
 
+        // 楼层信息反序列化
+        item.BackingObject.Floor = dto.Floor;
+        item.BackingObject.BuildingId = dto.BuildingId ?? string.Empty;
+
         // 递归构建子节点
         foreach (var childDto in dto.Children)
         {

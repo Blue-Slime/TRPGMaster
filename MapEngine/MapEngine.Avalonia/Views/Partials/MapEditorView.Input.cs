@@ -76,6 +76,15 @@ public partial class MapEditorView
                 return;
             }
 
+            // 检测幽灵 Token：右键 → 显示楼层切换菜单
+            var ghostToken = HitTestGhostToken(point.Position, control);
+            if (ghostToken is not null)
+            {
+                ShowGhostTokenContextMenu(ghostToken, control);
+                e.Handled = true;
+                return;
+            }
+
             var hitObj = HitTestMapObject(point.Position, control);
             if (hitObj is not null)
             {
@@ -94,6 +103,15 @@ public partial class MapEditorView
             {
                 _viewModel.CommandBus.Execute(new VmToggleDoorStateCommand(
                     _viewModel, doorWallItem.Id, doorId));
+                e.Handled = true;
+                return;
+            }
+
+            // 单击幽灵 Token → 弹出楼层切换确认对话框
+            var ghostToken = HitTestGhostToken(point.Position, control);
+            if (ghostToken is not null)
+            {
+                ShowGhostTokenFloorSwitchDialog(ghostToken);
                 e.Handled = true;
                 return;
             }
@@ -902,5 +920,40 @@ public partial class MapEditorView
         }
 
         return (null, null);
+    }
+
+    /// <summary>
+    /// 检测鼠标是否点击了幽灵 Token。
+    /// 返回命中的 GhostToken 对象（从最近一次渲染场景中查找）。
+    /// </summary>
+    private MapEngine.Render.GhostToken? HitTestGhostToken(Point screenPosition, Control viewport)
+    {
+        if (_viewModel is null) return null;
+
+        var zoomScale = _viewModel.ZoomScale <= 0 ? 1.0 : _viewModel.ZoomScale;
+        var contentX = _cameraContentCenter.X + (screenPosition.X - viewport.Bounds.Width / 2.0) / zoomScale;
+        var contentY = _cameraContentCenter.Y + (screenPosition.Y - viewport.Bounds.Height / 2.0) / zoomScale;
+
+        // 获取最近一次渲染场景中的幽灵 Token 列表
+        var scene = _mapSilkCanvas?.LastRenderedScene;
+        if (scene?.GhostTokens is null || scene.GhostTokens.Count == 0)
+            return null;
+
+        // 从前往后检测（后绘制的在上层）
+        for (int i = scene.GhostTokens.Count - 1; i >= 0; i--)
+        {
+            var ghost = scene.GhostTokens[i];
+            var left = ghost.X;
+            var top = ghost.Y;
+            var right = left + ghost.Width;
+            var bottom = top + ghost.Height;
+
+            if (contentX >= left && contentX <= right && contentY >= top && contentY <= bottom)
+            {
+                return ghost;
+            }
+        }
+
+        return null;
     }
 }

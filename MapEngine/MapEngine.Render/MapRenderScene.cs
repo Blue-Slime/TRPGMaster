@@ -56,6 +56,23 @@ public sealed class MapRenderScene
     /// </summary>
     public IReadOnlyList<IReadOnlyList<(double X, double Y)>> FogRevealedPolygons { get; init; } = Array.Empty<IReadOnlyList<(double X, double Y)>>();
 
+    /// <summary>
+    /// FOV 多边形的顶点距离（与 FogRevealedPolygons 平行，用于计算渐变效果）。
+    /// 每个子列表对应一个多边形的每个顶点到视野中心的距离。
+    /// </summary>
+    public IReadOnlyList<IReadOnlyList<double>> FogVertexDistances { get; init; } = Array.Empty<IReadOnlyList<double>>();
+
+    /// <summary>
+    /// FOV 视野中心点列表（与 FogRevealedPolygons 平行，用于计算每个像素到中心的距离）。
+    /// </summary>
+    public IReadOnlyList<(double X, double Y)> FogOrigins { get; init; } = Array.Empty<(double X, double Y)>();
+
+    /// <summary>
+    /// FOV 渐变距离比例（0.0-0.5，占视野半径的比例）。
+    /// 例如 0.2 表示视野边缘 20% 区域有渐变效果。
+    /// </summary>
+    public double FogFadeDistance { get; init; } = 0.2;
+
     /// <summary>战争迷雾是否启用。</summary>
     public bool FogEnabled { get; init; } = false;
 
@@ -95,6 +112,11 @@ public sealed class MapRenderScene
     /// Token 状态徽章（Skia 层渲染）。
     /// </summary>
     public IReadOnlyList<SkiaBadge> TokenBadges { get; init; } = Array.Empty<SkiaBadge>();
+
+    /// <summary>
+    /// 幽灵 Token 标记（其他楼层的 Token，半透明显示 + 楼层标签）。
+    /// </summary>
+    public IReadOnlyList<GhostToken> GhostTokens { get; init; } = Array.Empty<GhostToken>();
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -360,4 +382,26 @@ public sealed class SkiaBadge
     public int StackCount { get; init; }
     /// <summary>背景颜色。</summary>
     public MapRenderColor BackgroundColor { get; init; }
+}
+
+/// <summary>
+/// 幽灵 Token 标记（其他楼层的 Token，半透明显示 + 楼层标签）。
+/// 坐标系：世界内容坐标，Y 轴向上。
+/// </summary>
+public sealed class GhostToken
+{
+    /// <summary>Token 位置 X（世界内容坐标）。</summary>
+    public double X { get; init; }
+    /// <summary>Token 位置 Y（世界内容坐标）。</summary>
+    public double Y { get; init; }
+    /// <summary>Token 宽度（世界单位）。</summary>
+    public double Width { get; init; }
+    /// <summary>Token 高度（世界单位）。</summary>
+    public double Height { get; init; }
+    /// <summary>图标路径（已解析的素材路径）。</summary>
+    public string TexturePath { get; init; } = string.Empty;
+    /// <summary>楼层标签（"99F↓" 或 "100F↑"）。</summary>
+    public string FloorLabel { get; init; } = string.Empty;
+    /// <summary>对象 ID（供点击回查）。</summary>
+    public string ItemId { get; init; } = string.Empty;
 }

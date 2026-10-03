@@ -188,6 +188,10 @@ public sealed class HierarchyNodeDto
 
     public List<string> Tags { get; set; } = [];
 
+    public int Floor { get; set; }
+
+    public string? BuildingId { get; set; }
+
     public List<HierarchyNodeDto> Children { get; set; } = [];
 
     // ===== 迁移辅助方法 =====

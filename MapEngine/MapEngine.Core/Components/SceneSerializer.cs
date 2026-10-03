@@ -42,6 +42,8 @@ public static class SceneSerializer
             IsActive = go.IsActive,
             IsLocked = go.IsLocked,
             SortOrder = go.SortOrder,
+            Floor = go.Floor,
+            BuildingId = go.BuildingId,
             Tags = go.Tags.Count > 0 ? go.Tags : null,
             Components = go.Components.Select(ToComponentData).ToList(),
             Children = go.Children.Count > 0
@@ -212,6 +214,8 @@ public static class SceneSerializer
             IsActive = data.IsActive,
             IsLocked = data.IsLocked,
             SortOrder = data.SortOrder,
+            Floor = data.Floor,
+            BuildingId = data.BuildingId,
             Tags = data.Tags ?? []
         };
 
@@ -491,6 +495,8 @@ public sealed class GameObjectData
     public bool IsActive { get; set; } = true;
     public bool IsLocked { get; set; }
     public int SortOrder { get; set; }
+    public int Floor { get; set; }
+    public string? BuildingId { get; set; }
     public List<string>? Tags { get; set; }
     public List<ComponentData> Components { get; set; } = [];
     public List<GameObjectData>? Children { get; set; }

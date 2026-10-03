@@ -1,7 +1,10 @@
 using System;
 using System.Linq;
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
+using Avalonia.Layout;
+using Avalonia.Media;
 using MapEngine.Avalonia.Commands;
 using MapEngine.Avalonia.ViewModels;
 
@@ -176,6 +179,7 @@ public partial class MapEditorView
         menu.Open(anchor);
     }
 
+    /// <summary>
     /// <summary>
     /// 右键门窗图标 → 显示门窗操作菜单（切换状态/删除/编辑）
     /// </summary>
@@ -552,5 +556,113 @@ public partial class MapEditorView
         }
 
         _viewModel.RemoveFromInitiativeTracker(item);
+    }
+
+    /// <summary>
+    /// 右键幽灵 Token → 显示楼层切换菜单
+    /// </summary>
+    private void ShowGhostTokenContextMenu(MapEngine.Render.GhostToken ghostToken, Control anchor)
+    {
+        if (_viewModel is null) return;
+
+        var menu = new ContextMenu();
+
+        var header = new MenuItem
+        {
+            Header = $"幽灵标记 - {ghostToken.FloorLabel}",
+            Icon = MenuIcon("M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2M12,4A8,8 0 0,1 20,12A8,8 0 0,1 12,20A8,8 0 0,1 4,12A8,8 0 0,1 12,4M7,10.5L8.5,9L11.5,12L8.5,15L7,13.5L9.5,11L7,10.5Z"),
+            IsEnabled = false
+        };
+        menu.Items.Add(header);
+        menu.Items.Add(new Separator());
+
+        var switchFloorItem = new MenuItem
+        {
+            Header = $"切换到该楼层 ({ghostToken.FloorLabel})",
+            Icon = MenuIcon("M16,18V20H21V22H16A2,2 0 0,1 14,20V18A2,2 0 0,1 16,16H18V14H14V12H18A2,2 0 0,1 20,14V16A2,2 0 0,1 18,18H16M14,2H18A2,2 0 0,1 20,4V8A2,2 0 0,1 18,10H14A2,2 0 0,1 12,8V4A2,2 0 0,1 14,2M14,4V8H18V4H14M2,2H6A2,2 0 0,1 8,4V8A2,2 0 0,1 6,10H2A2,2 0 0,1 0,8V4A2,2 0 0,1 2,2M2,4V8H6V4H2M2,12H6A2,2 0 0,1 8,14V20A2,2 0 0,1 6,22H2A2,2 0 0,1 0,20V14A2,2 0 0,1 2,12M2,14V20H6V14H2Z")
+        };
+        switchFloorItem.Click += (_, _) => ShowGhostTokenFloorSwitchDialog(ghostToken);
+        menu.Items.Add(switchFloorItem);
+
+        menu.Open(anchor);
+    }
+
+    /// <summary>
+    /// 单击幽灵 Token → 弹出楼层切换确认对话框
+    /// </summary>
+    private async void ShowGhostTokenFloorSwitchDialog(MapEngine.Render.GhostToken ghostToken)
+    {
+        if (_viewModel is null) return;
+
+        // 从 ItemId 解析出楼层信息
+        if (string.IsNullOrEmpty(ghostToken.ItemId))
+            return;
+
+        var item = _viewModel.MapRenderableItems.FirstOrDefault(x => x.Id == ghostToken.ItemId);
+        if (item?.BackingObject is null)
+            return;
+
+        var targetFloor = item.BackingObject.Floor;
+
+        // 弹出确认对话框
+        var dialog = new Window
+        {
+            Title = "切换楼层",
+            Width = 400,
+            Height = 180,
+            WindowStartupLocation = WindowStartupLocation.CenterOwner,
+            CanResize = false
+        };
+
+        var stack = new StackPanel
+        {
+            Margin = new Thickness(20),
+            Spacing = 15
+        };
+
+        stack.Children.Add(new TextBlock
+        {
+            Text = $"该 Token 在 {targetFloor}F，是否切换到该楼层？",
+            FontSize = 14,
+            TextWrapping = TextWrapping.Wrap
+        });
+
+        var buttonPanel = new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            HorizontalAlignment = HorizontalAlignment.Right,
+            Spacing = 10
+        };
+
+        var confirmButton = new Button
+        {
+            Content = "切换",
+            Width = 80,
+            Height = 32
+        };
+        confirmButton.Click += (_, _) =>
+        {
+            _viewModel.FocusFloor = targetFloor;
+            dialog.Close();
+        };
+
+        var cancelButton = new Button
+        {
+            Content = "取消",
+            Width = 80,
+            Height = 32
+        };
+        cancelButton.Click += (_, _) => dialog.Close();
+
+        buttonPanel.Children.Add(cancelButton);
+        buttonPanel.Children.Add(confirmButton);
+        stack.Children.Add(buttonPanel);
+
+        dialog.Content = stack;
+
+        if (TopLevel.GetTopLevel(this) is Window owner)
+        {
+            await dialog.ShowDialog(owner);
+        }
     }
 }

@@ -11,6 +11,7 @@ public partial class MainWindowViewModel
 {
     private bool _isFogEnabled = false;
     private string _fogSubMode = "erase";
+    private double _fogFadeDistance = 0.2;
 
     /// <summary>迷雾工具是否为当前主工具（控制子工具面板显隐）。</summary>
     public bool IsFogToolActive =>
@@ -24,6 +25,7 @@ public partial class MainWindowViewModel
 
     /// <summary>迷雾开关按钮提示文字。</summary>
     public string FogToggleTip => _isFogEnabled ? "关闭战争迷雾" : "开启战争迷雾";
+
     public bool IsFogEnabled
     {
         get => _isFogEnabled;
@@ -32,6 +34,23 @@ public partial class MainWindowViewModel
             if (SetProperty(ref _isFogEnabled, value))
             {
                 StatusMessage = value ? "战争迷雾：已开启" : "战争迷雾：已关闭";
+                RefreshMapRenderableItemsPublic();
+            }
+        }
+    }
+
+    /// <summary>
+    /// FOV 渐变距离比例（0.0-0.5）。表示视野边缘多大比例区域有渐变效果。
+    /// 例如 0.2 表示视野边缘 20% 区域从完全可见渐变到完全遮罩。
+    /// </summary>
+    public double FogFadeDistance
+    {
+        get => _fogFadeDistance;
+        set
+        {
+            var clamped = Math.Clamp(value, 0.0, 0.5);
+            if (SetProperty(ref _fogFadeDistance, clamped))
+            {
                 RefreshMapRenderableItemsPublic();
             }
         }

@@ -70,6 +70,7 @@ public partial class MainWindowViewModel : ViewModelBase
     private MapEngine.Core.Assets.AssetMetadataStore? _assetMetadataStore;
     private HierarchyItemViewModel? _mapDragPreviewItem;
     private HierarchyItemViewModel? _highlightedHierarchyItem;
+    private HierarchyItemViewModel? _activeCharacter;
 
     private IGlobalSelectionItem? _currentSelection;
     private HierarchyItemViewModel? _selectedHierarchyItem;
@@ -164,12 +165,15 @@ public partial class MainWindowViewModel : ViewModelBase
     private double _lastMapOffsetY;
     private double _lastMapViewportWidth;
     private double _lastMapViewportHeight;
+    private int _focusFloor = 0;
 
     // 工具集（按模式分组）
     private readonly ObservableCollection<ToolActionViewModel> _designTools;
     private readonly ObservableCollection<ToolActionViewModel> _playTools;
     private readonly ObservableCollection<ToolActionViewModel> _designQuickActions;
     private readonly ObservableCollection<ToolActionViewModel> _playQuickActions;
+
+    public ObservableCollection<HierarchyItemViewModel> PlayableCharacters { get; } = new();
 
     public MainWindowViewModel()
     {
@@ -233,6 +237,9 @@ public partial class MainWindowViewModel : ViewModelBase
         SetFogSubModeCommand  = new RelayCommand<string>(mode => { if (mode is not null) FogSubMode = mode; });
         FogRevealAllCommand   = new RelayCommand(FogRevealAll);
         FogClearAllCommand    = new RelayCommand(FogClearAll);
+
+        FloorUpCommand   = new RelayCommand(() => FocusFloor++);
+        FloorDownCommand = new RelayCommand(() => FocusFloor--);
 
         // 设计模式：GM 全工具集
         _designTools = new ObservableCollection<ToolActionViewModel>
@@ -331,6 +338,9 @@ public partial class MainWindowViewModel : ViewModelBase
 
         _commandBus.CommandExecuted += (_, e) =>
             StatusMessage = $"[{e.Action}] {e.Command.Description}";
+
+        // 初始化角色列表
+        RefreshPlayableCharacters();
     }
 
     public CommandBus CommandBus => _commandBus;
@@ -548,6 +558,9 @@ public partial class MainWindowViewModel : ViewModelBase
     public RelayCommand FogRevealAllCommand { get; }
     public RelayCommand FogClearAllCommand { get; }
 
+    public RelayCommand FloorUpCommand { get; }
+    public RelayCommand FloorDownCommand { get; }
+
     /// <summary>先攻追踪器 ViewModel。</summary>
     public InitiativeTrackerViewModel InitiativeTracker { get; }
 
@@ -624,6 +637,9 @@ public partial class MainWindowViewModel : ViewModelBase
 
             // 刷新地图渲染
             RefreshMapRenderableItemsPublic();
+
+            // 刷新角色列表
+            RefreshPlayableCharacters();
 
             StatusMessage = $"场景已加载：{loadedPath}";
         }
@@ -851,6 +867,53 @@ public partial class MainWindowViewModel : ViewModelBase
 
     public string AssetBreadcrumb => SelectedAssetFolder?.PathDisplay ?? "Assets";
 
+    public int FocusFloor
+    {
+        get => _focusFloor;
+        set
+        {
+            if (SetProperty(ref _focusFloor, value))
+            {
+                RefreshMapRenderableItems();
+                StatusMessage = $"切换到楼层 {value}F";
+            }
+        }
+    }
+
+    public HierarchyItemViewModel? ActiveCharacter
+    {
+        get => _activeCharacter;
+        set
+        {
+            if (SetProperty(ref _activeCharacter, value))
+            {
+                OnActiveCharacterChanged();
+            }
+        }
+    }
+
+    private void OnActiveCharacterChanged()
+    {
+        if (_activeCharacter == null) return;
+
+        // 自动切换到角色所在楼层
+        FocusFloor = _activeCharacter.BackingObject.Floor;
+
+        // 刷新渲染
+        RefreshMapRenderableItems();
+
+        StatusMessage = $"当前扮演: {_activeCharacter.Name}";
+    }
+
+    public void SwitchActiveCharacter(string tokenId)
+    {
+        var token = FindHierarchyById(tokenId);
+        if (token != null)
+        {
+            ActiveCharacter = token;
+        }
+    }
+
     /// <summary>智能缩放显示文本：低于10%显示一位小数，高于1000%省略小数。</summary>
     public string ZoomText => _zoomScale switch
     {
@@ -890,6 +953,41 @@ public partial class MainWindowViewModel : ViewModelBase
         {
             // 损坏时重建
             return new MapEngine.Core.Assets.AssetMetadataStore(assetLibraryRoot);
+        }
+    }
+
+    /// <summary>刷新可扮演角色列表（所有 IsActive=true 的 Token）。</summary>
+    public void RefreshPlayableCharacters()
+    {
+        PlayableCharacters.Clear();
+        foreach (var root in HierarchyRoots)
+        {
+            CollectPlayableTokens(root);
+        }
+
+        // 如果当前选中的角色不在列表中，清空选择
+        if (ActiveCharacter is not null && !PlayableCharacters.Contains(ActiveCharacter))
+        {
+            ActiveCharacter = null;
+        }
+
+        // 如果没有选中角色且列表不为空，默认选中第一个
+        if (ActiveCharacter is null && PlayableCharacters.Count > 0)
+        {
+            ActiveCharacter = PlayableCharacters[0];
+        }
+    }
+
+    private void CollectPlayableTokens(HierarchyItemViewModel item)
+    {
+        if (item.ObjectType == "Token" && item.IsActive)
+        {
+            PlayableCharacters.Add(item);
+        }
+
+        foreach (var child in item.Children)
+        {
+            CollectPlayableTokens(child);
         }
     }
 }

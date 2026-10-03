@@ -16,6 +16,11 @@ public static class VisionEngine
     {
         public List<(double X, double Y)> Polygon;
         public double EffectiveRadius;
+        /// <summary>
+        /// Distance from origin to each polygon vertex (parallel to Polygon list).
+        /// Used for calculating fade gradients at vision edges.
+        /// </summary>
+        public List<double> VertexDistances;
     }
 
     /// <summary>
@@ -25,9 +30,11 @@ public static class VisionEngine
         double ox, double oy,
         double radius,
         IReadOnlyList<Segment> occluders,
-        int rayCount = 360)
+        int rayCount = 360,
+        double fadeDistance = 0.2)
     {
         var polygon = new List<(double X, double Y)>(rayCount);
+        var distances = new List<double>(rayCount);
         var angleStep = 2.0 * Math.PI / rayCount;
 
         for (int i = 0; i < rayCount; i++)
@@ -47,9 +54,15 @@ public static class VisionEngine
             }
 
             polygon.Add((ox + dx * hitDist, oy + dy * hitDist));
+            distances.Add(hitDist);
         }
 
-        return new VisibilityResult { Polygon = polygon, EffectiveRadius = radius };
+        return new VisibilityResult
+        {
+            Polygon = polygon,
+            EffectiveRadius = radius,
+            VertexDistances = distances
+        };
     }
 
     /// <summary>

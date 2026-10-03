@@ -26,17 +26,24 @@ public static class MapSceneBuilder
     private static readonly MapRenderColor PropColor = new(0.45f, 0.45f, 0.50f, 0.80f);
     private static readonly MapRenderColor TokenShadowColor = new(0.03f, 0.03f, 0.04f, 0.42f);
 
-    public static MapRenderScene? Build(MainWindowViewModel viewModel, Size viewportSize, Point cameraContentCenter)
+    public static MapRenderScene? Build(
+        MainWindowViewModel viewModel,
+        Size viewportSize,
+        Point cameraContentCenter,
+        int focusFloor = 0,
+        int playerFloor = 0,
+        string? playerBuildingId = null)
     {
         if (viewportSize.Width <= 0 || viewportSize.Height <= 0)
         {
             return null;
         }
 
-        var (wallLines, wallHandles) = (BuildWallLines(viewModel), BuildWallHandles(viewModel));
-        var (visionCones, visionFans) = BuildVision(viewModel);
+        var (wallLines, wallHandles) = (BuildWallLines(viewModel, focusFloor, playerFloor, playerBuildingId), BuildWallHandles(viewModel));
+        var (visionCones, visionFans) = BuildVision(viewModel, focusFloor, playerFloor, playerBuildingId);
         var (graphNodes, graphLinks) = BuildGraph(viewModel);
         var (tokenLabels, tokenHealthBars, tokenBadges) = BuildTokenUI(viewModel);
+        var ghostTokens = BuildGhostTokens(viewModel, focusFloor, playerFloor, playerBuildingId);
 
         return new MapRenderScene
         {
@@ -67,9 +74,15 @@ public static class MapSceneBuilder
             FogRevealedPolygons = viewModel.IsFogEnabled
                 ? viewModel.FogRevealedRegions.Select(r => r.Points).ToList()
                 : Array.Empty<IReadOnlyList<(double, double)>>(),
+            FogVertexDistances = Array.Empty<IReadOnlyList<double>>(),
+            FogOrigins = viewModel.IsFogEnabled
+                ? viewModel.FogRevealedRegions.Select(r => r.Points.Count > 0 ? r.Points[0] : (0.0, 0.0)).ToList()
+                : Array.Empty<(double, double)>(),
+            FogFadeDistance = viewModel.FogFadeDistance,
             TokenLabels = tokenLabels,
             TokenHealthBars = tokenHealthBars,
             TokenBadges = tokenBadges,
+            GhostTokens = ghostTokens,
         };
     }
 
@@ -304,13 +317,17 @@ public static class MapSceneBuilder
         return sprites;
     }
 
-    private static (IReadOnlyList<MapRenderArc> arcs, IReadOnlyList<MapRenderPolygon> fans) BuildVision(MainWindowViewModel viewModel)
+    private static (IReadOnlyList<MapRenderArc> arcs, IReadOnlyList<MapRenderPolygon> fans) BuildVision(
+        MainWindowViewModel viewModel,
+        int focusFloor,
+        int playerFloor,
+        string? playerBuildingId)
     {
         var arcs = new List<MapRenderArc>();
         var fans = new List<MapRenderPolygon>();
 
-        // 收集所有阻挡视野的墙壁线段（世界坐标）
-        var blockerSegments = CollectBlockerSegments(viewModel);
+        // 收集所有阻挡视野的墙壁线段（世界坐标）+ 楼层过滤
+        var blockerSegments = CollectBlockerSegments(viewModel, focusFloor, playerFloor, playerBuildingId);
 
         foreach (var item in viewModel.MapRenderableItems)
         {
@@ -363,12 +380,24 @@ public static class MapSceneBuilder
         return (arcs, fans);
     }
 
-    private static List<(double x1, double y1, double x2, double y2)> CollectBlockerSegments(MainWindowViewModel viewModel)
+    private static List<(double x1, double y1, double x2, double y2)> CollectBlockerSegments(
+        MainWindowViewModel viewModel,
+        int focusFloor,
+        int playerFloor,
+        string? playerBuildingId)
     {
         var result = new List<(double, double, double, double)>();
         foreach (var item in viewModel.MapRenderableItems)
         {
             if (!item.ShouldRenderOnMap || !item.HasWallComponent) continue;
+
+            // 楼层过滤：只收集关注楼层的墙体
+            var go = item.BackingObject;
+            if (go is null) continue;
+
+            if (!ShouldRenderWalls(go, playerFloor, playerBuildingId, focusFloor))
+                continue;
+
             var wall = item.GetComponent<MapEngine.Core.Components.WallComponent>();
             if (wall == null) continue;
 
@@ -489,7 +518,60 @@ public static class MapSceneBuilder
         if (a + epsDeg < endAngleDeg) candidates.Add(a + epsDeg);
     }
 
-    private static IReadOnlyList<MapRenderRect> BuildWallLines(MainWindowViewModel viewModel)
+    /// <summary>
+    /// 判断对象的墙体是否应该渲染。
+    /// </summary>
+    private static bool ShouldRenderWalls(GameObject obj, int playerFloor, string? playerBuilding, int focusFloor)
+    {
+        var isPlayerBuilding = obj.BuildingId == playerBuilding;
+        var isPlayerFloor = obj.Floor == playerFloor;
+        var isFocusFloor = obj.Floor == focusFloor;
+        var isOutdoor = string.IsNullOrEmpty(obj.BuildingId);
+
+        // 室外对象：始终渲染
+        if (isOutdoor) return true;
+
+        // 玩家所在建筑 + 所在层：完整渲染
+        if (isPlayerBuilding && isPlayerFloor) return true;
+
+        // 玩家所在建筑 + 非所在层：墙体隐藏
+        if (isPlayerBuilding && !isPlayerFloor) return false;
+
+        // 其他建筑 + 关注层：完整渲染
+        if (!isPlayerBuilding && isFocusFloor) return true;
+
+        // 其他建筑 + 非关注层：完全隐藏
+        return false;
+    }
+
+    /// <summary>
+    /// 获取 Token 的渲染模式。
+    /// 返回 "normal" | "ghost" | "hidden"
+    /// </summary>
+    private static string GetTokenRenderMode(GameObject obj, int playerFloor, string? playerBuilding, int focusFloor)
+    {
+        var isPlayerBuilding = obj.BuildingId == playerBuilding;
+        var isPlayerFloor = obj.Floor == playerFloor;
+        var isFocusFloor = obj.Floor == focusFloor;
+        var isOutdoor = string.IsNullOrEmpty(obj.BuildingId);
+
+        // 室外对象：始终正常渲染
+        if (isOutdoor) return "normal";
+
+        // 玩家所在建筑 + 所在层：正常渲染
+        if (isPlayerBuilding && isPlayerFloor) return "normal";
+
+        // 玩家所在建筑 + 非所在层：幽灵模式
+        if (isPlayerBuilding && !isPlayerFloor) return "ghost";
+
+        // 其他建筑 + 关注层：正常渲染
+        if (!isPlayerBuilding && isFocusFloor) return "normal";
+
+        // 其他建筑 + 非关注层：完全隐藏
+        return "hidden";
+    }
+
+    private static IReadOnlyList<MapRenderRect> BuildWallLines(MainWindowViewModel viewModel, int focusFloor, int playerFloor, string? playerBuildingId)
     {
         var lines = new List<MapRenderRect>();
         var wallColor = new MapRenderColor(0.8f, 0.2f, 0.2f, 1.0f);
@@ -500,6 +582,10 @@ public static class MapSceneBuilder
         foreach (var item in viewModel.MapRenderableItems)
         {
             if (!item.ShouldRenderOnMap)
+                continue;
+
+            // 应用楼层渲染决策
+            if (item.BackingObject != null && !ShouldRenderWalls(item.BackingObject, playerFloor, playerBuildingId, focusFloor))
                 continue;
 
             // ── 旧墙体组件（单线段）────────────────────────────────────
@@ -1161,5 +1247,88 @@ public static class MapSceneBuilder
         }
 
         return (labels, healthBars, badges);
+    }
+
+    /// <summary>
+    /// 构建幽灵 Token 标记（其他楼层的 Token，半透明显示 + 楼层标签）。
+    /// </summary>
+    private static IReadOnlyList<GhostToken> BuildGhostTokens(
+        MainWindowViewModel viewModel,
+        int focusFloor,
+        int playerFloor,
+        string? playerBuildingId)
+    {
+        var ghosts = new List<GhostToken>();
+
+        foreach (var item in viewModel.MapRenderableItems)
+        {
+            if (!item.ShouldRenderOnMap)
+                continue;
+
+            var token = item.GetComponent<TokenComponent>();
+            if (token is null)
+                continue;
+
+            // 判断是否为幽灵标记（GetTokenRenderMode 逻辑）
+            var buildingId = item.BackingObject?.BuildingId;
+            var floor = item.BackingObject?.Floor ?? 0;
+
+            // 幽灵条件：
+            // 1. 玩家所在建筑 + 非玩家所在层
+            // 2. 其他建筑 + 非关注层
+            bool isGhost = false;
+            if (!string.IsNullOrEmpty(buildingId) && buildingId == playerBuildingId)
+            {
+                // 玩家所在建筑，但不在玩家所在层
+                if (floor != playerFloor)
+                    isGhost = true;
+            }
+            else if (!string.IsNullOrEmpty(buildingId) && buildingId != playerBuildingId)
+            {
+                // 其他建筑，非关注层
+                if (floor != focusFloor)
+                    isGhost = true;
+            }
+
+            if (!isGhost)
+                continue;
+
+            // 解析精灵图路径
+            var spritePath = MapSpriteAssetResolver.ResolveSpritePath(item.AssetRef);
+            if (string.IsNullOrWhiteSpace(spritePath))
+                continue;
+
+            // 生成楼层标签
+            var floorLabel = GenerateFloorLabel(floor, playerFloor, focusFloor, buildingId == playerBuildingId);
+
+            ghosts.Add(new GhostToken
+            {
+                X = item.MapLeft,
+                Y = item.MapTop,
+                Width = item.SpriteWidth,
+                Height = item.SpriteHeight,
+                TexturePath = spritePath,
+                FloorLabel = floorLabel,
+                ItemId = item.BackingObject?.Id.ToString() ?? string.Empty
+            });
+        }
+
+        return ghosts;
+    }
+
+    /// <summary>
+    /// 生成楼层标签（"99F↓" 或 "100F↑"）。
+    /// </summary>
+    private static string GenerateFloorLabel(int tokenFloor, int playerFloor, int focusFloor, bool isPlayerBuilding)
+    {
+        var referenceFloor = isPlayerBuilding ? playerFloor : focusFloor;
+        var diff = tokenFloor - referenceFloor;
+
+        if (diff > 0)
+            return $"{tokenFloor}F↑";
+        else if (diff < 0)
+            return $"{tokenFloor}F↓";
+        else
+            return $"{tokenFloor}F";
     }
 }

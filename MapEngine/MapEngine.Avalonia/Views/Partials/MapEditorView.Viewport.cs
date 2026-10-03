@@ -90,7 +90,6 @@ public partial class MapEditorView
     {
         _ = zoomScale;
         _mapSilkCanvas?.RequestFrame();
-        _tokenUIManager?.SyncFromViewModel(_cameraContentCenter, zoomScale);
         _mapTextManager?.SyncFromViewModel(_cameraContentCenter, zoomScale);
     }
 
@@ -102,9 +101,23 @@ public partial class MapEditorView
     }
 
     private MapRenderScene? BuildRenderScene()
-        => _viewModel is null
-            ? null
-            : MapSceneBuilder.Build(_viewModel, GetViewportSize(), _cameraContentCenter);
+    {
+        if (_viewModel is null) return null;
+
+        // 获取当前扮演角色的楼层信息
+        var activeChar = _viewModel.ActiveCharacter;
+        int playerFloor = activeChar?.BackingObject.Floor ?? 0;
+        string? playerBuildingId = activeChar?.BackingObject.BuildingId;
+        int focusFloor = _viewModel.FocusFloor;
+
+        return MapSceneBuilder.Build(
+            _viewModel,
+            GetViewportSize(),
+            _cameraContentCenter,
+            focusFloor,
+            playerFloor,
+            playerBuildingId);
+    }
 
     private void MapViewportHost_SizeChanged(object? sender, SizeChangedEventArgs e)
     {

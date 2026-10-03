@@ -1,8 +1,10 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.PixelFormats;
 using Silk.NET.OpenGL;
+using SkiaSharp;
 using MapEngine.Render;
 using MapEngine.Render.UI;
 
@@ -436,6 +438,10 @@ namespace MapEngine
 
             DrawSprites(scene.Sprites, scene);
 
+            // ── 幽灵 Token 标记（半透明 + 楼层标签，在正常 Sprite 之后渲染）──
+            if (scene.GhostTokens.Count > 0 && canvas != null)
+                DrawGhostTokens(scene, canvas);
+
             // ── Token 状态徽章（已移至 TokenUIManager Avalonia UI 层）───────
             // GL 层不再渲染徽章色块，改由 UI overlay 层渲染 emoji 文本
             // if (scene.ConditionBadges.Count > 0)
@@ -460,17 +466,17 @@ namespace MapEngine
             {
                 foreach (var label in scene.TokenLabels)
                 {
-                    label.Draw(canvas);
+                    label.Draw(canvas, scene.Zoom);
                 }
 
                 foreach (var bar in scene.TokenHealthBars)
                 {
-                    bar.Draw(canvas);
+                    bar.Draw(canvas, scene.Zoom);
                 }
 
                 foreach (var badge in scene.TokenBadges)
                 {
-                    badge.Draw(canvas);
+                    badge.Draw(canvas, scene.Zoom);
                 }
             }
         }
@@ -1255,6 +1261,80 @@ namespace MapEngine
             _gl.UseProgram(0);
         }
 
+        // ── 幽灵 Token 渲染（Skia 层，半透明图标 + 楼层标签）──────────────
+        private void DrawGhostTokens(MapRenderScene scene, SKCanvas canvas)
+        {
+            if (_gl is null) return;
+
+            var ghostAlpha = 0.4f;
+            var labelFontSize = 12f;
+            var labelOffsetY = -8.0; // 楼层标签位于 Token 上方 8px
+
+            using var paint = new SKPaint
+            {
+                IsAntialias = true,
+                FilterQuality = SKFilterQuality.High
+            };
+
+            using var textPaint = new SKPaint
+            {
+                IsAntialias = true,
+                Color = SKColors.White,
+                TextSize = labelFontSize,
+                TextAlign = SKTextAlign.Center,
+                Typeface = SKTypeface.FromFamilyName("Arial", SKFontStyle.Bold)
+            };
+
+            using var shadowPaint = new SKPaint
+            {
+                IsAntialias = true,
+                Color = new SKColor(0, 0, 0, 180),
+                TextSize = labelFontSize,
+                TextAlign = SKTextAlign.Center,
+                Typeface = SKTypeface.FromFamilyName("Arial", SKFontStyle.Bold),
+                MaskFilter = SKMaskFilter.CreateBlur(SKBlurStyle.Normal, 2f)
+            };
+
+            foreach (var ghost in scene.GhostTokens)
+            {
+                if (string.IsNullOrWhiteSpace(ghost.TexturePath) || !File.Exists(ghost.TexturePath))
+                    continue;
+
+                // 加载纹理
+                using var bitmap = SKBitmap.Decode(ghost.TexturePath);
+                if (bitmap is null)
+                    continue;
+
+                // 转换世界坐标到屏幕坐标
+                var screenX = ((ghost.X - scene.CameraCenterX) * scene.Zoom) + (scene.ViewportWidth / 2.0);
+                var screenY = ((ghost.Y - scene.CameraCenterY) * scene.Zoom) + (scene.ViewportHeight / 2.0);
+                var screenWidth = ghost.Width * scene.Zoom;
+                var screenHeight = ghost.Height * scene.Zoom;
+
+                var destRect = new SKRect(
+                    (float)screenX,
+                    (float)screenY,
+                    (float)(screenX + screenWidth),
+                    (float)(screenY + screenHeight));
+
+                // 绘制半透明图标
+                paint.Color = new SKColor(255, 255, 255, (byte)(255 * ghostAlpha));
+                canvas.DrawBitmap(bitmap, destRect, paint);
+
+                // 绘制楼层标签
+                if (!string.IsNullOrWhiteSpace(ghost.FloorLabel))
+                {
+                    var labelCenterX = screenX + screenWidth / 2.0;
+                    var labelCenterY = screenY + labelOffsetY;
+
+                    // 阴影
+                    canvas.DrawText(ghost.FloorLabel, (float)labelCenterX, (float)labelCenterY, shadowPaint);
+                    // 文本
+                    canvas.DrawText(ghost.FloorLabel, (float)labelCenterX, (float)labelCenterY, textPaint);
+                }
+            }
+        }
+
         private static MapRenderColor WithOpacity(MapRenderColor color, float opacity)
             => opacity >= 1f ? color : new MapRenderColor(color.R, color.G, color.B, color.A * opacity);
 
@@ -1335,10 +1415,12 @@ namespace MapEngine
         }
 
         // ── 战争迷雾 ─────────────────────────────────────────────────────────
-        // 实现：
+        // 实现（Smoke 风格渐变）：
         //   Pass 1 — 全屏半透明黑色层（正常 alpha blend）
-        //   Pass 2 — 已揭示区域用 alpha=0 颜色覆盖，混合函数设为 (ZERO, ZERO) 完全擦除
-        // 这样不需要 stencil buffer，兼容所有 GL 版本。
+        //   Pass 2 — 已揭示区域用渐变 alpha 覆盖（边缘渐变，中心完全透明）
+        //   渐变计算：每个三角形顶点根据距离视野中心的距离设置 alpha
+        //     - distance > radius * (1 - fadeDistance) → alpha 线性插值到 0
+        //     - distance < radius * (1 - fadeDistance) → alpha = 0（完全可见）
         private unsafe void DrawFog(MapRenderScene scene)
         {
             if (_gl is null) return;
@@ -1351,7 +1433,6 @@ namespace MapEngine
 
             // 覆盖 NDC [-1,1] 的全屏两个三角形
             var fogColor = new MapRenderColor(0f, 0f, 0f, 0.82f);
-            // 左下, 右下, 右上, 左下, 右上, 左上
             solidVerts.Add(-1f); solidVerts.Add(-1f); solidVerts.Add(fogColor.R); solidVerts.Add(fogColor.G); solidVerts.Add(fogColor.B); solidVerts.Add(fogColor.A);
             solidVerts.Add( 1f); solidVerts.Add(-1f); solidVerts.Add(fogColor.R); solidVerts.Add(fogColor.G); solidVerts.Add(fogColor.B); solidVerts.Add(fogColor.A);
             solidVerts.Add( 1f); solidVerts.Add( 1f); solidVerts.Add(fogColor.R); solidVerts.Add(fogColor.G); solidVerts.Add(fogColor.B); solidVerts.Add(fogColor.A);
@@ -1366,31 +1447,65 @@ namespace MapEngine
                 _gl.BufferData(BufferTargetARB.ArrayBuffer, (nuint)(solidVerts.Count * sizeof(float)), d, BufferUsageARB.DynamicDraw);
             _gl.DrawArrays(PrimitiveType.Triangles, 0, (uint)(solidVerts.Count / 6));
 
-            // ── Pass 2：揭示区域抠孔（写入 alpha=0 完全透明，src=ZERO dst=ZERO）
-            _gl.BlendFunc(BlendingFactor.Zero, BlendingFactor.Zero);
-            // ColorMask 只写 alpha 通道（保留 RGB 不变，只把 alpha 清零）
+            // ── Pass 2：揭示区域渐变抠孔 ────────────────────────────────────
+            _gl.BlendFunc(BlendingFactor.Zero, BlendingFactor.OneMinusSrcAlpha);
             _gl.ColorMask(false, false, false, true);
 
             solidVerts.Clear();
-            var clearColor = new MapRenderColor(0f, 0f, 0f, 0f);
-            foreach (var poly in scene.FogRevealedPolygons)
+
+            for (int polyIndex = 0; polyIndex < scene.FogRevealedPolygons.Count; polyIndex++)
             {
+                var poly = scene.FogRevealedPolygons[polyIndex];
                 if (poly.Count < 3) continue;
-                // 三角扇：第 0 点为中心，其余依次三角化
-                var c = poly[0];
-                var cx = (float)ContentToNdcX(c.X, scene);
-                var cy = (float)ContentToNdcY(c.Y, scene);
+
+                // 获取对应的距离信息和视野中心
+                var distances = polyIndex < scene.FogVertexDistances.Count
+                    ? scene.FogVertexDistances[polyIndex]
+                    : null;
+
+                var origin = polyIndex < scene.FogOrigins.Count
+                    ? scene.FogOrigins[polyIndex]
+                    : (poly[0].X, poly[0].Y);
+
+                // 计算渐变参数
+                double maxRadius = 0;
+                if (distances != null && distances.Count > 0)
+                {
+                    foreach (var d in distances)
+                        if (d > maxRadius) maxRadius = d;
+                }
+
+                var fadeStart = maxRadius * (1.0 - scene.FogFadeDistance);
+
+                // 三角扇：中心点使用 origin，边缘顶点使用多边形顶点
+                var centerNdcX = (float)ContentToNdcX(origin.X, scene);
+                var centerNdcY = (float)ContentToNdcY(origin.Y, scene);
+
                 for (int i = 1; i < poly.Count - 1; i++)
                 {
+                    // 中心点：完全透明（alpha = 0）
+                    solidVerts.Add(centerNdcX);
+                    solidVerts.Add(centerNdcY);
+                    solidVerts.Add(0f); solidVerts.Add(0f); solidVerts.Add(0f);
+                    solidVerts.Add(0f); // alpha = 0
+
+                    // 边缘顶点 1
                     var (x1, y1) = poly[i];
+                    var dist1 = distances != null && i < distances.Count ? distances[i] : 0;
+                    var alpha1 = ComputeFadeAlpha(dist1, fadeStart, maxRadius);
+                    solidVerts.Add((float)ContentToNdcX(x1, scene));
+                    solidVerts.Add((float)ContentToNdcY(y1, scene));
+                    solidVerts.Add(0f); solidVerts.Add(0f); solidVerts.Add(0f);
+                    solidVerts.Add(alpha1);
+
+                    // 边缘顶点 2
                     var (x2, y2) = poly[i + 1];
-                    var nx1 = (float)ContentToNdcX(x1, scene);
-                    var ny1 = (float)ContentToNdcY(y1, scene);
-                    var nx2 = (float)ContentToNdcX(x2, scene);
-                    var ny2 = (float)ContentToNdcY(y2, scene);
-                    solidVerts.Add(cx);  solidVerts.Add(cy);  solidVerts.Add(clearColor.R); solidVerts.Add(clearColor.G); solidVerts.Add(clearColor.B); solidVerts.Add(clearColor.A);
-                    solidVerts.Add(nx1); solidVerts.Add(ny1); solidVerts.Add(clearColor.R); solidVerts.Add(clearColor.G); solidVerts.Add(clearColor.B); solidVerts.Add(clearColor.A);
-                    solidVerts.Add(nx2); solidVerts.Add(ny2); solidVerts.Add(clearColor.R); solidVerts.Add(clearColor.G); solidVerts.Add(clearColor.B); solidVerts.Add(clearColor.A);
+                    var dist2 = distances != null && i + 1 < distances.Count ? distances[i + 1] : 0;
+                    var alpha2 = ComputeFadeAlpha(dist2, fadeStart, maxRadius);
+                    solidVerts.Add((float)ContentToNdcX(x2, scene));
+                    solidVerts.Add((float)ContentToNdcY(y2, scene));
+                    solidVerts.Add(0f); solidVerts.Add(0f); solidVerts.Add(0f);
+                    solidVerts.Add(alpha2);
                 }
             }
 
@@ -1407,6 +1522,25 @@ namespace MapEngine
             _gl.BindBuffer(BufferTargetARB.ArrayBuffer, 0);
             _gl.BindVertexArray(0);
             _gl.UseProgram(0);
+        }
+
+        /// <summary>
+        /// 计算 Smoke 风格渐变 alpha：
+        /// - distance < fadeStart → alpha = 0 (完全可见)
+        /// - fadeStart ≤ distance ≤ maxRadius → smoothstep 插值
+        /// - distance > maxRadius → alpha = 1 (完全遮罩，但此时已被 Pass 1 覆盖)
+        /// </summary>
+        private static float ComputeFadeAlpha(double distance, double fadeStart, double maxRadius)
+        {
+            if (distance < fadeStart)
+                return 0f;
+
+            if (distance >= maxRadius)
+                return 1f;
+
+            // smoothstep 插值 (3t² - 2t³)
+            var t = (distance - fadeStart) / (maxRadius - fadeStart);
+            return (float)(3 * t * t - 2 * t * t * t);
         }
 
         // ── 光源光晕：每个光源绘制两圈三角扇（亮圈 + 暗圈），加法混合 ──────────

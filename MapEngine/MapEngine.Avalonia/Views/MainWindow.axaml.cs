@@ -105,6 +105,28 @@ public partial class MapEditorView : UserControl
         KeyDown += OnKeyDown;
     }
 
+    protected override void OnKeyDown(KeyEventArgs e)
+    {
+        if (_viewModel == null)
+        {
+            base.OnKeyDown(e);
+            return;
+        }
+
+        if (e.Key == Key.PageUp)
+        {
+            _viewModel.FloorUpCommand.Execute(null);
+            e.Handled = true;
+        }
+        else if (e.Key == Key.PageDown)
+        {
+            _viewModel.FloorDownCommand.Execute(null);
+            e.Handled = true;
+        }
+
+        base.OnKeyDown(e);
+    }
+
     /// <summary>
     /// 添加状态按钮点击事件：显示预设状态库的弹出菜单
     /// </summary>

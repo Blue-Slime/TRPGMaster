@@ -22,6 +22,9 @@ namespace MapEngine.Avalonia.Controls
         public GraphicsRuntimeInfo? RuntimeInfo { get; private set; }
         public event EventHandler<GraphicsRuntimeInfo>? RuntimeInfoAvailable;
 
+        /// <summary>最近一次渲染的场景（用于命中测试）。</summary>
+        public MapRenderScene? LastRenderedScene { get; private set; }
+
         public void RequestFrame()
             => RequestNextFrameRendering();
 
@@ -96,6 +99,7 @@ namespace MapEngine.Avalonia.Controls
                     
                     glApi.Viewport(0, 0, width, height);
                     var scene = SceneProvider?.Invoke();
+                    LastRenderedScene = scene;
                     pipeline.Render(scene);
                 }
                 else if (!_hasLoggedRenderSkip)
@@ -117,6 +121,7 @@ namespace MapEngine.Avalonia.Controls
             _pipeline = null;
             _gl = null;
             RuntimeInfo = null;
+            LastRenderedScene = null;
             _hasLoggedRenderSkip = false;
             WriteDebugLog("OpenGL deinit.");
             base.OnOpenGlDeinit(gl);
